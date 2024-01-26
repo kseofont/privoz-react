@@ -1,0 +1,29 @@
+[
+  {
+    "sector": "Fruits",
+    "productName": "Apple",
+    "imageSrc": "../img/apple.svg",
+    "wholesalePrice": "2",
+    "retailPrice": "4",
+    "possibleIncome": "2",
+    "quantity_card": "16"
+  },
+  {
+    "sector": "Fruits",
+    "productName": "Grape",
+    "imageSrc": "../img/grape.svg",
+    "wholesalePrice": "3",
+    "retailPrice": "6",
+    "possibleIncome": "3",
+    "quantity_card": "12"
+  },
+  {
+    "sector": "Berries",
+    "productName": "Berry",
+    "imageSrc": "../img/berry.svg",
+    "wholesalePrice": "5",
+    "retailPrice": "9",
+    "possibleIncome": "4",
+    "quantity_card": "10"
+  }
+]

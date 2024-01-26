@@ -1,0 +1,152 @@
+
+@import 'bootstrap/scss/bootstrap';
+
+// Your custom styles here
+body {
+  background-color: #fff;
+}
+
+// Toggle global options
+$enable-gradients: true;
+$enable-shadows: true;
+
+$offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175);
+
+// Include functions first
+@import "bootstrap/scss/functions";
+
+// Customize some defaults
+$body-color: #333;
+$body-bg: #fff;
+$border-radius: .4rem;
+$success: #7952b3;
+
+// Required
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
+
+@import "bootstrap/scss/type";
+// @import "bootstrap/scss/images";
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
+// @import "bootstrap/scss/tables";
+// @import "bootstrap/scss/forms";
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/dropdown";
+// @import "bootstrap/scss/button-group";
+// @import "bootstrap/scss/nav";
+// @import "bootstrap/scss/navbar"; // Requires nav
+// @import "bootstrap/scss/card";
+// @import "bootstrap/scss/breadcrumb";
+// @import "bootstrap/scss/accordion";
+// @import "bootstrap/scss/pagination";
+// @import "bootstrap/scss/badge";
+// @import "bootstrap/scss/alert";
+// @import "bootstrap/scss/progress";
+// @import "bootstrap/scss/list-group";
+@import "bootstrap/scss/close";
+// @import "bootstrap/scss/toasts";
+@import "bootstrap/scss/modal"; // Requires transitions
+// @import "bootstrap/scss/tooltip";
+@import "bootstrap/scss/popover";
+// @import "bootstrap/scss/carousel";
+// @import "bootstrap/scss/spinners";
+@import "bootstrap/scss/offcanvas"; // Requires transitions
+// @import "bootstrap/scss/placeholders";
+
+// Helpers
+// @import "bootstrap/scss/helpers";
+
+// Utilities
+@import "bootstrap/scss/utilities/api";
+
+//
+// Import Bootstrap Icons w/ custom path to fonts folder
+//
+@import "~bootstrap-icons/font/bootstrap-icons.css"; // Import the main CSS file
+@font-face {
+  font-family: 'bootstrap-icons';
+  src: url('~bootstrap-icons/font/fonts/bootstrap-icons.woff2?24e3eb84d0bcaf83d77f904c78ac1f47') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'bootstrap-icons';
+  src: url('~bootstrap-icons/font/fonts/bootstrap-icons.woff?24e3eb84d0bcaf83d77f904c78ac1f47') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+//
+// Custom styles
+//
+
+@import "icon-list";
+
+body {
+  padding: 1.5rem;
+}
+.red {
+  color: rgb(255, 0, 0); /* Red */
+}
+
+.green {
+  color: rgb(0, 128, 0); /* Green */
+}
+
+.blue {
+  color: rgb(0, 0, 255); /* Blue */
+}
+
+.orange {
+  color: rgb(255, 165, 0); /* Orange */
+}
+
+.purple {
+  color: rgb(128, 0, 128); /* Purple */
+}
+
+.brown {
+  color: rgb(56 56 6)
+}
+
+.product{
+  min-height: 6rem;
+  font-size: 12px;
+  background-color: #ccc;
+}
+
+.fruits {
+  background: rgba(255, 204, 153, 1);
+}
+
+.vegetables {
+  background: rgba(153, 204, 153, 1);
+}
+
+.milk {
+  background: rgba(255, 255, 240, 1); /* Ivory */
+}
+
+.fish {
+  background: rgba(153, 204, 255, 1);
+}
+
+.meat {
+  background: rgba(255, 204, 204, 1);
+}
+
+.stuff {
+  background: rgba(188, 143, 143, 1); /* Rosy Brown */
+}
+
+
+.card-img-top{
+      margin: auto;
+    max-width: 70px;
+}
