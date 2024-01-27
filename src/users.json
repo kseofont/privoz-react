@@ -7,6 +7,7 @@
     "traders": [
       {
         "traderName": "Trader1",
+        "traderOwnerId": "001",
         "location": "Fruits",
         "goods": [
           {
@@ -50,6 +51,7 @@
        "traders": [
       {
         "traderName": "Trader1",
+        "traderOwnerId": "002",
         "location": "Fruits",
         "goods": [
           {
@@ -81,6 +83,41 @@
           }
       
         ]
+      },
+       {
+        "traderName": "Trader2",
+        "traderOwnerId": "002",
+        "location": "Vegetables",
+          "goods": [
+          {
+            "sector": "vegetables",
+            "productName": "Onion",
+            "imageSrc": "../img/apple.svg",
+            "wholesalePrice": "2",
+            "retailPrice": "4",
+            "possibleIncome": "2",
+            "quantity_card": "16"
+          },
+          {
+            "sector": "vegetables",
+            "productName": "Zucchini",
+            "imageSrc": "../img/grape.svg",
+            "wholesalePrice": "3",
+            "retailPrice": "6",
+            "possibleIncome": "3",
+            "quantity_card": "12"
+          },
+          {
+            "sector": "vegetables",
+            "productName": "Tomato",
+            "imageSrc": "../img/berry.svg",
+            "wholesalePrice": "5",
+            "retailPrice": "9",
+            "possibleIncome": "4",
+            "quantity_card": "10"
+          }
+      
+        ]
       }
    
     ]
@@ -93,6 +130,7 @@
        "traders": [
       {
         "traderName": "Trader1",
+        "traderOwnerId": "003",
         "location": "Fruits",
         "goods": [
           {
@@ -137,6 +175,7 @@
        "traders": [
       {
         "traderName": "Trader1",
+        "traderOwnerId": "004",
         "location": "Vegetables",
         "goods": [
           {

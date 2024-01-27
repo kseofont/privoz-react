@@ -4,8 +4,21 @@ import Menu from '../components/Menu';
 import usersData from '../users.json';
 
 const PrivozPage = () => {
-    // Extract unique locations from users' data
-    const locations = [...new Set(usersData.flatMap(user => user.traders.map(trader => trader.location)))];
+    // Process usersData to create defaultTradersData
+    const defaultTradersData = usersData.map(user => ({
+        ...user,
+        traders: user.traders.map(trader => ({
+            ...trader,
+            goods: trader.goods.map(good => ({
+                ...good,
+                imageSrc: `../img/${good.imageSrc}`
+            }))
+        }))
+    }));
+    const maxTraders = usersData.length;
+
+    // Extract unique locations from defaultTradersData
+    const locations = [...new Set(defaultTradersData.flatMap(user => user.traders.map(trader => trader.location)))];
 
     // Use provided sectors list
     const sectors = ['Fruits', 'Vegetables', 'Milk', 'Fish', 'Meat', 'Stuff'];
@@ -13,22 +26,16 @@ const PrivozPage = () => {
     // Ensure that all sectors are included, even if they don't have traders
     const allLocations = [...new Set([...locations, ...sectors])];
 
-    const users = usersData.map(user => ({
-        ...user,
-        traders: user.traders.map(trader => ({
-            ...trader,
-            goods: trader.goods.map(good => ({
-                ...good,
-                imageSrc: `../img/${good.imageSrc}` // Assuming images are in the "img" folder
-            }))
-        }))
-    }));
-    //  const [traders, setTraders] = useState([]);
-
+    // Initialize traders state with defaultTradersData
     const [traders, setTraders] = useState([]);
+
     useEffect(() => {
-        console.log('Updated traders state:', traders);
-    }, [traders]);
+        // Set the traders state based on processed defaultTradersData
+        setTraders(prevTraders => {
+            // Ensure that the update is only performed if the state is empty
+            return prevTraders.length === 0 ? defaultTradersData : prevTraders;
+        });
+    }, [defaultTradersData]);
 
     return (
         <div className="container">
@@ -41,7 +48,7 @@ const PrivozPage = () => {
                             <PrivozSector
                                 key={index}
                                 category={location}
-                                users={users}
+                                maxTraders={maxTraders}
                                 traders={traders}  // Pass traders and setTraders props
                                 setTraders={setTraders}
                             />
@@ -49,7 +56,7 @@ const PrivozPage = () => {
                     ))}
                 </div>
                 <div className="col-3">
-                    <Menu users={users} locations={locations} />
+                    <Menu traders={traders} locations={locations} />
                 </div>
             </div>
         </div>
