@@ -1,7 +1,7 @@
 import React from 'react';
 import Product from '../components/Product';
 import Menu from '../components/Menu';
-import apple from '../img/apple.svg';
+import products from '../products.json';
 
 const Wholesale = () => {
     return (
@@ -9,25 +9,33 @@ const Wholesale = () => {
             <h2>Wholesale Marketplace</h2>
             <div className="row">
                 <div className="col-9">
+                    <div className="row">
+                        <h2>All cards in game</h2>
+                    </div>
 
                     <div className="row">
-                        {[...Array(6)].map((_, index) => (
-                            <div key={index} className="col border p-0 text-center p-1 product">
-                                <Product
-                                    sector="Fruits"
-                                    productName="Apple"
-                                    imageSrc={apple}
-                                    wholesalePrice="$2.00"
-                                    retailPrice="$3.50"
-                                    possibleIncome="$100.00"
-                                />
+                        {products.sectors.map((sector, index) => (
+                            <div key={index} className="row">
+                                <h3>{sector.sector}</h3>
+                                {sector.products.map((product, productIndex) => (
+                                    <div key={productIndex} className="col">
+                                        <Product
+                                            key={productIndex}
+                                            sector={sector.sector}
+                                            productName={product.productName}
+                                            imageSrc={`../img/${product.imageSrc}`}
+                                            wholesalePrice={product.wholesalePrice}
+                                            retailPrice={product.sellingPrice}
+                                            possibleIncome={product.profit}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         ))}
+
                     </div>
                     <div className="row">
-                        {[...Array(6)].map((_, index) => (
-                            <div key={index} className="col border p-0 text-center p-1 product"></div>
-                        ))}
+                        <h2>here is a real Wholesale Marketplace </h2>
                     </div>
                 </div>
                 <div className="col-3">

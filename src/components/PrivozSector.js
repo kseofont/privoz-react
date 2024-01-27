@@ -69,7 +69,7 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders }) => {
                             {
                                 sector: clickedSector,
                                 productName: 'Onion',
-                                imageSrc: '../img/apple.svg',
+                                imageSrc: '../img/apples.svg',
                                 wholesalePrice: '2',
                                 retailPrice: '4',
                                 possibleIncome: '2',

@@ -1,0 +1,52 @@
+{
+  "sectors": [
+    {
+      "sector": "vegetables",
+      "products": [
+        {"productId": 1, "productName": "onion", "wholesalePrice": 2, "sellingPrice": 4, "profit": 2, "quantity_card": 16, "total_profit": 32, "product_sector": "vegetables", "imageSrc": "onion.svg"},
+        {"productId": 2, "productName": "zucchini", "wholesalePrice": 3, "sellingPrice": 6, "profit": 3, "quantity_card": 12, "total_profit": 36, "product_sector": "vegetables", "imageSrc": "zucchini.svg"},
+        {"productId": 3, "productName": "tomato", "wholesalePrice": 5, "sellingPrice": 9, "profit": 4, "quantity_card": 10, "total_profit": 40, "product_sector": "vegetables", "imageSrc": "tomato.svg"}
+      ]
+    },
+    {
+      "sector": "fruits",
+      "products": [
+        {"productId": 4, "productName": "apples", "wholesalePrice": 2, "sellingPrice": 4, "profit": 2, "quantity_card": 16, "total_profit": 32, "product_sector": "fruits", "imageSrc": "apples.svg"},
+        {"productId": 5, "productName": "grapes", "wholesalePrice": 3, "sellingPrice": 6, "profit": 3, "quantity_card": 12, "total_profit": 36, "product_sector": "fruits", "imageSrc": "grapes.svg"},
+        {"productId": 6, "productName": "strawberries", "wholesalePrice": 5, "sellingPrice": 9, "profit": 4, "quantity_card": 10, "total_profit": 40, "product_sector": "fruits", "imageSrc": "strawberries.svg"}
+      ]
+    },
+    {
+      "sector": "dairy",
+      "products": [
+        {"productId": 7, "productName": "milk", "wholesalePrice": 3, "sellingPrice": 6, "profit": 3, "quantity_card": 16, "total_profit": 48, "product_sector": "dairy", "imageSrc": "milk.svg"},
+        {"productId": 8, "productName": "feta cheese", "wholesalePrice": 5, "sellingPrice": 9, "profit": 4, "quantity_card": 12, "total_profit": 48, "product_sector": "dairy", "imageSrc": "feta_cheese.svg"},
+        {"productId": 9, "productName": "cheese", "wholesalePrice": 7, "sellingPrice": 12, "profit": 5, "quantity_card": 10, "total_profit": 50, "product_sector": "dairy", "imageSrc": "cheese.svg"}
+      ]
+    },
+    {
+      "sector": "fish",
+      "products": [
+        {"productId": 10, "productName": "anchovies", "wholesalePrice": 3, "sellingPrice": 6, "profit": 3, "quantity_card": 16, "total_profit": 48, "product_sector": "fish", "imageSrc": "anchovies.svg"},
+        {"productId": 11, "productName": "mackerel", "wholesalePrice": 5, "sellingPrice": 9, "profit": 4, "quantity_card": 12, "total_profit": 48, "product_sector": "fish", "imageSrc": "mackerel.svg"},
+        {"productId": 12, "productName": "salmon", "wholesalePrice": 7, "sellingPrice": 12, "profit": 5, "quantity_card": 10, "total_profit": 50, "product_sector": "fish", "imageSrc": "salmon.svg"}
+      ]
+    },
+    {
+      "sector": "meat",
+      "products": [
+        {"productId": 13, "productName": "chicken", "wholesalePrice": 5, "sellingPrice": 10, "profit": 5, "quantity_card": 10, "total_profit": 50, "product_sector": "meat", "imageSrc": "chicken.svg"},
+        {"productId": 14, "productName": "pork", "wholesalePrice": 7, "sellingPrice": 13, "profit": 6, "quantity_card": 7, "total_profit": 42, "product_sector": "meat", "imageSrc": "pork.svg"},
+        {"productId": 15, "productName": "sausage", "wholesalePrice": 9, "sellingPrice": 16, "profit": 7, "quantity_card": 4, "total_profit": 28, "product_sector": "meat", "imageSrc": "sausage.svg"}
+      ]
+    },
+    {
+      "sector": "household_goods",
+      "products": [
+        {"productId": 16, "productName": "gloves", "wholesalePrice": 7, "sellingPrice": 12, "profit": 5, "quantity_card": 10, "total_profit": 50, "product_sector": "household_goods", "imageSrc": "gloves.svg"},
+        {"productId": 17, "productName": "hats", "wholesalePrice": 9, "sellingPrice": 15, "profit": 6, "quantity_card": 7, "total_profit": 42, "product_sector": "household_goods", "imageSrc": "hats.svg"},
+        {"productId": 18, "productName": "quilts", "wholesalePrice": 10, "sellingPrice": 18, "profit": 8, "quantity_card": 4, "total_profit": 32, "product_sector": "household_goods", "imageSrc": "quilts.svg"}
+      ]
+    }
+  ]
+}

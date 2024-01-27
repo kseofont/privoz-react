@@ -21,7 +21,7 @@ const PrivozPage = () => {
     const locations = [...new Set(defaultTradersData.flatMap(user => user.traders.map(trader => trader.location)))];
 
     // Use provided sectors list
-    const sectors = ['Fruits', 'Vegetables', 'Milk', 'Fish', 'Meat', 'Stuff'];
+    const sectors = ['Fruits', 'Vegetables', 'Dairy', 'Fish', 'Meat', 'Household goods'];
 
     // Ensure that all sectors are included, even if they don't have traders
     const allLocations = [...new Set([...locations, ...sectors])];

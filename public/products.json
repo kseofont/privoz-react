@@ -2,7 +2,7 @@
   {
     "sector": "Fruits",
     "productName": "Apple",
-    "imageSrc": "../img/apple.svg",
+    "imageSrc": "../img/apples.svg",
     "wholesalePrice": "2",
     "retailPrice": "4",
     "possibleIncome": "2",
@@ -19,8 +19,8 @@
   },
   {
     "sector": "Berries",
-    "productName": "Berry",
-    "imageSrc": "../img/berry.svg",
+    "productName": "strawberries",
+    "imageSrc": "../img/strawberries.svg",
     "wholesalePrice": "5",
     "retailPrice": "9",
     "possibleIncome": "4",

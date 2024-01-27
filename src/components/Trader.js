@@ -17,7 +17,7 @@ class Trader extends Component {
 
         return (
             <div className={`col border text-center pb-4 ${color}`}>
-                <div className='userdata'>Trader {trader.traderName}</div>
+                <div className='userdata'>{trader.traderName}</div>
                 <i className={`bi bi-shop-window ${name.toLowerCase()}`}></i>
                 <p>{name}</p>
                 <div className="container-fluid">
