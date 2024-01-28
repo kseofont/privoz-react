@@ -5,8 +5,10 @@ import Trader from './Trader';
 const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUserData }) => {
     const [clickedSector, setClickedSector] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
     const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+    const [coinsDecrease, setCoinsDecrease] = useState(0); // Declare coinsDecrease here
     const status = 'Your player: X';
     const traderContainerRef = useRef(null); // Create a ref for the container
 
@@ -35,12 +37,33 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
     const handleSectorClick = () => {
         // Update the clicked sector in state
         setClickedSector(category);
-        setShowModal(true);
 
         // Set the current user
         const user = traders.find(user => user.current_user === 'current');
         setCurrentUser(user);
+
+        // Use the callback function of setCurrentUserData to access the previous state
+        setCurrentUserData(prevUserData => {
+            // Calculate the total number of traders (previous + new)
+            const totalTradersCount = user.traders.length + prevUserData.tradersCount;
+
+            // Calculate the coins decrease based on the total number of traders
+            const coinsDecrease = totalTradersCount <= 1 ? 0 : (totalTradersCount - 1) * 5;
+            setCoinsDecrease(coinsDecrease);
+
+            // Show the modal
+            setShowModal(true);
+
+            // Return the updated state
+            return {
+                ...prevUserData,
+                // You can update other properties of prevUserData here if needed
+            };
+        });
     };
+
+
+
 
     const handleAddTrader = () => {
         // Check if the number of traders in the selected sector is less than maxTraders
@@ -69,7 +92,7 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                             {
                                 sector: clickedSector,
                                 productName: 'Onion',
-                                imageSrc: '../img/apples.svg',
+                                imageSrc: '../img/onion.svg',
                                 wholesalePrice: '2',
                                 retailPrice: '4',
                                 possibleIncome: '2',
@@ -84,13 +107,33 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
             // Update the traderData array using the setTraderData function passed from props
             setTraders(prevTraders => [...prevTraders, newTraderData]);
 
+
+
+
             // Update the currentUserData state based on the new trader
             setCurrentUserData(prevUserData => {
                 if (!prevUserData) {
                     return null; // No need to update if currentUserData is not available
                 }
 
-                const updatedCoins = prevUserData.coins - 5;
+
+                const currentUserTraders = currentUser ? currentUser.traders.length : 0;
+
+
+                const totalTradersCount = currentUserTraders + prevUserData.tradersCount;
+
+
+                // Increment coinsDecrease by 5 for every additional trader (starting from 2)
+                const coinsDecrease = totalTradersCount <= 1 ? 0 : (totalTradersCount - 1) * 5;
+
+
+                const updatedCoins = prevUserData.coins - coinsDecrease;
+                if (updatedCoins < 0) {
+                    // Show a message or handle the scenario where coins go below zero
+                    setShowNotEnoughMoneyModal(true);
+                    return prevUserData;
+                }
+
 
                 const updatedTraders = [
                     ...prevUserData.sectorsWithTraders,
@@ -152,7 +195,8 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                     <Modal.Title>Confirm Trader Addition</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>Are you sure you want to add a trader to {category} sector?
-                    <p>New Trader price is 5 coins</p>
+                    <p>New Trader price is {coinsDecrease} coins</p>
+
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowModal(false)}>
@@ -174,6 +218,20 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="primary" onClick={() => setShowMaxTradersModal(false)}>
+                        OK
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+            {/* // Modal component for "Not Enough Money" */}
+            <Modal show={showNotEnoughMoneyModal} onHide={() => setShowNotEnoughMoneyModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Not Enough Money</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    You do not have enough money to add a trader. Please acquire more coins before adding a trader.
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="primary" onClick={() => setShowNotEnoughMoneyModal(false)}>
                         OK
                     </Button>
                 </Modal.Footer>

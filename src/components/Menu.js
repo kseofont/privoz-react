@@ -21,6 +21,7 @@ const Menu = ({ category, users = [], currentUserData, setCurrentUserData }) => 
             <nav className='d-flex justify-content-between'>
                 <Link to="/">Privoz</Link>
                 <Link to="/wholesale">Wholesale Marketplace</Link>
+                <Link to="/eventcards">Event Cards</Link>
             </nav>
 
             {/* Button with text "Next" */}

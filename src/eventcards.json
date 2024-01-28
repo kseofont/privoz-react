@@ -1,0 +1,153 @@
+[
+  {
+    "title": "Federal Police",
+    "description": "Confiscate illegal goods plus a fine.",
+    "fortune": "negative",
+    "quantity_ingame": 7,
+    "quantity_active": 5,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [{"confiscation": true}, {"fine":[5]}, {"trader_action":"hold"} ]
+  },
+  {
+    "title": "Mafia ('brothers') Karabas and Stas",
+    "description": "2 coins of donations for each seller.",
+    "fortune": "negative",
+  "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [{"confiscation": false}, {"fine":[2]} ]
+  },
+  {
+    "title": "Prosecutor's Office",
+    "description": "Confiscation of illegal goods plus a fine.",
+    "fortune": "negative",
+    "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [{"confiscation": true}, {"fine":[2]}, {"trader_action":"hold"}]
+  },
+  {
+    "title": "Sanitary Epidemiological Station",
+    "description": "2 coins of donations for each seller.",
+    "fortune": "negative",
+   "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [{"confiscation": false}, {"fine":[2]}]
+  },
+  {
+    "title": "Firefighters",
+    "description": "2 coins of donations for each seller.",
+    "fortune": "negative",
+    "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [{"confiscation": false}, {"fine":[2]}]
+  },
+  {
+    "title": "Local Police Officer",
+    "description": "2 coins of donations for each seller.",
+    "fortune": "negative",
+    "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [{"confiscation": true}, {"fine":[2]}, {"trader_action":"hold"}]
+  },
+
+  {
+    "title": "Beggars",
+    "description": "-1 to the selling price.",
+    "fortune": "negative",
+   "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "product",
+    "effect": [ {"price_fine":1}]
+  },
+  {
+    "title": "Addicts (Narcos)",
+    "description": "-1 to the selling price.",
+    "fortune": "negative",
+   "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "product",
+    "effect": [ {"price_fine":1}]
+  },
+  {
+    "title": "Priests (Monks)",
+    "description": "2 coins of donations for each seller.",
+    "fortune": "negative",
+        "quantity_ingame": 7,
+    "quantity_active": 7,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "product",
+    "effect": [{"price_fine":[2]}]
+  },
+  {
+    "title": "New Mayor (Market Reconstruction)",
+    "description": "All sellers gather and there is a new arrangement of sellers starting from the richest (poorest).",
+    "fortune": "negative",
+    "quantity": 1,
+     "position_in_game": "happens"
+  },
+  {
+    "title": "Underworld Protection (Protection from Various Inspections)",
+    "description": "Protection.",
+    "fortune": "positive",
+    "quantity_ingame": 21,
+    "quantity_active": 18,
+    "position_in_game": "deck",
+    "goal_action": "trader",
+    "goal_item": "trader",
+    "effect": [{"Illigal_protection": true},{"trader_action":"free"}]
+  },
+  {
+    "title": "Regular Customer",
+    "description": "Profit +2 coins.",
+    "fortune": "positive",
+        "quantity_ingame": 14,
+    "quantity_active": 14,
+    "position_in_game": "deck",
+    "goal_action": "trader",
+    "goal_item": "product",
+    "effect": [{"extra_price":[2]}]
+  },
+  {
+    "title": "Transport Arrived and Brought People",
+    "description": "Profit +1 from each seller.",
+    "fortune": "positive",
+            "quantity_ingame": 14,
+    "quantity_active": 14,
+    "position_in_game": "deck",
+    "goal_action": "trader",
+    "goal_item": "product",
+    "effect": [{"extra_price":[1]}]
+  },
+  {
+    "title": "Porters",
+    "description": "Goods +1 from the market for free.",
+    "fortune": "positive",
+          "quantity_ingame": 14,
+    "quantity_active": 14,
+    "position_in_game": "deck",
+    "goal_action": "trader",
+    "goal_item": "product",
+    "effect": [{"extra_product":[1]}]
+  }
+]
