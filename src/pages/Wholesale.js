@@ -10,30 +10,31 @@ const Wholesale = () => {
             <div className="row">
                 <div className="col-9">
                     <div className="row">
-                        <h2>All cards in game</h2>
+                        <h2>All cards in the game</h2>
                     </div>
-
                     <div className="row">
                         {products.sectors.map((sector, index) => (
-                            <div key={index} className="row">
-                                <h3>{sector.sector}</h3>
+                            <div key={index} className={`row ${sector.sector}`}>
+                                <h3>{sector.sector.charAt(0).toUpperCase() + sector.sector.slice(1)}</h3>
                                 {sector.products.map((product, productIndex) => (
                                     <div key={productIndex} className="col">
-                                        <Product
-                                            key={productIndex}
-                                            sector={sector.sector}
-                                            productName={product.productName}
-                                            imageSrc={`../img/${product.imageSrc}`}
-                                            wholesalePrice={product.wholesalePrice}
-                                            retailPrice={product.sellingPrice}
-                                            possibleIncome={product.profit}
-                                        />
+                                        <div className={`sector border p-3 mb-3 ${sector.sector}`}>
+                                            <Product
+                                                key={productIndex}
+                                                sector={sector.sector}
+                                                productName={product.productName}
+                                                imageSrc={`../img/${product.imageSrc}`}
+                                                wholesalePrice={product.wholesalePrice}
+                                                retailPrice={product.sellingPrice}
+                                                possibleIncome={product.profit}
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         ))}
-
                     </div>
+
                     <div className="row">
                         <h2>here is a real Wholesale Marketplace </h2>
                     </div>

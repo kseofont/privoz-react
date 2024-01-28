@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
-const Menu = ({ category, users = [] }) => {
+// ... (your existing imports)
+
+const Menu = ({ category, users = [], currentUserData, setCurrentUserData }) => {
     const traders = users.map((user, index) => (
         // Assuming you want to render some content for each user
         // You can customize this based on your requirements
         <div key={index}>{/* Add your content for each user */}</div>
     ));
+
 
     const sectorClassName = `border p-3 mb-3 ${category}`;
 
@@ -25,6 +28,17 @@ const Menu = ({ category, users = [] }) => {
 
             {/* Render traders or other content based on your requirements */}
             {traders}
+
+            {/* Display information for the current user */}
+            {currentUserData && (
+                <div>
+                    <p>Name: {currentUserData.name}</p>
+                    <p>Class: {currentUserData.className}</p>
+                    <p>Coins: {currentUserData.coins}</p>
+                    <p>Traders Count: {currentUserData.tradersCount}</p>
+                    <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
+                </div>
+            )}
         </div>
     );
 };

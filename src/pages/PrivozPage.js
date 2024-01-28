@@ -37,6 +37,35 @@ const PrivozPage = () => {
         });
     }, [defaultTradersData]);
 
+
+    // Pass data to Menu with current user
+
+    const [currentUserData, setCurrentUserData] = useState(null);
+
+    useEffect(() => {
+        // Find the current user in the usersData
+        const currentUser = usersData.find(user => user.current_user === 'current');
+
+        if (currentUser) {
+            // Extract required information for the current user
+            const { name, className, coins, traders } = currentUser;
+            const sectorsWithTraders = traders.map(trader => trader.location);
+
+            // Create an object with the extracted data
+            const currentUserInfo = {
+                name,
+                className,
+                coins: coins,
+                tradersCount: traders.length,
+                sectorsWithTraders,
+            };
+
+            // Set the state with the current user information
+            setCurrentUserData(currentUserInfo);
+        }
+    }, []);
+
+
     return (
         <div className="container">
             <div className="row">
@@ -51,12 +80,16 @@ const PrivozPage = () => {
                                 maxTraders={maxTraders}
                                 traders={traders}  // Pass traders and setTraders props
                                 setTraders={setTraders}
+                                currentUserData={currentUserData}
+                                setCurrentUserData={setCurrentUserData}
+
                             />
                         </div>
                     ))}
                 </div>
                 <div className="col-3">
-                    <Menu traders={traders} locations={locations} />
+                    <Menu traders={traders} locations={locations} currentUserData={currentUserData}
+                        setCurrentUserData={setCurrentUserData} />
                 </div>
             </div>
         </div>

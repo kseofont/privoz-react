@@ -4,6 +4,7 @@
     "name": "Olena",
     "color": "yellow",
     "className": "user1",
+    "coins": "10",
     "traders": [
       {
         "traderName": "Trader1",
@@ -48,7 +49,8 @@
     "name": "Ivan",
     "color": "blue",
     "className": "user2",
-       "traders": [
+     "coins": "10",
+    "traders": [
       {
         "traderName": "Trader1",
         "traderOwnerId": "002",
@@ -127,7 +129,8 @@
     "name": "Alezandr",
     "color": "purple",
     "className": "user3",
-       "traders": [
+       "coins": "10",
+    "traders": [
       {
         "traderName": "Trader1",
         "traderOwnerId": "003",
@@ -172,7 +175,8 @@
     "name": "Yaroslav",
     "color": "red",
     "className": "user3",
-       "traders": [
+       "coins": "50",
+    "traders": [
       {
         "traderName": "Trader1",
         "traderOwnerId": "004",

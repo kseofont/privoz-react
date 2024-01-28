@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import Trader from './Trader';
 
-const PrivozSector = ({ category, maxTraders, traders, setTraders }) => {
+const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUserData }) => {
     const [clickedSector, setClickedSector] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
@@ -84,10 +84,34 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders }) => {
             // Update the traderData array using the setTraderData function passed from props
             setTraders(prevTraders => [...prevTraders, newTraderData]);
 
+            // Update the currentUserData state based on the new trader
+            setCurrentUserData(prevUserData => {
+                if (!prevUserData) {
+                    return null; // No need to update if currentUserData is not available
+                }
+
+                const updatedCoins = prevUserData.coins - 5;
+
+                const updatedTraders = [
+                    ...prevUserData.sectorsWithTraders,
+                    newTraderData.traders[0].location
+                ];
+
+                return {
+                    ...prevUserData,
+                    tradersCount: prevUserData.tradersCount + 1,
+                    sectorsWithTraders: updatedTraders,
+                    coins: updatedCoins,
+                };
+            });
+
+
             // Close the modal
             setShowModal(false);
             setCurrentUser(null);
             console.log(tradersInSelectedSector.length);
+            console.log('Updated traders state:', traders);
+            console.log('Updated traders state:', traders);
 
             // You can perform other actions here based on the clicked sector,
             // such as sending it to a server, updating a context, etc.
@@ -127,7 +151,9 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders }) => {
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Trader Addition</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>Are you sure you want to add a trader to {category} sector?</Modal.Body>
+                <Modal.Body>Are you sure you want to add a trader to {category} sector?
+                    <p>New Trader price is 5 coins</p>
+                </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowModal(false)}>
                         Cancel
