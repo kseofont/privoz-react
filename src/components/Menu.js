@@ -12,7 +12,15 @@ const Menu = ({ category, users = [], currentUserData }) => {
 
 
     const sectorClassName = `border p-3 mb-3 ${category}`;
-    const user_color = currentUserData.color;
+    let user_color;
+
+    if (currentUserData && currentUserData.color) {
+        // Access the color property safely
+        user_color = currentUserData.color;
+    } else {
+        user_color = 'green';
+    }
+
 
     return (
         <div className="col">
