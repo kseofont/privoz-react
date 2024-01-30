@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 // ... (your existing imports)
 
-const Menu = ({ category, users = [], currentUserData, setCurrentUserData }) => {
+const Menu = ({ category, users = [], currentUserData }) => {
     const traders = users.map((user, index) => (
         // Assuming you want to render some content for each user
         // You can customize this based on your requirements
@@ -12,29 +12,25 @@ const Menu = ({ category, users = [], currentUserData, setCurrentUserData }) => 
 
 
     const sectorClassName = `border p-3 mb-3 ${category}`;
+    const user_color = currentUserData.color;
 
     return (
         <div className="col">
             <h3>Menu</h3>
 
             {/* Navigation links */}
-            <nav className='d-flex justify-content-between'>
+            <nav className='d-flex justify-content-between flex-column mb-3'>
                 <Link to="/">Privoz</Link>
                 <Link to="/wholesale">Wholesale Marketplace</Link>
                 <Link to="/eventcards">Event Cards</Link>
             </nav>
 
-            {/* Button with text "Next" */}
-            <button type="button">Next</button>
-
-            {/* Render traders or other content based on your requirements */}
-            {traders}
-
             {/* Display information for the current user */}
+
             {currentUserData && (
-                <div>
+                <div className='user-info'>
                     <p>Name: {currentUserData.name}</p>
-                    <p>Class: {currentUserData.className}</p>
+                    <p className={user_color}>Color: {currentUserData.color}</p>
                     <p>Coins: {currentUserData.coins}</p>
                     <p>Traders Count: {currentUserData.tradersCount}</p>
                     <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
