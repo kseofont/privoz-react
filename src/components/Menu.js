@@ -38,6 +38,7 @@ const Menu = ({ category, users = [], currentUserData, setCurrentUserData }) => 
                     <p>Coins: {currentUserData.coins}</p>
                     <p>Traders Count: {currentUserData.tradersCount}</p>
                     <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
+                    <p>event: {currentUserData.sectorsWithTraders.join(', ')}</p>
                 </div>
             )}
         </div>

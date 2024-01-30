@@ -2,11 +2,11 @@ import React from 'react';
 
 const FortuneCards = ({ cards, title }) => {
     return (
-        <div className='col'>
+        <div className='row fortune-card'>
             <h2>{title}</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+            <div className='row'>
                 {cards.map((card, index) => (
-                    <div key={index} style={{ border: '1px solid #ddd', padding: '10px', margin: '10px', width: '300px' }}>
+                    <div key={index} className="col" style={{ border: '1px solid #ddd', padding: '10px', margin: '10px', width: '300px' }}>
                         <h4>{card.title}</h4>
                         <p>Description: {card.description}</p>
                         <p>Fortune: {card.fortune}</p>

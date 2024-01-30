@@ -99,13 +99,7 @@
     "goal_item": "product",
     "effect": [{"price_fine":[2]}]
   },
-  {
-    "title": "New Mayor (Market Reconstruction)",
-    "description": "All sellers gather and there is a new arrangement of sellers starting from the richest (poorest).",
-    "fortune": "negative",
-    "quantity": 1,
-     "position_in_game": "happens"
-  },
+
   {
     "title": "Underworld Protection (Protection from Various Inspections)",
     "description": "Protection.",

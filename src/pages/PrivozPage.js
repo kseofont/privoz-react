@@ -58,6 +58,7 @@ const PrivozPage = () => {
                 coins: coins,
                 tradersCount: traders.length,
                 sectorsWithTraders,
+                position_in_game: "hand",
             };
 
             // Set the state with the current user information

@@ -14,10 +14,10 @@ const EventCard = () => {
                 <div className="col-9">
 
                     <h2>Event Cards</h2>
-                    <div className="row">
+                    <div className="row positive-row">
                         <FortuneCards cards={positiveFortuneCards} title="Positive Fortune Cards" />
                     </div>
-                    <div className="row">
+                    <div className="row negative-row">
                         <FortuneCards cards={negativeFortuneCards} title="Negative Fortune Cards" />
                     </div>
 
