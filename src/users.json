@@ -94,7 +94,7 @@
           {
             "sector": "vegetables",
             "productName": "Onion",
-            "imageSrc": "../img/apples.svg",
+            "imageSrc": "../img/onion.svg",
             "wholesalePrice": "2",
             "retailPrice": "4",
             "possibleIncome": "2",
@@ -103,7 +103,7 @@
           {
             "sector": "vegetables",
             "productName": "Zucchini",
-            "imageSrc": "../img/grapes.svg",
+            "imageSrc": "../img/zucchini.svg",
             "wholesalePrice": "3",
             "retailPrice": "6",
             "possibleIncome": "3",
@@ -112,7 +112,7 @@
           {
             "sector": "vegetables",
             "productName": "Tomato",
-            "imageSrc": "../img/strawberries.svg",
+            "imageSrc": "../img/tomato.svg",
             "wholesalePrice": "5",
             "retailPrice": "9",
             "possibleIncome": "4",
@@ -185,7 +185,7 @@
           {
             "sector": "vegetables",
             "productName": "Onion",
-            "imageSrc": "../img/apples.svg",
+            "imageSrc": "../img/onion.svg",
             "wholesalePrice": "2",
             "retailPrice": "4",
             "possibleIncome": "2",
@@ -194,7 +194,7 @@
           {
             "sector": "vegetables",
             "productName": "Zucchini",
-            "imageSrc": "../img/grapes.svg",
+            "imageSrc": "../img/zucchini.svg",
             "wholesalePrice": "3",
             "retailPrice": "6",
             "possibleIncome": "3",
@@ -203,7 +203,7 @@
           {
             "sector": "vegetables",
             "productName": "Tomato",
-            "imageSrc": "../img/strawberries.svg",
+            "imageSrc": "../img/tomato.svg",
             "wholesalePrice": "5",
             "retailPrice": "9",
             "possibleIncome": "4",

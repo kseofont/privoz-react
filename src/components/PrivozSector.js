@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import Trader from './Trader';
 
-// Import your event cards data
-import eventCardsData from '../eventcards.json';
+import { handleSectorClickLogic, handleAddTraderLogic } from '../logic/logic';
+
 
 const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUserData }) => {
     const [clickedSector, setClickedSector] = useState(null);
@@ -45,166 +45,16 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
     );
 
     const handleSectorClick = () => {
-        // Update the clicked sector in state
-        setClickedSector(category);
-
-        // Set the current user
-        const user = traders.find(user => user.current_user === 'current');
-        setCurrentUser(user);
-
-        // Use the callback function of setCurrentUserData to access the previous state
-        setCurrentUserData(prevUserData => {
-            // Calculate the total number of traders (previous + new)
-            const totalTradersCount = user.traders.length + prevUserData.tradersCount;
-
-            // Calculate the coins decrease based on the total number of traders
-            const coinsDecrease = totalTradersCount <= 1 ? 0 : (totalTradersCount - 1) * 5;
-            setCoinsDecrease(coinsDecrease);
-
-            // Show the modal
-            setShowModal(true);
-
-            // Return the updated state
-            return {
-                ...prevUserData,
-                // You can update other properties of prevUserData here if needed
-            };
-        });
+        handleSectorClickLogic(category, setClickedSector, setShowModal, setCurrentUser, setCurrentUserData, setCoinsDecrease, traders);
     };
 
 
 
 
     const handleAddTrader = () => {
-        // Check if the number of traders in the selected sector is less than maxTraders
-        const tradersInSelectedSector = filteredUsers.filter(
-            user =>
-                user.traders && // Ensure traders array is defined
-                user.traders.some(trader => trader.location === clickedSector)
-        );
-
-        if (tradersInSelectedSector.length < maxTraders) {
-            // Perform actions to add trader
-            const newTraderKey = `trader-${clickedSector}-${(traders || []).length + 1}`;
-            let user = traders.find(user => user.current_user === 'current');
-            setCurrentUser(user);
-            const newTraderData = {
-                user_id: user.user_id,
-                name: user.name,
-                color: user.color,
-                className: user.className,
-                traders: [
-                    {
-                        traderOwnerId: user.user_id,
-                        traderName: `Trader${tradersInSelectedSector.length + 1}`,
-                        location: clickedSector,
-                        goods: [
-                            {
-                                sector: clickedSector,
-                                productName: 'Onion',
-                                imageSrc: '../img/onion.svg',
-                                wholesalePrice: '2',
-                                retailPrice: '4',
-                                possibleIncome: '2',
-                                quantity_card: '16',
-                            },
-                            // ... Additional goods data
-                        ],
-                    },
-                ],
-            };
-
-            // Update the traderData array using the setTraderData function passed from props
-            setTraders(prevTraders => [...prevTraders, newTraderData]);
-
-            // Update the currentUserData state based on the new trader
-            setCurrentUserData(prevUserData => {
-                if (!prevUserData) {
-                    return null; // No need to update if currentUserData is not available
-                }
-
-                const currentUserTraders = currentUser ? currentUser.traders.length : 0;
-                const totalTradersCount = currentUserTraders + prevUserData.tradersCount;
-
-                // Increment coinsDecrease by 5 for every additional trader (starting from 2)
-                const coinsDecrease = totalTradersCount <= 1 ? 0 : (totalTradersCount - 1) * 5;
-
-                const updatedCoins = prevUserData.coins - coinsDecrease;
-                if (updatedCoins < 0) {
-                    // Show a message or handle the scenario where coins go below zero
-                    setShowNotEnoughMoneyModal(true);
-                    return prevUserData;
-                }
-
-                const updatedTraders = [
-                    ...prevUserData.sectorsWithTraders,
-                    newTraderData.traders[0].location
-                ];
-
-                return {
-                    ...prevUserData,
-                    tradersCount: prevUserData.tradersCount + 1,
-                    sectorsWithTraders: updatedTraders,
-                    coins: updatedCoins,
-                };
-            });
-
-            // Close the modal
-            setShowModal(false);
-
-
-            // Select a random card from eventCardsData with "position_in_game": "deck" and "quantity_active" more than 0
-            const availableCards = eventCardsData.filter(card => card.position_in_game === 'deck' && card.quantity_active > 0);
-            const randomCardsForTraders = []; // Array to store random cards for each trader
-
-            // Loop through the traders of the current user and assign a random card to each
-            const updatedTraders = user.traders.map(trader => {
-                // Select a random card from the available cards
-                const randomCardIndex = Math.floor(Math.random() * availableCards.length);
-                const randomCard = availableCards[randomCardIndex];
-
-                // Update the card's position_in_game to "hand"
-                randomCard.position_in_game = "hand";
-
-                // Decrement the quantity_active for the selected card
-                randomCard.quantity_active--;
-
-                // Remove the card from available cards if its quantity becomes 0
-                if (randomCard.quantity_active === 0) {
-                    availableCards.splice(randomCardIndex, 1);
-                }
-
-                // Store the random card for this trader
-                randomCardsForTraders.push(randomCard);
-
-                // Return the updated trader with the assigned card
-                return {
-                    ...trader,
-                    eventCard: randomCard, // Add a new property to store the assigned event card
-                };
-            });
-
-            // Show modal with information about the updated current user traders and the randomly selected card
-            setShowUpdatedInfoModal(true);
-            setUpdatedInfo({
-                traders: updatedTraders,
-                randomCard: randomCardsForTraders,
-            });
-            // Add the new card to the sector if it's not already present
-            const sectorIndex = eventCardsData.findIndex(card => card.position_in_game === 'deck' && card.quantity_active > 0 && card.goal_action === 'sector' && card.goal_item === clickedSector);
-            if (sectorIndex !== -1) {
-                // Decrement the quantity_active for the selected card
-                const updatedEventCards = [...eventCardsData];
-                updatedEventCards[sectorIndex].quantity_active--;
-
-            }
-
-            setCurrentUser(null);
-        } else {
-            setShowModal(false); // Close the current modal
-            setShowMaxTradersModal(true); // Show the max traders modal
-        }
+        handleAddTraderLogic(clickedSector, maxTraders, setShowModal, setShowMaxTradersModal, setShowNotEnoughMoneyModal, setTraders, setCurrentUserData, setShowUpdatedInfoModal, setUpdatedInfo, currentUser, traders, setCurrentUser);
     };
+
 
 
 
@@ -279,23 +129,22 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                 </Modal.Footer>
             </Modal>
             {/* Modal for showing updated information */}
+            {/* Modal for showing updated information */}
             <Modal show={showUpdatedInfoModal} onHide={handleUpdatedInfoModalClose}>
                 <Modal.Header closeButton>
                     <Modal.Title>Trader Added Successfully!</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <p>Your traders have been updated:</p>
+                    <div>Your traders have been updated:</div>
                     {updatedInfo.traders.map((trader, index) => (
-                        <p key={index}>{trader.traderName} in {trader.location}</p>
+                        <div key={index}>{trader.traderName} in {trader.location}</div>
                     ))}
-                    <p>You've received a new event card:</p>
-                    <p>{updatedInfo.randomCard ? (
-
-                        <p>{updatedInfo.randomCard.title}</p>
-
+                    <div>You've received a new event card:</div>
+                    {updatedInfo.randomCard ? (
+                        <div>{updatedInfo.randomCard.title}</div>
                     ) : (
-                        <p>No event card received</p>
-                    )}</p>
+                        <div>No event card received</div>
+                    )}
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="primary" onClick={handleUpdatedInfoModalClose}>
@@ -303,6 +152,7 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                     </Button>
                 </Modal.Footer>
             </Modal>
+
 
         </div>
     );

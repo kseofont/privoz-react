@@ -1,24 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 // ... (your existing imports)
 
 const Menu = ({ category, users = [], currentUserData }) => {
-    const traders = users.map((user, index) => (
-        // Assuming you want to render some content for each user
-        // You can customize this based on your requirements
-        <div key={index}>{/* Add your content for each user */}</div>
-    ));
 
 
-    const sectorClassName = `border p-3 mb-3 ${category}`;
+
+
     let user_color;
 
     if (currentUserData && currentUserData.color) {
         // Access the color property safely
         user_color = currentUserData.color;
     } else {
-        user_color = 'green';
+        user_color = 'red';
     }
 
 
@@ -43,7 +39,9 @@ const Menu = ({ category, users = [], currentUserData }) => {
                     <p>Traders Count: {currentUserData.tradersCount}</p>
                     <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
                     <p>event: {currentUserData.sectorsWithTraders.join(', ')}</p>
+                    <pre>{JSON.stringify(currentUserData, null)}</pre>
                 </div>
+
             )}
         </div>
     );

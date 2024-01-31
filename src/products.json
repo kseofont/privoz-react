@@ -41,11 +41,11 @@
       ]
     },
     {
-      "sector": "household_goods",
+      "sector": "household",
       "products": [
-        {"productId": 16, "productName": "gloves", "wholesalePrice": 7, "sellingPrice": 12, "profit": 5, "quantity_card": 10, "total_profit": 50, "product_sector": "household_goods", "imageSrc": "gloves.svg", "legality": "legal"},
-        {"productId": 17, "productName": "hats", "wholesalePrice": 9, "sellingPrice": 15, "profit": 6, "quantity_card": 7, "total_profit": 42, "product_sector": "household_goods", "imageSrc": "hats.svg", "legality": "legal"},
-        {"productId": 18, "productName": "quilts", "wholesalePrice": 10, "sellingPrice": 18, "profit": 8, "quantity_card": 4, "total_profit": 32, "product_sector": "household_goods", "imageSrc": "quilts.svg"}
+        {"productId": 16, "productName": "gloves", "wholesalePrice": 7, "sellingPrice": 12, "profit": 5, "quantity_card": 10, "total_profit": 50, "product_sector": "household", "imageSrc": "gloves.svg", "legality": "legal"},
+        {"productId": 17, "productName": "hats", "wholesalePrice": 9, "sellingPrice": 15, "profit": 6, "quantity_card": 7, "total_profit": 42, "product_sector": "household", "imageSrc": "hats.svg", "legality": "legal"},
+        {"productId": 18, "productName": "quilts", "wholesalePrice": 10, "sellingPrice": 18, "profit": 8, "quantity_card": 4, "total_profit": 32, "product_sector": "household", "imageSrc": "quilts.svg"}
       ]
     },
      {

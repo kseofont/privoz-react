@@ -141,7 +141,7 @@ body {
   background: rgba(255, 204, 204, 1);
 }
 
-.stuff {
+.stuff, .household {
   background: rgba(188, 143, 143, 1); /* Rosy Brown */
 }
 
@@ -160,5 +160,5 @@ body {
 
 .user-info{
   padding: 10px;
-  bottom: 1px solid #ccc;
+  border: 1px solid #ccc;
 }

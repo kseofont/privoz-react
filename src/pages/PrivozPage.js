@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PrivozSector from '../components/PrivozSector';
 import Menu from '../components/Menu';
+
 import usersData from '../users.json';
 
 const PrivozPage = () => {
@@ -60,6 +61,7 @@ const PrivozPage = () => {
                 tradersCount: traders.length,
                 sectorsWithTraders,
                 position_in_game: "hand",
+
             };
 
             // Set the state with the current user information
