@@ -1,38 +1,75 @@
 import usersData from '../users.json';
 import eventCardsData from '../eventcards.json';
+// Assuming you're using axios for simplicity
+import axios from 'axios';
 
-export const processUsersData = () => {
-    return usersData.map(user => ({
-        ...user,
-        traders: user.traders.map(trader => ({
-            ...trader,
-            goods: trader.goods.map(good => ({
-                ...good,
-                imageSrc: `../img/${good.imageSrc}`
+export const processUsersData = async () => {
+    try {
+        // Make a GET request to the API endpoint
+        const response = await axios.get('https://privoz-api.lavron.dev/fake/users', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        // Extract the user data from the API response
+        const usersData = response.data;
+
+        // Process and return the data as needed
+        return usersData.map(user => ({
+            ...user,
+            traders: user.traders.map(trader => ({
+                ...trader,
+                goods: trader.goods.map(good => ({
+                    ...good,
+                    imageSrc: `../img/${good.imageSrc}`
+                }))
             }))
-        }))
-    }));
+        }));
+    } catch (error) {
+        console.error('Error fetching data from API:', error);
+        // Handle errors appropriately (e.g., show a message to the user)
+        return [];
+    }
 };
 
-export const extractCurrentUser = () => {
-    const currentUser = usersData.find(user => user.current_user === 'current');
 
-    if (currentUser) {
-        const { name, className, color, coins, traders } = currentUser;
-        const sectorsWithTraders = traders.map(trader => trader.location);
+export const extractCurrentUser = async () => {
+    try {
+        // Make a GET request to the API endpoint
+        const response = await axios.get('https://privoz-api.lavron.dev/fake/users', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
 
-        return {
-            name,
-            className,
-            color,
-            coins,
-            tradersCount: traders.length,
-            sectorsWithTraders,
-            position_in_game: "hand",
-        };
+        // Extract the user data from the API response
+        const usersData = response.data;
+
+        // Find the current user in the fetched data
+        const currentUser = usersData.find(user => user.current_user === 'current');
+
+        if (currentUser) {
+            const { name, className, color, coins, traders } = currentUser;
+            const sectorsWithTraders = traders.map(trader => trader.location);
+
+            return {
+                name,
+                className,
+                color,
+                coins,
+                tradersCount: traders.length,
+                sectorsWithTraders,
+                position_in_game: "hand",
+            };
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error fetching data from API:', error);
+        // Handle errors appropriately (e.g., show a message to the user)
+        return null;
     }
-
-    return null;
 };
 
 export const handleSectorClickLogic = (category, setClickedSector, setShowModal, setCurrentUser, setCurrentUserData, setCoinsDecrease, traders) => {
