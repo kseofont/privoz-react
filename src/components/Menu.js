@@ -35,9 +35,9 @@ const Menu = ({ currentUserData }) => {
                     <p>Event Cards:</p>
 
                     {currentUserData && currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
-                        <ul>
+                        <ul className="list-unstyled">
                             {currentUserData.eventCards.map((card, index) => (
-                                <li key={index}>
+                                <li key={index} className={`event-card ${card.fortune === 'negative' ? 'bg-danger' : 'bg-success'}`}>
                                     <p>Title: {card.title}</p>
                                     <p>Description: {card.description}</p>
                                     <p>Fortune: {card.fortune}</p>
@@ -49,7 +49,7 @@ const Menu = ({ currentUserData }) => {
                                     {card.effect && card.effect.length > 0 && (
                                         <div>
                                             <p>Effect:</p>
-                                            <ul>
+                                            <ul className="list-unstyled">
                                                 {card.effect.map((effect, effectIndex) => (
                                                     <li key={effectIndex}>
                                                         {Object.keys(effect).map((key, subIndex) => (
@@ -63,6 +63,8 @@ const Menu = ({ currentUserData }) => {
                                 </li>
                             ))}
                         </ul>
+
+
                     ) : (
                         <p>No Event Cards.</p>
                     )}

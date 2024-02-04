@@ -151,8 +151,6 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                 <Modal.Body>
                     <div>Your traders have been updated:</div>
 
-                    {console.log('setCurrentUserData:', setCurrentUserData)}
-
 
                     {setCurrentUserData.traders && setCurrentUserData.traders.length > 0 ? (
                         <ul>
