@@ -49,11 +49,12 @@ const PrivozPage = () => {
 
         if (currentUser) {
             // Extract required information for the current user
-            const { name, className, color, coins, traders } = currentUser;
+            const { user_id, name, className, color, coins, traders } = currentUser;
             const sectorsWithTraders = traders.map(trader => trader.location);
 
             // Create an object with the extracted data
             const currentUserInfo = {
+                user_id,
                 name,
                 className,
                 color,

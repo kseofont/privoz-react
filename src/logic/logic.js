@@ -1,4 +1,4 @@
-import usersData from '../users.json';
+//import usersData from '../users.json';
 import eventCardsData from '../eventcards.json';
 // Assuming you're using axios for simplicity
 import axios from 'axios';
@@ -225,6 +225,11 @@ export const handleAddTraderLogic = (clickedSector, maxTraders, setShowModal, se
                 selectedCard.effect = [...card.effect];
 
                 updatedEventCards[sectorIndex].quantity_active--;
+
+                setUpdatedInfo({
+                    traders: updatedTraders,
+                    randomCard: selectedCard, // Assuming you want to set the updated card in randomCard
+                });
 
             }
         }
