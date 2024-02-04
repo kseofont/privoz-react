@@ -5,7 +5,7 @@ import Trader from './Trader';
 import { handleSectorClickLogic, handleAddTraderLogic } from '../logic/logic';
 
 
-const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUserData }) => {
+const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUserData, currentUserData }) => {
     const [clickedSector, setClickedSector] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
@@ -15,9 +15,11 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
     const status = 'Your player: X';
     const traderContainerRef = useRef(null); // Create a ref for the container
 
+
+
     // Modal for showing updated information
     const [showUpdatedInfoModal, setShowUpdatedInfoModal] = useState(false);
-    const [updatedInfo, setUpdatedInfo] = useState({ traders: [], randomCard: null });
+
     const handleUpdatedInfoModalClose = () => setShowUpdatedInfoModal(false);
 
 
@@ -52,7 +54,19 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
 
 
     const handleAddTrader = () => {
-        handleAddTraderLogic(clickedSector, maxTraders, setShowModal, setShowMaxTradersModal, setShowNotEnoughMoneyModal, setTraders, setCurrentUserData, setShowUpdatedInfoModal, setUpdatedInfo, currentUser, traders, setCurrentUser);
+        handleAddTraderLogic(
+            clickedSector,
+            maxTraders,
+            setShowModal,
+            setShowMaxTradersModal,
+            setShowNotEnoughMoneyModal,
+            setTraders,
+            setCurrentUserData,
+            setShowUpdatedInfoModal,
+            currentUser,
+            traders,
+            setCurrentUser  // Make sure to pass setCurrentUser here
+        );
     };
 
 
@@ -136,17 +150,35 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                 </Modal.Header>
                 <Modal.Body>
                     <div>Your traders have been updated:</div>
-                    {updatedInfo.traders.map((trader, index) => (
-                        <div key={index}>{trader.traderName} in {trader.location}</div>
-                    ))}
-                    <div>You've received a new event card:</div>
-                    {updatedInfo.randomCard ? (
-                        console.log({ updatedInfo }),
-                        <div>{updatedInfo.randomCard.title}</div>
+
+                    {console.log('setCurrentUserData:', setCurrentUserData)}
+
+
+                    {setCurrentUserData.traders && setCurrentUserData.traders.length > 0 ? (
+                        <ul>
+                            {setCurrentUserData.traders.map((trader, index) => (
+                                <li key={index}>{/* Render trader information here */}</li>
+                            ))}
+                        </ul>
                     ) : (
-                        <div>No event card received</div>
+                        <p>No traders have been updated.</p>
                     )}
+
+                    <div>You get a new Event Card:</div>
+                    {currentUserData && currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
+                        <ul>
+                            {currentUserData.eventCards.map((card, index) => (
+                                <li key={index}>{card.title}</li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No new Event Cards.</p>
+                    )}
+
+
+
                 </Modal.Body>
+
                 <Modal.Footer>
                     <Button variant="primary" onClick={handleUpdatedInfoModalClose}>
                         OK

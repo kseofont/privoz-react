@@ -58,6 +58,7 @@ const PrivozPage = () => {
                 name,
                 className,
                 color,
+                traders,
                 coins: coins,
                 tradersCount: traders.length,
                 sectorsWithTraders,

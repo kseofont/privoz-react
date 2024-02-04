@@ -33,13 +33,43 @@ const Menu = ({ currentUserData }) => {
                     <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
                     <p>Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}</p>
                     <p>Event Cards:</p>
-                    {currentUserData.eventCards && (
+
+                    {currentUserData && currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
                         <ul>
                             {currentUserData.eventCards.map((card, index) => (
-                                <li key={index}>{card.title}</li>
+                                <li key={index}>
+                                    <p>Title: {card.title}</p>
+                                    <p>Description: {card.description}</p>
+                                    <p>Fortune: {card.fortune}</p>
+                                    <p>Quantity In Game: {card.quantity_ingame}</p>
+                                    <p>Quantity Active: {card.quantity_active}</p>
+                                    <p>Position In Game: {card.position_in_game}</p>
+                                    <p>Goal Action: {card.goal_action}</p>
+                                    <p>Goal Item: {card.goal_item}</p>
+                                    {card.effect && card.effect.length > 0 && (
+                                        <div>
+                                            <p>Effect:</p>
+                                            <ul>
+                                                {card.effect.map((effect, effectIndex) => (
+                                                    <li key={effectIndex}>
+                                                        {Object.keys(effect).map((key, subIndex) => (
+                                                            <p key={subIndex}>{key}: {JSON.stringify(effect[key])}</p>
+                                                        ))}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </li>
                             ))}
                         </ul>
+                    ) : (
+                        <p>No Event Cards.</p>
                     )}
+
+                    {/* Additional details from currentUserData */}
+                    {/* Include any additional details you want to display */}
+
                 </div>
             )}
         </div>
