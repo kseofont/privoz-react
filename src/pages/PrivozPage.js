@@ -38,10 +38,9 @@ const PrivozPage = () => {
         });
     }, [defaultTradersData]);
 
-
-    // Pass data to Menu with current user
-
+    // Pass data to Menu with current user and other users
     const [currentUserData, setCurrentUserData] = useState(null);
+    const [otherUsers, setOtherUsers] = useState([]);
 
     useEffect(() => {
         // Find the current user in the usersData
@@ -64,14 +63,18 @@ const PrivozPage = () => {
                 sectorsWithTraders,
                 position_in_game: "hand",
                 eventCards,
-
             };
 
             // Set the state with the current user information
             setCurrentUserData(currentUserInfo);
+
+            // Filter other users from usersData
+            const otherUsersInfo = usersData.filter(user => user.current_user !== 'current');
+
+            // Set the state with other users information
+            setOtherUsers(otherUsersInfo);
         }
     }, []);
-
 
     return (
         <div className="container">
@@ -89,14 +92,15 @@ const PrivozPage = () => {
                                 setTraders={setTraders}
                                 currentUserData={currentUserData}
                                 setCurrentUserData={setCurrentUserData}
-
                             />
                         </div>
                     ))}
                 </div>
                 <div className="col-3">
-                    <Menu traders={traders} locations={locations} currentUserData={currentUserData}
-                        setCurrentUserData={setCurrentUserData} />
+                    <Menu
+                        currentUserData={currentUserData}
+                        otherUsers={otherUsers}  // Pass otherUsers prop
+                    />
                 </div>
             </div>
         </div>

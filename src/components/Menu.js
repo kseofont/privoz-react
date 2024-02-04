@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const Menu = ({ currentUserData }) => {
+const Menu = ({ currentUserData, otherUsers }) => {
     let user_color;
+    const userBackgroundColorClass = currentUserData ? `bg-${currentUserData.color}` : '';
+
 
     if (currentUserData && currentUserData.color) {
         user_color = currentUserData.color;
@@ -24,18 +26,40 @@ const Menu = ({ currentUserData }) => {
 
             {/* Display information for the current user */}
             {currentUserData && (
-                <div className='user-info'>
+                <div className={`user-info ${userBackgroundColorClass}`} >
                     <p>Id: {currentUserData.user_id}</p>
                     <p>Name: {currentUserData.name}</p>
                     <p className={user_color}>Color: {currentUserData.color}</p>
                     <p>Coins: {currentUserData.coins}</p>
                     <p>Traders Count: {currentUserData.tradersCount}</p>
+                    {currentUserData.traders && currentUserData.traders.length > 0 && (
+                        <div>
+                            <p>Products from Your Traders:</p>
+                            <ul className="list-unstyled">
+                                {currentUserData.traders.map((trader, traderIndex) => (
+                                    <li key={traderIndex}>
+                                        <p>Trader: {trader.traderName}</p>
+                                        {trader.goods && trader.goods.length > 0 && (
+                                            <ul className="list-unstyled">
+                                                {trader.goods.map((product, productIndex) => (
+                                                    <li key={productIndex}>
+                                                        <p>Product: {product.productName}</p>
+                                                        {/* Include other product details as needed */}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                     <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
                     <p>Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}</p>
                     <p>Event Cards:</p>
 
                     {currentUserData && currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
-                        <ul className="list-unstyled">
+                        <ul className="list-unstyled" >
                             {currentUserData.eventCards.map((card, index) => (
                                 <li key={index} className={`event-card ${card.fortune === 'negative' ? 'bg-danger' : 'bg-success'}`}>
                                     <p>Title: {card.title}</p>
@@ -63,8 +87,6 @@ const Menu = ({ currentUserData }) => {
                                 </li>
                             ))}
                         </ul>
-
-
                     ) : (
                         <p>No Event Cards.</p>
                     )}
@@ -72,8 +94,50 @@ const Menu = ({ currentUserData }) => {
                     {/* Additional details from currentUserData */}
                     {/* Include any additional details you want to display */}
 
+                    {/* Display information about other users, their traders, and products */}
+
                 </div>
             )}
+            <div className='other-users'>
+                {/* Display information about other users, their traders, and products */}
+                {otherUsers && otherUsers.length > 0 && (
+                    <div className={`user-info`}>
+                        <p>Other Users in Game:</p>
+                        <ul className="list-unstyled">
+                            {otherUsers.map((user, userIndex) => {
+                                const userBackgroundColorClass = user.color ? `bg-${user.color}` : '';
+                                return (
+                                    <li key={userIndex} className={userBackgroundColorClass}>
+                                        <p>User: {user.name}</p>
+                                        {user.traders && user.traders.length > 0 && (
+                                            <ul className="list-unstyled">
+                                                {user.traders.map((trader, traderIndex) => {
+                                                    const traderBackgroundColorClass = trader.location ? `bg-${trader.location.toLowerCase()}` : '';
+                                                    return (
+                                                        <li key={traderIndex} className={traderBackgroundColorClass}>
+                                                            <p>Trader: {trader.traderName}</p>
+                                                            {trader.goods && trader.goods.length > 0 && (
+                                                                <ul className="list-unstyled">
+                                                                    {trader.goods.map((product, productIndex) => (
+                                                                        <li key={productIndex}>
+                                                                            <p>Product: {product.productName}</p>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                )}
+            </div>
+
         </div>
     );
 };

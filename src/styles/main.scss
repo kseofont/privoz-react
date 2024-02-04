@@ -91,6 +91,41 @@ $success: #7952b3;
 body {
   padding: 1.5rem;
 }
+$red: rgba(255, 0, 0, 0.2);
+$green: rgba(0, 128, 0, 0.2);
+$blue: rgba(0, 0, 255, 0.2);
+$orange: rgba(255, 165, 0, 0.2);
+$purple: rgba(128, 0, 128, 0.2);
+$brown: rgba(56, 56, 6, 0.2);
+$yellow: #ffff00; 
+
+.bg-red {
+  background-color: $red;
+}
+
+.bg-green {
+  background-color: $green;
+}
+.bg-yellow{
+  background-color: $yellow;
+}
+
+.bg-blue {
+  background-color: $blue;
+}
+
+.bg-orange {
+  background-color: $orange;
+}
+
+.bg-purple {
+  background-color: $purple;
+}
+
+.bg-brown {
+  background-color: $brown;
+}
+
 .red {
   color: rgb(255, 0, 0); /* Red */
 }
@@ -114,6 +149,7 @@ body {
 .brown {
   color: rgb(56 56 6)
 }
+
 
 .product{
   min-height: 6rem;
