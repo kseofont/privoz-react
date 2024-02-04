@@ -141,6 +141,7 @@ const PrivozSector = ({ category, maxTraders, traders, setTraders, setCurrentUse
                     ))}
                     <div>You've received a new event card:</div>
                     {updatedInfo.randomCard ? (
+                        console.log({ updatedInfo }),
                         <div>{updatedInfo.randomCard.title}</div>
                     ) : (
                         <div>No event card received</div>

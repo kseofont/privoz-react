@@ -49,7 +49,7 @@ const PrivozPage = () => {
 
         if (currentUser) {
             // Extract required information for the current user
-            const { user_id, name, className, color, coins, traders } = currentUser;
+            const { user_id, name, className, color, coins, traders, eventCards } = currentUser;
             const sectorsWithTraders = traders.map(trader => trader.location);
 
             // Create an object with the extracted data
@@ -62,6 +62,7 @@ const PrivozPage = () => {
                 tradersCount: traders.length,
                 sectorsWithTraders,
                 position_in_game: "hand",
+                eventCards,
 
             };
 
