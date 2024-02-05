@@ -1,14 +1,16 @@
-// app.js
-
 import React, { useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
-import '../styles/App.css'; // Import your custom CSS file
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // Import the useNavigate hook
+import 'bootstrap/dist/css/bootstrap.min.css';
+import '../styles/App.css';
 
 const App = () => {
   const [userName, setUserName] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [numberOfPlayers, setNumberOfPlayers] = useState(2);
+
+  // Access the navigate function
+  const navigate = useNavigate();
 
   const handleStartGame = () => {
     // Check if the number of players is within the allowed range
@@ -26,6 +28,11 @@ const App = () => {
       .then(response => {
         console.log('Server response:', response);
         // Handle the response as needed
+        // Check if the response is successful (status code 200)
+        if (response.status === 200) {
+          // Redirect to the / route
+          navigate('/');
+        }
       })
       .catch(error => {
         console.error('Error submitting data to the server:', error);
@@ -45,7 +52,6 @@ const App = () => {
         }
       });
   };
-
 
 
 

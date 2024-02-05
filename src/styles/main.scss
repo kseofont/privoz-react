@@ -155,6 +155,7 @@ $yellow: #ffff00;
   min-height: 6rem;
   font-size: 12px;
   background-color: #ccc;
+  max-width: 250px;
 }
 
 .fruits {
@@ -197,4 +198,9 @@ $yellow: #ffff00;
 .user-info{
   padding: 10px;
   border: 1px solid #ccc;
+}
+
+.wholesale-window{
+        width: 100%;
+    max-width: 100%;
 }
