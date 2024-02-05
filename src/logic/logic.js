@@ -146,8 +146,8 @@ export const handleAddTraderLogic = (clickedSector, maxTraders, setShowModal, se
                 return null;
             }
 
-            const currentUserTraders = currentUser ? currentUser.traders.length : 0;
-            const totalTradersCount = currentUserTraders + prevUserData.tradersCount;
+            const currentUserTraders = currentUser ? currentUser.traders : [];
+            const totalTradersCount = currentUserTraders.length + prevUserData.tradersCount;
 
             const coinsDecrease = totalTradersCount <= 1 ? 0 : (totalTradersCount - 1) * 5;
             const updatedCoins = prevUserData.coins - coinsDecrease;
@@ -158,14 +158,15 @@ export const handleAddTraderLogic = (clickedSector, maxTraders, setShowModal, se
             }
 
             const updatedTraders = [
-                ...prevUserData.sectorsWithTraders,
-                newTraderData.traders[0].location
+                ...prevUserData.traders,
+                ...newTraderData.traders, // Append the new trader data
             ];
 
             return {
                 ...prevUserData,
                 tradersCount: prevUserData.tradersCount + 1,
                 sectorsWithTraders: updatedTraders,
+                traders: updatedTraders,
                 coins: updatedCoins,
             };
         });

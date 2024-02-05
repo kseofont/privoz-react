@@ -39,6 +39,7 @@ const Menu = ({ currentUserData, otherUsers }) => {
                                 {currentUserData.traders.map((trader, traderIndex) => (
                                     <li key={traderIndex}>
                                         <p>Trader: {trader.traderName}</p>
+                                        <p>Trader sector: {trader.location}</p>
                                         {trader.goods && trader.goods.length > 0 && (
                                             <ul className="list-unstyled">
                                                 {trader.goods.map((product, productIndex) => (
