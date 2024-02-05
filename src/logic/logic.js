@@ -51,7 +51,6 @@ export const extractCurrentUser = async () => {
 
         if (currentUser) {
             const { name, className, color, coins, traders } = currentUser;
-            const sectorsWithTraders = traders.map(trader => trader.location);
 
             return {
                 name,
@@ -59,7 +58,7 @@ export const extractCurrentUser = async () => {
                 color,
                 coins,
                 tradersCount: traders.length,
-                sectorsWithTraders,
+
                 position_in_game: "hand",
             };
         }
@@ -124,15 +123,15 @@ export const handleAddTraderLogic = (clickedSector, maxTraders, setShowModal, se
                     traderName: `Trader${tradersInSelectedSector.length + 1}`,
                     location: clickedSector,
                     goods: [
-                        {
-                            sector: clickedSector,
-                            productName: 'Onion',
-                            imageSrc: '../img/onion.svg',
-                            wholesalePrice: '2',
-                            retailPrice: '4',
-                            possibleIncome: '2',
-                            quantity_card: '16',
-                        },
+                        // {
+                        //     sector: clickedSector,
+                        //     productName: 'Onion',
+                        //     imageSrc: '../img/onion.svg',
+                        //     wholesalePrice: '2',
+                        //     retailPrice: '4',
+                        //     possibleIncome: '2',
+                        //     quantity_card: '16',
+                        // },
                         // ... Additional goods data
                     ],
                 },
@@ -165,7 +164,7 @@ export const handleAddTraderLogic = (clickedSector, maxTraders, setShowModal, se
             return {
                 ...prevUserData,
                 tradersCount: prevUserData.tradersCount + 1,
-                sectorsWithTraders: updatedTraders,
+
                 traders: updatedTraders,
                 coins: updatedCoins,
             };

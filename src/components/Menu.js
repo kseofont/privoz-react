@@ -12,6 +12,9 @@ const Menu = ({ currentUserData, otherUsers }) => {
         user_color = 'red';
     }
 
+    // Extract unique sectors from traders
+    const uniqueSectors = [...new Set(currentUserData?.traders?.map(trader => trader.location) || [])];
+
     return (
         <div className="col">
             <h3>Menu</h3>
@@ -55,7 +58,13 @@ const Menu = ({ currentUserData, otherUsers }) => {
                             </ul>
                         </div>
                     )}
-                    <p>Sectors with Traders: {currentUserData.sectorsWithTraders.join(', ')}</p>
+                    <p>Sectors with Traders: </p>
+                    <ul>
+                        {uniqueSectors.map((sector, index) => (
+                            <li key={index}>{sector}</li>
+                        ))}
+                    </ul>
+
                     <p>Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}</p>
                     <p>Event Cards:</p>
 
