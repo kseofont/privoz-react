@@ -13,12 +13,13 @@ const PrivozSector = ({
     setTraders,
     setCurrentUserData,
     currentUserData,
+    otherUsers
 }) => {
     const [clickedSector, setClickedSector] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
     const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null); // !!!
     const [coinsDecrease, setCoinsDecrease] = useState(0); // Declare coinsDecrease here
     const traderContainerRef = useRef(null); // Create a ref for the container   
     const [showUpdatedInfoModal, setShowUpdatedInfoModal] = useState(false);
@@ -109,44 +110,122 @@ const PrivozSector = ({
         // Log the lowercase category value
         console.log('Lowercase Category:', lowercaseCategory);
 
-        // Find the product data for the current sector
-        const sectorData = productsData.sectors.find(
-            (sector) => sector.sector === lowercaseCategory
-        );
+        // // Find the product data for the current sector
+        // const sectorData = productsData.sectors.find(
+        //     (sector) => sector.sector === lowercaseCategory
+        // );
 
-        // Log the sectorData value
-        console.log('Sector Data:', sectorData);
-        // Log the sectorData value
-        console.log('Sector Data:', sectorData);
+        const IllegalProducts = productsData.sectors
+            .find(sector => sector.sector === 'illegal')
+            .products.filter(product => product.quantity_card > 0);
 
+        console.log(IllegalProducts);
+        console.log('otherUsers:', otherUsers);
+        console.log('currentUserData:', currentUserData);
+        // Combine otherUsers and currentUserData into a single array
+        const allUsers = otherUsers.concat(currentUserData);
 
-        // Ensure sectorData has a valid structure
-        if (!sectorData || !Array.isArray(sectorData.products)) {
-            console.error('Invalid sector data:', sectorData);
-            return;
+        // Function to count traders in each location for all users
+        const countTradersByLocation = (users) => {
+            const traderCounts = {};
+            users.forEach((user) => {
+                if (user.traders) {
+                    user.traders.forEach((trader) => {
+                        const location = trader.location;
+                        if (!traderCounts[location]) {
+                            traderCounts[location] = 1;
+                        } else {
+                            traderCounts[location]++;
+                        }
+                    });
+                }
+            });
+            return traderCounts;
+        };
+
+        // Count traders for all users
+        const allUsersTraderCounts = countTradersByLocation(allUsers);
+        console.log('All Users Trader Counts:', allUsersTraderCounts);
+
+        // Initialize activeProducts array
+        const activeProducts = [];
+        // Iterate over each location in allUsersTraderCounts
+        for (const location in allUsersTraderCounts) {
+            if (allUsersTraderCounts.hasOwnProperty(location)) {
+                // Find the sector data for the current location
+                const sectorData = productsData.sectors.find(sector => sector.sector.toLowerCase() === location.toLowerCase());
+
+                if (sectorData && Array.isArray(sectorData.products)) {
+                    // Shuffle products to get random selection
+                    const shuffledProducts = sectorData.products.sort(() => Math.random() - 0.5);
+
+                    // Take the first three products (or less if there are fewer)
+                    const selectedProducts = shuffledProducts.slice(0, Math.min(3, shuffledProducts.length));
+
+                    // Add the selected products to activeProducts array
+                    activeProducts.push({
+                        location,
+                        products: selectedProducts
+                    });
+                }
+            }
         }
 
-        // Generate a list of products for each trader in the sector
-        const tradersInSector = traders.filter(
-            (user) =>
-                user.traders &&
-                user.traders.some((trader) => trader.location === category)
-        );
-
-        const sectorProductsList = tradersInSector.map((trader) => {
-            const traderProducts = Array.from({ length: 3 }, () => {
-                const randomIndex = Math.floor(
-                    Math.random() * sectorData.products.length
-                );
-                return sectorData.products[randomIndex];
+        // Add illegal products to activeProducts if available
+        if (IllegalProducts && IllegalProducts.length > 0) {
+            activeProducts.push({
+                location: 'Illegal',
+                products: IllegalProducts
             });
+        }
 
-            return {
-                traderId: trader.user_id,
-                traderLocation: trader.location,
-                products: traderProducts,
-            };
-        });
+
+        console.log('Active Products:', activeProducts);
+        // Generate sector products list
+        const sectorProductsList = activeProducts.map(({ location, products }) => ({
+            traderId: location, // Assuming traderId is set to location for simplicity
+            traderLocation: location,
+            products: products
+        }));
+
+
+
+
+
+        // // Log the sectorData value
+        // console.log('productsData:', productsData);
+        // console.log('Sector Data:', sectorData);
+        // // Log the sectorData value
+        // //    console.log('Sector Data:', sectorData);
+
+
+        // // Ensure sectorData has a valid structure
+        // if (!sectorData || !Array.isArray(sectorData.products)) {
+        //     console.error('Invalid sector data:', sectorData);
+        //     return;
+        // }
+
+        // // Generate a list of products for each trader in the sector
+        // const tradersInSector = traders.filter(
+        //     (user) =>
+        //         user.traders &&
+        //         user.traders.some((trader) => trader.location === category)
+        // );
+
+        // const sectorProductsList = tradersInSector.map((trader) => {
+        //     const traderProducts = Array.from({ length: 3 }, () => {
+        //         const randomIndex = Math.floor(
+        //             Math.random() * sectorData.products.length
+        //         );
+        //         return sectorData.products[randomIndex];
+        //     });
+
+        //     return {
+        //         traderId: trader.user_id,
+        //         traderLocation: trader.location,
+        //         products: traderProducts,
+        //     };
+        // });
 
         setSectorProducts(sectorProductsList);
     };
@@ -271,6 +350,7 @@ const PrivozSector = ({
 
             <Modal
                 show={showWholeModal}
+                onHide={handleWholeModalClose}
                 dialogClassName="modal-dialog-centered wholesale-window"
 
             >

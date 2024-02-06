@@ -92,6 +92,7 @@ const PrivozPage = () => {
                                 setTraders={setTraders}
                                 currentUserData={currentUserData}
                                 setCurrentUserData={setCurrentUserData}
+                                otherUsers={otherUsers}  // Pass otherUsers prop
                             />
                         </div>
                     ))}
