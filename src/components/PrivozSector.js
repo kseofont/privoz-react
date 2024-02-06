@@ -101,27 +101,14 @@ const PrivozSector = ({
             console.error('Invalid products data:', productsData);
             return;
         }
-        // Log the category value
-        console.log('Category:', category);
-
         // Convert category to lowercase
         const lowercaseCategory = category.toLowerCase();
-
-        // Log the lowercase category value
-        console.log('Lowercase Category:', lowercaseCategory);
-
-        // // Find the product data for the current sector
-        // const sectorData = productsData.sectors.find(
-        //     (sector) => sector.sector === lowercaseCategory
-        // );
 
         const IllegalProducts = productsData.sectors
             .find(sector => sector.sector === 'illegal')
             .products.filter(product => product.quantity_card > 0);
 
-        console.log(IllegalProducts);
-        console.log('otherUsers:', otherUsers);
-        console.log('currentUserData:', currentUserData);
+
         // Combine otherUsers and currentUserData into a single array
         const allUsers = otherUsers.concat(currentUserData);
 
@@ -178,54 +165,12 @@ const PrivozSector = ({
                 products: IllegalProducts
             });
         }
-
-
-        console.log('Active Products:', activeProducts);
         // Generate sector products list
         const sectorProductsList = activeProducts.map(({ location, products }) => ({
             traderId: location, // Assuming traderId is set to location for simplicity
             traderLocation: location,
             products: products
         }));
-
-
-
-
-
-        // // Log the sectorData value
-        // console.log('productsData:', productsData);
-        // console.log('Sector Data:', sectorData);
-        // // Log the sectorData value
-        // //    console.log('Sector Data:', sectorData);
-
-
-        // // Ensure sectorData has a valid structure
-        // if (!sectorData || !Array.isArray(sectorData.products)) {
-        //     console.error('Invalid sector data:', sectorData);
-        //     return;
-        // }
-
-        // // Generate a list of products for each trader in the sector
-        // const tradersInSector = traders.filter(
-        //     (user) =>
-        //         user.traders &&
-        //         user.traders.some((trader) => trader.location === category)
-        // );
-
-        // const sectorProductsList = tradersInSector.map((trader) => {
-        //     const traderProducts = Array.from({ length: 3 }, () => {
-        //         const randomIndex = Math.floor(
-        //             Math.random() * sectorData.products.length
-        //         );
-        //         return sectorData.products[randomIndex];
-        //     });
-
-        //     return {
-        //         traderId: trader.user_id,
-        //         traderLocation: trader.location,
-        //         products: traderProducts,
-        //     };
-        // });
 
         setSectorProducts(sectorProductsList);
     };
