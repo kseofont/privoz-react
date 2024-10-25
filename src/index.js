@@ -12,6 +12,7 @@ import EventCards from './pages/EventCards';
 import Rules from './pages/Rules';
 import CreateServerPage from './pages/CreateServerPage';
 import JoinGamePage from './pages/JoinGamePage';
+import GamePage from './pages/GamePage';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -24,6 +25,7 @@ root.render(
       <Route path="/rules" element={<Rules />} />
       <Route path="/create" element={<CreateServerPage />} />
       <Route path="/JoinGamePage" element={<JoinGamePage />} />
+      <Route path="/game/:peerId" element={<GamePage />} />
     </Routes>
   </BrowserRouter>
 );

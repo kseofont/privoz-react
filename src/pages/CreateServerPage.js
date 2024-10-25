@@ -12,6 +12,8 @@ const CreateServerPage = () => {
     const [peerId, setPeerId] = useState('');
     const [peer, setPeer] = useState(null);
     const [logs, setLogs] = useState([]);
+    const [players, setPlayers] = useState([]);
+    const [gameStarted, setGameStarted] = useState(false);
 
     const navigate = useNavigate();
 
@@ -25,14 +27,17 @@ const CreateServerPage = () => {
                         setPeerId(id);
                         setPeer(newPeer);
                         addLog('PeerJS server started with ID: ' + id);
+                        // Добавление создателя игры в список игроков
+                        setPlayers([{ name: userName, color: selectedColor, isHost: true, playerCount: numberOfPlayers }]);
                     });
 
                     newPeer.on('connection', (conn) => {
                         addLog('New player connected: ' + conn.peer);
-
                         conn.on('data', (data) => {
                             addLog('Received data from ' + conn.peer + ': ' + JSON.stringify(data));
-                            // Обработка данных от игрока
+                            if (data.type === 'join') {
+                                setPlayers((prevPlayers) => [...prevPlayers, { name: data.playerName, color: data.color }]);
+                            }
                         });
                     });
                 } catch (error) {
@@ -50,6 +55,11 @@ const CreateServerPage = () => {
     };
 
     const handleStartGame = () => {
+        if (!userName || !selectedColor) {
+            alert('Please fill in your name and select a color.');
+            return;
+        }
+
         if (numberOfPlayers < 2 || numberOfPlayers > 6) {
             alert('Please enter a number of players between 2 and 6.');
             return;
@@ -58,6 +68,21 @@ const CreateServerPage = () => {
         setServerStarted(true);
         addLog('Server started for signaling...');
     };
+
+    const handleStopAddingPlayers = () => {
+        setGameStarted(true);
+        addLog('Game started with players: ' + players.map(player => player.name).join(', '));
+        players.forEach(player => {
+            if (!player.isHost) {
+                const conn = peer.connect(player.peerId);
+                conn.on('open', () => {
+                    conn.send({ type: 'start', message: 'The game has started!' });
+                });
+            }
+        });
+        navigate(`/game/${peerId}`); // Редирект на страницу игры с уникальным идентификатором
+    };
+
 
     return (
         <div className="container mt-5">
@@ -109,12 +134,28 @@ const CreateServerPage = () => {
                         />
                     </div>
 
-                    <button className="btn btn-primary" onClick={handleStartGame}>Start Game</button>
+                    <button className="btn btn-primary" onClick={handleStartGame} disabled={serverStarted}>Start Game</button>
+                    {serverStarted && (
+                        <button className="btn btn-danger ms-3" onClick={handleStopAddingPlayers} disabled={gameStarted}>Stop Adding Players and Start Game</button>
+                    )}
 
                     {serverStarted && peerId && (
                         <div className="mt-3">
                             <p>Server started! Share this Peer ID with other players to join the game:</p>
                             <input type="text" readOnly className="form-control" value={peerId} />
+                        </div>
+                    )}
+
+                    {players.length > 0 && (
+                        <div className="mt-3">
+                            <h5>Connected Players:</h5>
+                            <ul className="list-group">
+                                {players.map((player, index) => (
+                                    <li key={index} className="list-group-item">
+                                        {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 

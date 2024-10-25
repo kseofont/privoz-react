@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Peer from 'peerjs';
+import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Menu from '../components/Menu';
 
@@ -11,10 +12,38 @@ const JoinGamePage = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [peer, setPeer] = useState(null);
     const [connection, setConnection] = useState(null);
+    const [players, setPlayers] = useState([]);
+    const [gameStatus, setGameStatus] = useState('Waiting for players');
+
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (connected && connection) {
+            connection.on('data', (data) => {
+                if (data.type === 'join') {
+                    setPlayers((prevPlayers) => [...prevPlayers, { name: data.playerName, color: data.color }]);
+                } else if (data.type === 'start') {
+                    setGameStatus('Game Started');
+                    navigate(`/game/${hostPeerId}`); // Перенаправление на игровую сессию с уникальным идентификатором
+                } else if (data.type === 'initialPlayers') {
+                    setPlayers(data.players);
+                }
+            });
+        }
+    }, [connected, connection, navigate]);
+
+    useEffect(() => {
+        if (selectedColor && players.some(player => player.color === selectedColor)) {
+            setErrorMessage('This color is already taken. Please choose a different color.');
+            setSelectedColor('');
+        } else {
+            setErrorMessage('');
+        }
+    }, [selectedColor, players]);
 
     const handleJoinGame = () => {
-        if (!hostPeerId) {
-            alert('Please enter the host Peer ID to join the game.');
+        if (!hostPeerId || !userName || !selectedColor) {
+            alert('Please fill in all the fields to join the game.');
             return;
         }
 
@@ -88,12 +117,9 @@ const JoinGamePage = () => {
                             required
                         >
                             <option value="" disabled>Select color...</option>
-                            <option value="red">Red</option>
-                            <option value="green">Green</option>
-                            <option value="blue">Blue</option>
-                            <option value="orange">Orange</option>
-                            <option value="purple">Purple</option>
-                            <option value="brown">Brown</option>
+                            {['red', 'green', 'blue', 'orange', 'purple', 'brown'].filter(color => !players.some(player => player.color === color)).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                            ))}
                         </select>
                     </div>
 
@@ -114,6 +140,16 @@ const JoinGamePage = () => {
                     {connected && (
                         <div className="mt-3">
                             <p>Successfully connected to the game! Please wait for the game to start...</p>
+                            <p><strong>Connected to Host Peer ID:</strong> {hostPeerId}</p>
+                            <p><strong>Game Status:</strong> {gameStatus}</p>
+                            <h5>Connected Players:</h5>
+                            <ul className="list-group">
+                                {players.map((player, index) => (
+                                    <li key={index} className="list-group-item">
+                                        {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 
