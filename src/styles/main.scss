@@ -157,29 +157,45 @@ $yellow: #ffff00;
   background-color: #ccc;
   max-width: 250px;
 }
+.sector {
+    background-position: 100% 100% ;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+.trader-block{
+  background: rgb(255 255 255 / 40%);
 
+}
 .fruits {
-  background: rgba(255, 204, 153, 1);
+  background-color: rgba(255, 204, 153, 1);
+  background-image: url(../../build/img/fruit.webp);
+
 }
 
 .vegetables {
-  background: rgba(153, 204, 153, 1);
+  background-color: rgba(153, 204, 153, 1);
+   background-image: url(../../build/img/vegetables.webp);
 }
 
-.milk {
-  background: rgba(255, 255, 240, 1); /* Ivory */
+.milk, .dairy {
+  background-color: rgba(255, 255, 240, 1); /* Ivory */
+   background-image: url(../../build/img/dairy.webp);
 }
 
 .fish {
-  background: rgba(153, 204, 255, 1);
+  background-color: rgba(153, 204, 255, 1);
+   background-image: url(../../build/img/fish.webp);
 }
 
 .meat {
-  background: rgba(255, 204, 204, 1);
+  background-color: rgba(255, 204, 204, 1);
+   background-image: url(../../build/img/meat.webp);
 }
 
 .stuff, .household {
-  background: rgba(188, 143, 143, 1); /* Rosy Brown */
+  background-color: rgba(188, 143, 143, 1); /* Rosy Brown */
+   background-image: url(../../build/img/household.webp);
 }
 
 
@@ -203,4 +219,10 @@ $yellow: #ffff00;
 .wholesale-window{
         width: 100%;
     max-width: 100%;
+}
+.traderimg{
+  width: 40%;
+}
+.sector{
+      min-height: 300px;
 }

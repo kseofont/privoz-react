@@ -6,7 +6,7 @@ const Product = ({ sector, productName, imageSrc, wholesalePrice, retailPrice, p
 
         <div className="card">
             <div className="card-header d-flex">
-                <p className="card-text sector card-link">
+                <p className="card-text card-link">
                     {sector}
                 </p>
                 <h5 className="card-title card-link">{productName}</h5>

@@ -1,10 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const Menu = ({ currentUserData, otherUsers }) => {
+const Menu = ({ currentUserData = null, otherUsers = [] }) => {
     let user_color;
     const userBackgroundColorClass = currentUserData ? `bg-${currentUserData.color}` : '';
-
 
     if (currentUserData && currentUserData.color) {
         user_color = currentUserData.color;
@@ -25,6 +24,9 @@ const Menu = ({ currentUserData, otherUsers }) => {
                 <Link to="/">Privoz</Link>
                 <Link to="/wholesale">Wholesale Marketplace</Link>
                 <Link to="/eventcards">Event Cards</Link>
+                <Link to="/rules">Game Rules</Link>
+                <Link to="/create">Create Game</Link>
+                <Link to="/JoinGamePage">Join Game</Link>
             </nav>
 
             {/* Display information for the current user */}

@@ -5,7 +5,9 @@
     "className": "user1",
     "traders": [
       {
-        "traderName": "Trader1",
+        "traderId": 1,
+        "traderImg": "../img/aida-hottie.webp",
+        "traderName": "Trader1 Aida",
         "location": "fruits",
         "fruits": [
           {

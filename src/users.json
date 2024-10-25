@@ -7,7 +7,9 @@
     "coins": "10",
     "traders": [
       {
-        "traderName": "Trader1",
+                "traderId": 1,
+                "traderImg": "../img/aida-hottie.webp",
+                "traderName": "Trader1 Aida",
         "traderOwnerId": "001",
         "location": "Fruits",
         "goods": [
@@ -52,7 +54,9 @@
      "coins": "10",
     "traders": [
       {
-        "traderName": "Trader1",
+        "traderId": 2,
+        "traderImg": "../img/aza.webp",
+        "traderName": "Trader2 Aza",
         "traderOwnerId": "002",
         "location": "Fruits",
         "goods": [
@@ -87,7 +91,9 @@
         ]
       },
        {
-        "traderName": "Trader2",
+        "traderId": 5,
+        "traderImg": "../img/grigory-the-gardener.webp",
+        "traderName": "Trader2 Grigoriy",
         "traderOwnerId": "002",
         "location": "Vegetables",
           "goods": [
@@ -132,7 +138,9 @@
        "coins": "10",
     "traders": [
       {
-        "traderName": "Trader1",
+        "traderId": 3,
+        "traderImg": "../img/butcher.webp",
+        "traderName": "Trader3 Butcher",
         "traderOwnerId": "003",
         "location": "Fruits",
         "goods": [
@@ -178,7 +186,9 @@
        "coins": "50",
     "traders": [
       {
-        "traderName": "Trader1",
+        "traderId": 4,
+        "traderImg": "../img/solomon.webp",
+        "traderName": "Trader4 Solomon",
         "traderOwnerId": "004",
         "location": "Vegetables",
         "goods": [
