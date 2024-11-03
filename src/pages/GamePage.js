@@ -61,8 +61,10 @@ const GamePage = () => {
                 )}
 
                 <div className="col-9 mt-5">
+                    <div className="row">
                     {sectors.map((sector, index) => (
-                        <div className="row" key={index}>
+                      
+                             <div className="col-6" >
                             <h3>{sector}</h3>
                             <PrivozSector
                                 key={index}
@@ -74,8 +76,11 @@ const GamePage = () => {
                                 setCurrentUserData={setCurrentUserData}
                                 otherUsers={otherUsers}
                             />
+                            
                         </div>
+                       
                     ))}
+                    </div>
                 </div>
                 <div className="col-3">
                     {/* Передаем currentUserData и otherUsers в Menu */}
