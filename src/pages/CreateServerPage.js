@@ -15,6 +15,8 @@ const CreateServerPage = () => {
     const [logs, setLogs] = useState([]);
     const [players, setPlayers] = useState([]);
     const [gameStarted, setGameStarted] = useState(false);
+    const [currentUserData, setCurrentUserData] = useState(null);
+    const [otherUsers, setOtherUsers] = useState([]);
 
     const navigate = useNavigate();
 
@@ -59,6 +61,7 @@ const CreateServerPage = () => {
                     };
 
                     setPlayers([hostPlayer]);
+                    setCurrentUserData(hostPlayer);
 
                     // Отправка данных о хосте всем соединениям
                     const initialPlayersMessage = {
@@ -106,6 +109,8 @@ const CreateServerPage = () => {
 
                                 setPlayers((prevPlayers) => {
                                     const updatedPlayers = [...prevPlayers, newPlayer];
+                                    const updatedOtherUsers = updatedPlayers.filter(player => !player.isHost);
+                                    setOtherUsers(updatedOtherUsers); // Обновляем otherUsers для Menu
 
                                     // Уведомление всех игроков о новом списке игроков
                                     const updatedPlayersMessage = {
@@ -282,7 +287,7 @@ const CreateServerPage = () => {
                     )}
                 </div>
                 <div className="col-3">
-                    <Menu />
+                    <Menu currentUserData={currentUserData} otherUsers={otherUsers} />
                 </div>
             </div>
         </div>

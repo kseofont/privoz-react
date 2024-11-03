@@ -15,6 +15,8 @@ const JoinGamePage = () => {
     const [players, setPlayers] = useState([]);
     const [gameStatus, setGameStatus] = useState('Waiting for players');
     const [logs, setLogs] = useState([]);
+    const [currentUserData, setCurrentUserData] = useState(null);
+    const [otherUsers, setOtherUsers] = useState([]);
 
     const navigate = useNavigate();
 
@@ -34,6 +36,8 @@ const JoinGamePage = () => {
                     navigate(`/game/${hostPeerId}`); // Перенаправление на игровую сессию с уникальным идентификатором
                 } else if (data.type === 'initialPlayers') {
                     setPlayers(data.players);
+                    const currentUser = data.players.find(player => player.name === userName && player.color === selectedColor);
+                    setCurrentUserData(currentUser);
                 } else if (data.type === 'colorTaken') {
                     setErrorMessage('This color is already taken. Please choose a different color.');
                 }
@@ -76,16 +80,23 @@ const JoinGamePage = () => {
                     playerName: userName,
                     color: selectedColor
                 });
+
+                // Устанавливаем currentUserData для меню
+                setCurrentUserData({
+                    user_id: newPeer.id,
+                    name: userName,
+                    color: selectedColor
+                });
             });
 
             conn.on('data', (data) => {
-                console.log('Received from host:', data);
                 addLog('Received from host: ' + JSON.stringify(data));
                 if (data.type === 'initialPlayers') {
                     setPlayers(data.players);
+                    const otherConnectedUsers = data.players.filter(player => player.name !== userName);
+                    setOtherUsers(otherConnectedUsers);
                 }
                 if (data.type === 'start') {
-                    setGameStatus('Game Started');
                     navigate(`/game/${hostPeerId}`);
                 }
                 if (data.type === 'colorTaken') {
@@ -196,7 +207,7 @@ const JoinGamePage = () => {
                     )}
                 </div>
                 <div className="col-3">
-                    <Menu />
+                    <Menu currentUserData={currentUserData} otherUsers={otherUsers} />
                 </div>
             </div>
         </div>
