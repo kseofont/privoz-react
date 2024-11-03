@@ -200,7 +200,12 @@ const CreateServerPage = () => {
         });
 
         // Перенаправление хоста на страницу игры с данными игроков
-        navigate(`/game/${peerId}`, { state: { players: gameData } });
+        navigate(`/game/${peerId}`, {
+            state: {
+                currentUserData: currentUserData,
+                otherUsers: otherUsers
+            }
+        });
     };
 
     return (

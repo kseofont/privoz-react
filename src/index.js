@@ -13,12 +13,14 @@ import Rules from './pages/Rules';
 import CreateServerPage from './pages/CreateServerPage';
 import JoinGamePage from './pages/JoinGamePage';
 import GamePage from './pages/GamePage';
+import StartPage from './pages/StartPage';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <BrowserRouter>
     <Routes>
-      <Route path="/" element={<PrivozPage />} />
+      <Route path="/" element={<StartPage />} />
+      <Route path="/privoz" element={<PrivozPage />} />
       <Route path="/wholesale" element={<Wholesale />} />
       <Route path="/eventcards" element={<EventCards />} />
       <Route path="/app" element={<App />} />

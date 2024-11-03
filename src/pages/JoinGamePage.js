@@ -13,7 +13,6 @@ const JoinGamePage = () => {
     const [peer, setPeer] = useState(null);
     const [connection, setConnection] = useState(null);
     const [players, setPlayers] = useState([]);
-    const [gameStatus, setGameStatus] = useState('Waiting for players');
     const [logs, setLogs] = useState([]);
     const [currentUserData, setCurrentUserData] = useState(null);
     const [otherUsers, setOtherUsers] = useState([]);
@@ -22,37 +21,43 @@ const JoinGamePage = () => {
 
     const addLog = (message) => {
         setLogs((prevLogs) => [...prevLogs, message]);
+        console.log(message);
     };
 
     useEffect(() => {
         if (connected && connection) {
             connection.on('data', (data) => {
                 addLog('Received data: ' + JSON.stringify(data));
-                if (data.type === 'join') {
-                    setPlayers((prevPlayers) => [...prevPlayers, { name: data.playerName, color: data.color }]);
-                    addLog(`${data.playerName} joined the game with color ${data.color}`);
-                } else if (data.type === 'start') {
-                    setGameStatus('Game Started');
-                    navigate(`/game/${hostPeerId}`); // Перенаправление на игровую сессию с уникальным идентификатором
-                } else if (data.type === 'initialPlayers') {
+
+                if (data.type === 'initialPlayers') {
                     setPlayers(data.players);
                     const currentUser = data.players.find(player => player.name === userName && player.color === selectedColor);
                     setCurrentUserData(currentUser);
+
+                    const otherConnectedUsers = data.players.filter(player => player.user_id !== currentUser.user_id);
+                    setOtherUsers(otherConnectedUsers);
+                } else if (data.type === 'join') {
+                    setPlayers((prevPlayers) => {
+                        const updatedPlayers = [...prevPlayers, { name: data.playerName, color: data.color }];
+                        setOtherUsers(updatedPlayers.filter(player => player.name !== userName));
+                        return updatedPlayers;
+                    });
+                    addLog(`${data.playerName} joined the game with color ${data.color}`);
+                } else if (data.type === 'start') {
+                    // Переход на страницу gamePage только при получении сигнала о старте игры от хоста
+                    addLog('Game started. Redirecting to game page...');
+                    navigate(`/game/${hostPeerId}`, {
+                        state: {
+                            currentUserData: currentUserData,
+                            otherUsers: otherUsers
+                        }
+                    });
                 } else if (data.type === 'colorTaken') {
                     setErrorMessage('This color is already taken. Please choose a different color.');
                 }
             });
         }
-    }, [connected, connection, navigate]);
-
-    useEffect(() => {
-        if (selectedColor && players.some(player => player.color === selectedColor)) {
-            setErrorMessage('This color is already taken. Please choose a different color.');
-            setSelectedColor('');
-        } else {
-            setErrorMessage('');
-        }
-    }, [selectedColor, players]);
+    }, [connected, connection, navigate, userName, selectedColor, currentUserData, otherUsers]);
 
     const handleJoinGame = () => {
         if (!hostPeerId || !userName || !selectedColor) {
@@ -69,12 +74,10 @@ const JoinGamePage = () => {
             setConnection(conn);
 
             conn.on('open', () => {
-                console.log('Connected to host:', hostPeerId);
                 setConnected(true);
-                setErrorMessage('');
                 addLog(`Connected to host with ID: ${hostPeerId}`);
 
-                // Отправляем имя игрока и цвет на хост
+                // Отправляем данные о текущем пользователе хосту
                 conn.send({
                     type: 'join',
                     playerName: userName,
@@ -97,7 +100,14 @@ const JoinGamePage = () => {
                     setOtherUsers(otherConnectedUsers);
                 }
                 if (data.type === 'start') {
-                    navigate(`/game/${hostPeerId}`);
+                    // Переход на GamePage только при получении сигнала от хоста
+                    addLog('Game started. Redirecting to game page...');
+                    navigate(`/game/${hostPeerId}`, {
+                        state: {
+                            currentUserData: currentUserData,
+                            otherUsers: otherUsers
+                        }
+                    });
                 }
                 if (data.type === 'colorTaken') {
                     setErrorMessage('This color is already taken. Please choose a different color.');
@@ -105,13 +115,11 @@ const JoinGamePage = () => {
             });
 
             conn.on('error', (error) => {
-                console.error('Connection error:', error);
                 setErrorMessage(`Connection error: ${error.message || 'An error occurred while connecting to the host.'}`);
                 addLog('Connection error: ' + error.message);
             });
 
             conn.on('close', () => {
-                console.log('Disconnected from host.');
                 setConnected(false);
                 setErrorMessage('Disconnected unexpectedly from the host. Please try reconnecting.');
                 addLog('Disconnected from host.');
@@ -119,7 +127,6 @@ const JoinGamePage = () => {
         });
 
         newPeer.on('error', (error) => {
-            console.error('Peer error:', error);
             setErrorMessage(`Peer error: ${error.message || 'An error occurred while initializing the peer connection.'}`);
             addLog('Peer error: ' + error.message);
         });
@@ -176,16 +183,6 @@ const JoinGamePage = () => {
                         <div className="mt-3">
                             <p>Successfully connected to the game! Please wait for the game to start...</p>
                             <p><strong>Connected to Host Peer ID:</strong> {hostPeerId}</p>
-                            <p><strong>Game Status:</strong> {gameStatus}</p>
-                            <h5>Connected Players:</h5>
-                            <ul className="list-group">
-                                {console.log(players, 'players')}
-                                {players.map((player, index) => (
-                                    <li key={index} className="list-group-item">
-                                        {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span>
-                                    </li>
-                                ))}
-                            </ul>
                         </div>
                     )}
 
@@ -206,6 +203,8 @@ const JoinGamePage = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Передаем currentUserData и otherUsers в Menu */}
                 <div className="col-3">
                     <Menu currentUserData={currentUserData} otherUsers={otherUsers} />
                 </div>

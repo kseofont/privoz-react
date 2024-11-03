@@ -20,8 +20,11 @@ const Menu = ({ currentUserData = null, otherUsers = [] }) => {
 
             {/* Navigation links */}
             <nav className='d-flex justify-content-between flex-column mb-3'>
-                <Link to="/app">App</Link>
-                <Link to="/">Privoz</Link>
+             
+               
+                <Link to="/">StartPage</Link>
+                <Link to="/privoz">Privoz</Link>
+               
                 <Link to="/wholesale">Wholesale Marketplace</Link>
                 <Link to="/eventcards">Event Cards</Link>
                 <Link to="/rules">Game Rules</Link>

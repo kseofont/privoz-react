@@ -1,106 +1,87 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import PrivozSector from '../components/PrivozSector';
 import Menu from '../components/Menu';
 
-import usersData from '../users.json';
-
 const GamePage = () => {
-    // Process usersData to create defaultTradersData
-    const defaultTradersData = usersData.map(user => ({
-        ...user,
-        traders: user.traders.map(trader => ({
-            ...trader,
-            goods: trader.goods.map(good => ({
-                ...good,
-                imageSrc: `../img/${good.imageSrc}`
-            }))
-        }))
-    }));
-    const maxTraders = usersData.length;
+    const location = useLocation();
+    // Извлекаем данные, переданные через navigate (currentUserData и otherUsers)
+    const { currentUserData: initialCurrentUserData, otherUsers: initialOtherUsers } = location.state || {};
 
-    // Extract unique locations from defaultTradersData
-    const locations = [...new Set(defaultTradersData.flatMap(user => user.traders.map(trader => trader.location)))];
+    // Используем данные, переданные из предыдущих страниц (если они есть), или пустые значения
+    const [currentUserData, setCurrentUserData] = useState(initialCurrentUserData || null);
+    const [otherUsers, setOtherUsers] = useState(initialOtherUsers || []);
 
-    // Use provided sectors list
+    // Пример данных о секторах для отображения на странице
     const sectors = ['Fruits', 'Vegetables', 'Dairy', 'Fish', 'Meat', 'Household goods'];
 
-    // Ensure that all sectors are included, even if they don't have traders
-    const allLocations = [...new Set([...locations, ...sectors])];
-
-    // Initialize traders state with defaultTradersData
+    // Инициализация состояния для торговцев
     const [traders, setTraders] = useState([]);
 
     useEffect(() => {
-        // Set the traders state based on processed defaultTradersData
-        setTraders(prevTraders => {
-            // Ensure that the update is only performed if the state is empty
-            return prevTraders.length === 0 ? defaultTradersData : prevTraders;
-        });
-    }, [defaultTradersData]);
-
-    // Pass data to Menu with current user and other users
-    const [currentUserData, setCurrentUserData] = useState(null);
-    const [otherUsers, setOtherUsers] = useState([]);
-
-    useEffect(() => {
-        // Find the current user in the usersData
-        const currentUser = usersData.find(user => user.current_user === 'current');
-
-        if (currentUser) {
-            // Extract required information for the current user
-            const { user_id, name, className, color, coins, traders, eventCards } = currentUser;
-            const sectorsWithTraders = traders.map(trader => trader.location);
-
-            // Create an object with the extracted data
-            const currentUserInfo = {
-                user_id,
-                name,
-                className,
-                color,
-                traders,
-                coins: coins,
-                tradersCount: traders.length,
-                sectorsWithTraders,
-                position_in_game: "hand",
-                eventCards,
-            };
-
-            // Set the state with the current user information
-            setCurrentUserData(currentUserInfo);
-
-            // Filter other users from usersData
-            const otherUsersInfo = usersData.filter(user => user.current_user !== 'current');
-
-            // Set the state with other users information
-            setOtherUsers(otherUsersInfo);
+        // Предполагается, что у каждого пользователя есть свои торговцы, устанавливаем начальное состояние из currentUserData
+        if (currentUserData && currentUserData.traders) {
+            setTraders(currentUserData.traders);
         }
-    }, []);
+    }, [currentUserData]);
 
     return (
         <div className="container">
             <div className="row">
-                <h2>Privoz Bazar Game session</h2>
-                <div className="col-9">
-                    {allLocations.map((location, index) => (
+                <h2>Privoz Bazar Game Session</h2>
+
+                {/* Отображение данных текущего игрока */}
+                {currentUserData && (
+                    <div className="user-info mt-3">
+                        <h4>Current User Data:</h4>
+                        <p><strong>Name:</strong> {currentUserData.name}</p>
+                        <p><strong>Color:</strong> <span style={{ color: currentUserData.color }}>{currentUserData.color}</span></p>
+                        <p><strong>Coins:</strong> {currentUserData.coins}</p>
+                        <p><strong>Traders Count:</strong> {currentUserData.tradersCount}</p>
+                        <p><strong>Event Cards Count:</strong> {currentUserData.eventCards.length}</p>
+                    </div>
+                )}
+
+                {/* Отображение данных о других игроках */}
+                {otherUsers && otherUsers.length > 0 && (
+                    <div className="other-users-info mt-3">
+                        <h4>Other Users in Game:</h4>
+                        <ul className="list-unstyled">
+                            {otherUsers.map((user, index) => (
+                                <li key={index}>
+                                    <p><strong>Name:</strong> {user.name}</p>
+                                    <p><strong>Color:</strong> <span style={{ color: user.color }}>{user.color}</span></p>
+                                    <p><strong>Coins:</strong> {user.coins}</p>
+                                    <p><strong>Traders Count:</strong> {user.traders.length}</p>
+                                    <hr />
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                <div className="col-9 mt-5">
+                    {sectors.map((sector, index) => (
                         <div className="row" key={index}>
-                            <h3>{location}</h3>
+                            <h3>{sector}</h3>
                             <PrivozSector
                                 key={index}
-                                category={location}
-                                maxTraders={maxTraders}
-                                traders={traders}  // Pass traders and setTraders props
+                                category={sector}
+                                maxTraders={otherUsers.length + 1} // Максимальное количество торговцев - это все пользователи (включая текущего)
+                                traders={traders}
                                 setTraders={setTraders}
                                 currentUserData={currentUserData}
                                 setCurrentUserData={setCurrentUserData}
-                                otherUsers={otherUsers}  // Pass otherUsers prop
+                                otherUsers={otherUsers}
                             />
                         </div>
                     ))}
                 </div>
                 <div className="col-3">
+                    {/* Передаем currentUserData и otherUsers в Menu */}
                     <Menu
                         currentUserData={currentUserData}
-                        otherUsers={otherUsers}  // Pass otherUsers prop
+                        otherUsers={otherUsers}
                     />
                 </div>
             </div>
