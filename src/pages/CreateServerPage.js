@@ -7,7 +7,7 @@ import Menu from '../components/Menu';
 const CreateServerPage = () => {
     const [userName, setUserName] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
-    const [numberOfPlayers, setNumberOfPlayers] = useState(2);
+    const [numberOfPlayers, setNumberOfPlayers] = useState(3);
     const [serverStarted, setServerStarted] = useState(false);
     const [peerId, setPeerId] = useState('');
     const [peer, setPeer] = useState(null);
@@ -51,7 +51,7 @@ const CreateServerPage = () => {
                         className: 'host',
                         color: selectedColor,
                         traders: [],
-                        coins: 0,
+                        coins: 10,
                         tradersCount: 0,
                         sectorsWithTraders: [],
                         position_in_game: 'hand',
@@ -100,7 +100,7 @@ const CreateServerPage = () => {
                                     className: 'player',
                                     color: data.color,
                                     traders: [],
-                                    coins: 0,
+                                    coins: 10,
                                     tradersCount: 0,
                                     sectorsWithTraders: [],
                                     position_in_game: 'hand',
@@ -182,7 +182,7 @@ const CreateServerPage = () => {
             className: player.className,
             color: player.color,
             traders: player.traders || [],
-            coins: player.coins || 0,
+            coins: player.coins || 10,
             tradersCount: player.tradersCount || 0,
             sectorsWithTraders: player.sectorsWithTraders || [],
             position_in_game: player.position_in_game || 'hand',
@@ -242,17 +242,21 @@ const CreateServerPage = () => {
                     </div>
 
                     <div className="mb-3">
+
+
                         <label htmlFor="numberOfPlayers" className="form-label">Number of players:</label>
-                        <input
-                            type="number"
-                            className="form-control"
+                        <select
+                            className="form-select"
                             id="numberOfPlayers"
-                            value={numberOfPlayers}
+                            defaultValue={numberOfPlayers}
                             onChange={(e) => setNumberOfPlayers(parseInt(e.target.value))}
-                            required
-                            min="2"
-                            max="6"
-                        />
+                        >
+                            {[2, 3, 4, 5, 6].map((number) => (
+                                <option key={number} value={number}>{number}</option>
+                            ))}
+                        </select>
+
+
                     </div>
 
                     <button className="btn btn-primary" onClick={handleStartGame} disabled={serverStarted}>Start Game</button>
@@ -273,7 +277,7 @@ const CreateServerPage = () => {
                             <ul className="list-group">
                                 {players.map((player, index) => (
                                     <li key={index} className="list-group-item">
-                                        {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span> {player.disconnected ? '(Temporarily Disconnected)' : ''}
+                                        {player.isHost ? `${player.name} (Host - Game for ${numberOfPlayers} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span> {player.disconnected ? '(Temporarily Disconnected)' : ''}
                                     </li>
                                 ))}
                             </ul>

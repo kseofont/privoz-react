@@ -20,11 +20,11 @@ const Menu = ({ currentUserData = null, otherUsers = [] }) => {
 
             {/* Navigation links */}
             <nav className='d-flex justify-content-between flex-column mb-3'>
-             
-               
+
+
                 <Link to="/">StartPage</Link>
                 <Link to="/privoz">Privoz</Link>
-               
+
                 <Link to="/wholesale">Wholesale Marketplace</Link>
                 <Link to="/eventcards">Event Cards</Link>
                 <Link to="/rules">Game Rules</Link>
@@ -124,6 +124,7 @@ const Menu = ({ currentUserData = null, otherUsers = [] }) => {
                                 return (
                                     <li key={userIndex} className={userBackgroundColorClass}>
                                         <p>User: {user.name}</p>
+                                        <p>Coins: {user.coins}</p>
                                         {user.traders && user.traders.length > 0 && (
                                             <ul className="list-unstyled">
                                                 {user.traders.map((trader, traderIndex) => {
