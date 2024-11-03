@@ -79,7 +79,7 @@ const GamePage = () => {
     return (
         <div className="container">
             <div className="row">
-                <h2>Privoz Bazar</h2>
+                <h2>Privoz Bazar Game session</h2>
                 <div className="col-9">
                     {allLocations.map((location, index) => (
                         <div className="row" key={index}>

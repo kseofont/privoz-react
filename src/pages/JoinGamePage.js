@@ -14,19 +14,28 @@ const JoinGamePage = () => {
     const [connection, setConnection] = useState(null);
     const [players, setPlayers] = useState([]);
     const [gameStatus, setGameStatus] = useState('Waiting for players');
+    const [logs, setLogs] = useState([]);
 
     const navigate = useNavigate();
+
+    const addLog = (message) => {
+        setLogs((prevLogs) => [...prevLogs, message]);
+    };
 
     useEffect(() => {
         if (connected && connection) {
             connection.on('data', (data) => {
+                addLog('Received data: ' + JSON.stringify(data));
                 if (data.type === 'join') {
                     setPlayers((prevPlayers) => [...prevPlayers, { name: data.playerName, color: data.color }]);
+                    addLog(`${data.playerName} joined the game with color ${data.color}`);
                 } else if (data.type === 'start') {
                     setGameStatus('Game Started');
                     navigate(`/game/${hostPeerId}`); // Перенаправление на игровую сессию с уникальным идентификатором
                 } else if (data.type === 'initialPlayers') {
                     setPlayers(data.players);
+                } else if (data.type === 'colorTaken') {
+                    setErrorMessage('This color is already taken. Please choose a different color.');
                 }
             });
         }
@@ -59,6 +68,7 @@ const JoinGamePage = () => {
                 console.log('Connected to host:', hostPeerId);
                 setConnected(true);
                 setErrorMessage('');
+                addLog(`Connected to host with ID: ${hostPeerId}`);
 
                 // Отправляем имя игрока и цвет на хост
                 conn.send({
@@ -70,23 +80,37 @@ const JoinGamePage = () => {
 
             conn.on('data', (data) => {
                 console.log('Received from host:', data);
+                addLog('Received from host: ' + JSON.stringify(data));
+                if (data.type === 'initialPlayers') {
+                    setPlayers(data.players);
+                }
+                if (data.type === 'start') {
+                    setGameStatus('Game Started');
+                    navigate(`/game/${hostPeerId}`);
+                }
+                if (data.type === 'colorTaken') {
+                    setErrorMessage('This color is already taken. Please choose a different color.');
+                }
             });
 
             conn.on('error', (error) => {
                 console.error('Connection error:', error);
                 setErrorMessage(`Connection error: ${error.message || 'An error occurred while connecting to the host.'}`);
+                addLog('Connection error: ' + error.message);
             });
 
             conn.on('close', () => {
                 console.log('Disconnected from host.');
                 setConnected(false);
                 setErrorMessage('Disconnected unexpectedly from the host. Please try reconnecting.');
+                addLog('Disconnected from host.');
             });
         });
 
         newPeer.on('error', (error) => {
             console.error('Peer error:', error);
             setErrorMessage(`Peer error: ${error.message || 'An error occurred while initializing the peer connection.'}`);
+            addLog('Peer error: ' + error.message);
         });
     };
 
@@ -144,10 +168,22 @@ const JoinGamePage = () => {
                             <p><strong>Game Status:</strong> {gameStatus}</p>
                             <h5>Connected Players:</h5>
                             <ul className="list-group">
+                                {console.log(players, 'players')}
                                 {players.map((player, index) => (
                                     <li key={index} className="list-group-item">
                                         {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span>
                                     </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {logs.length > 0 && (
+                        <div className="mt-3">
+                            <h5>Logs:</h5>
+                            <ul className="list-unstyled">
+                                {logs.map((log, index) => (
+                                    <li key={index}>{log}</li>
                                 ))}
                             </ul>
                         </div>

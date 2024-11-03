@@ -11,47 +11,16 @@ const CreateServerPage = () => {
     const [serverStarted, setServerStarted] = useState(false);
     const [peerId, setPeerId] = useState('');
     const [peer, setPeer] = useState(null);
+    const [connections, setConnections] = useState([]);
     const [logs, setLogs] = useState([]);
     const [players, setPlayers] = useState([]);
     const [gameStarted, setGameStarted] = useState(false);
 
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (serverStarted) {
-            // Логика запуска PeerJS-сервера
-            const startServer = () => {
-                try {
-                    const newPeer = new Peer();
-                    newPeer.on('open', (id) => {
-                        setPeerId(id);
-                        setPeer(newPeer);
-                        addLog('PeerJS server started with ID: ' + id);
-                        // Добавление создателя игры в список игроков
-                        setPlayers([{ name: userName, color: selectedColor, isHost: true, playerCount: numberOfPlayers }]);
-                    });
-
-                    newPeer.on('connection', (conn) => {
-                        addLog('New player connected: ' + conn.peer);
-                        conn.on('data', (data) => {
-                            addLog('Received data from ' + conn.peer + ': ' + JSON.stringify(data));
-                            if (data.type === 'join') {
-                                setPlayers((prevPlayers) => [...prevPlayers, { name: data.playerName, color: data.color }]);
-                            }
-                        });
-                    });
-                } catch (error) {
-                    addLog('Error starting PeerJS server: ' + error.message);
-                    console.error('Error starting PeerJS server:', error);
-                }
-            };
-
-            startServer();
-        }
-    }, [serverStarted]);
-
     const addLog = (message) => {
         setLogs((prevLogs) => [...prevLogs, message]);
+        console.log(message); // Ensure all log messages are also printed to the console
     };
 
     const handleStartGame = () => {
@@ -65,24 +34,169 @@ const CreateServerPage = () => {
             return;
         }
 
+        // Логика запуска PeerJS-сервера
+        const startServer = () => {
+            try {
+                const newPeer = new Peer();
+                newPeer.on('open', (id) => {
+                    setPeerId(id);
+                    setPeer(newPeer);
+                    addLog('PeerJS server started with ID: ' + id);
+
+                    const hostPlayer = {
+                        user_id: id,
+                        name: userName,
+                        className: 'host',
+                        color: selectedColor,
+                        traders: [],
+                        coins: 0,
+                        tradersCount: 0,
+                        sectorsWithTraders: [],
+                        position_in_game: 'hand',
+                        eventCards: [],
+                        isHost: true,
+                        playerCount: numberOfPlayers
+                    };
+
+                    setPlayers([hostPlayer]);
+
+                    // Отправка данных о хосте всем соединениям
+                    const initialPlayersMessage = {
+                        type: 'initialPlayers',
+                        players: [hostPlayer],
+                    };
+                    addLog('Sending initial player data to all connections: ' + JSON.stringify(initialPlayersMessage));
+                    connections.forEach((connection) => {
+                        connection.send(initialPlayersMessage);
+                    });
+                });
+
+                newPeer.on('connection', (conn) => {
+                    addLog('New player connected: ' + conn.peer);
+
+                    if (players.length >= numberOfPlayers) {
+                        addLog('Player connection denied: maximum number of players reached.');
+                        conn.send({ type: 'connectionDenied', message: 'Maximum number of players reached.' });
+                        conn.close();
+                        return;
+                    }
+
+                    setConnections((prevConnections) => [...prevConnections, conn]);
+
+                    conn.on('data', (data) => {
+                        addLog('Received data from ' + conn.peer + ': ' + JSON.stringify(data));
+
+                        if (data.type === 'join') {
+                            // Проверка на занятость цвета
+                            if (players.some(player => player.color === data.color)) {
+                                conn.send({ type: 'colorTaken' });
+                            } else {
+                                const newPlayer = {
+                                    user_id: conn.peer,
+                                    name: data.playerName,
+                                    className: 'player',
+                                    color: data.color,
+                                    traders: [],
+                                    coins: 0,
+                                    tradersCount: 0,
+                                    sectorsWithTraders: [],
+                                    position_in_game: 'hand',
+                                    eventCards: []
+                                };
+
+                                setPlayers((prevPlayers) => {
+                                    const updatedPlayers = [...prevPlayers, newPlayer];
+
+                                    // Уведомление всех игроков о новом списке игроков
+                                    const updatedPlayersMessage = {
+                                        type: 'initialPlayers',
+                                        players: updatedPlayers,
+                                    };
+                                    addLog('Sending updated player list to all connections: ' + JSON.stringify(updatedPlayersMessage));
+                                    connections.forEach((connection) => {
+                                        connection.send(updatedPlayersMessage);
+                                    });
+
+                                    // Отправка данных новому игроку
+                                    conn.send(updatedPlayersMessage);
+                                    return updatedPlayers;
+                                });
+
+                                // Уведомление о новом подключении
+                                const newPlayerJoinMessage = {
+                                    type: 'join',
+                                    playerName: data.playerName,
+                                    color: data.color,
+                                };
+                                addLog('Notifying all players of new player joining: ' + JSON.stringify(newPlayerJoinMessage));
+                                connections.forEach((connection) => {
+                                    connection.send(newPlayerJoinMessage);
+                                });
+                            }
+                        }
+                    });
+
+                    conn.on('close', () => {
+                        addLog(`Player ${conn.peer} disconnected`);
+                        setPlayers((prevPlayers) =>
+                            prevPlayers.map(player =>
+                                player.user_id === conn.peer ? { ...player, disconnected: true } : player
+                            )
+                        );
+
+                        // Уведомление о временном отключении игрока
+                        const playerDisconnectedMessage = {
+                            type: 'playerDisconnected',
+                            peerId: conn.peer,
+                        };
+                        addLog('Notifying all players that player disconnected: ' + JSON.stringify(playerDisconnectedMessage));
+                        connections.forEach((connection) => {
+                            connection.send(playerDisconnectedMessage);
+                        });
+                    });
+                });
+            } catch (error) {
+                addLog('Error starting PeerJS server: ' + error.message);
+                console.error('Error starting PeerJS server:', error);
+            }
+        };
+
         setServerStarted(true);
         addLog('Server started for signaling...');
+        startServer();
     };
 
     const handleStopAddingPlayers = () => {
         setGameStarted(true);
         addLog('Game started with players: ' + players.map(player => player.name).join(', '));
-        players.forEach(player => {
-            if (!player.isHost) {
-                const conn = peer.connect(player.peerId);
-                conn.on('open', () => {
-                    conn.send({ type: 'start', message: 'The game has started!' });
-                });
-            }
-        });
-        navigate(`/game/${peerId}`); // Редирект на страницу игры с уникальным идентификатором
-    };
 
+        // Уведомление всех подключенных игроков о начале игры с данными игроков
+        const gameData = players.map(player => ({
+            user_id: player.user_id,
+            name: player.name,
+            className: player.className,
+            color: player.color,
+            traders: player.traders || [],
+            coins: player.coins || 0,
+            tradersCount: player.tradersCount || 0,
+            sectorsWithTraders: player.sectorsWithTraders || [],
+            position_in_game: player.position_in_game || 'hand',
+            eventCards: player.eventCards || []
+        }));
+
+        const startGameMessage = {
+            type: 'start',
+            message: 'The game has started!',
+            players: gameData
+        };
+        addLog('Notifying all players that the game has started: ' + JSON.stringify(startGameMessage));
+        connections.forEach((conn) => {
+            conn.send(startGameMessage);
+        });
+
+        // Перенаправление хоста на страницу игры с данными игроков
+        navigate(`/game/${peerId}`, { state: { players: gameData } });
+    };
 
     return (
         <div className="container mt-5">
@@ -111,12 +225,9 @@ const CreateServerPage = () => {
                             required
                         >
                             <option value="" disabled>Select color...</option>
-                            <option value="red">Red</option>
-                            <option value="green">Green</option>
-                            <option value="blue">Blue</option>
-                            <option value="orange">Orange</option>
-                            <option value="purple">Purple</option>
-                            <option value="brown">Brown</option>
+                            {['red', 'green', 'blue', 'orange', 'purple', 'brown'].filter(color => !players.some(player => player.color === color)).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                            ))}
                         </select>
                     </div>
 
@@ -152,7 +263,7 @@ const CreateServerPage = () => {
                             <ul className="list-group">
                                 {players.map((player, index) => (
                                     <li key={index} className="list-group-item">
-                                        {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span>
+                                        {player.isHost ? `${player.name} (Host - Game for ${player.playerCount} players)` : player.name} - <span style={{ color: player.color }}>{player.color}</span> {player.disconnected ? '(Temporarily Disconnected)' : ''}
                                     </li>
                                 ))}
                             </ul>
