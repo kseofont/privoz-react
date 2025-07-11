@@ -1,161 +1,234 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 
-const Menu = ({ currentUserData = null, otherUsers = [] }) => {
-    let user_color;
-    const userBackgroundColorClass = currentUserData ? `bg-${currentUserData.color}` : '';
+import { endTurn } from '../logic/logic';
+import { connectionsRef } from '../globals';
+import { Link, useLocation } from 'react-router-dom';
 
-    if (currentUserData && currentUserData.color) {
-        user_color = currentUserData.color;
-    } else {
-        user_color = 'red';
-    }
+const Menu = ({
+  // currentUserData = null,
 
-    // Extract unique sectors from traders
-    const uniqueSectors = [...new Set(currentUserData?.traders?.map(trader => trader.location) || [])];
+  myUserId,
+  gameState = null,
+  connection = null,
+  setGameState,
+  broadcastGameState,
+}) => {
+  let user_color;
+  const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
+  const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
 
-    return (
-        <div className="col">
-            <h3>Menu</h3>
+  const userBackgroundColorClass = currentUserData ? `bg-${currentUserData.color}` : '';
+  //let myUserId = currentUserData?.user_id || null;
+  const location = useLocation();
+  const isGamePage = location.pathname.startsWith('/game');
 
-            {/* Navigation links */}
-            <nav className='d-flex justify-content-between flex-column mb-3'>
+  if (currentUserData && currentUserData.color) {
+    user_color = currentUserData.color;
+  } else {
+    user_color = 'red';
+  }
+  // Определяем, твой ли ход
+  const myTurn = gameState?.currentTurnUserId === myUserId;
+  const isHost = !connection; // у хоста нет connection
 
+  console.log('myTurn', myTurn);
+  console.log('gameState', gameState);
 
-                <Link to="/">StartPage</Link>
-                <Link to="/privoz">Privoz</Link>
+  const handleEndTurn = () => {
+    console.log('END TURN CLICK', {
+      connection,
+      myTurn,
+      myUserId,
+      setGameState,
+      broadcastGameState,
+      gameState,
+      connectionsRef,
+    });
+    endTurn({
+      connection,
+      myTurn,
+      myUserId,
+      setGameState,
+      broadcastGameState,
+      gameState,
+      connectionsRef,
+    });
+  };
+  // Extract unique sectors from traders
+  const uniqueSectors = [
+    ...new Set(currentUserData?.traders?.map(trader => trader.location) || []),
+  ];
+  console.log('myUserId:', myUserId);
+  console.log('otherUsers:', otherUsers);
+  console.log('currentTurnUserId:', gameState?.currentTurnUserId);
+  console.log('myTurn:', myTurn);
+  console.log('gameState:', gameState);
 
-                <Link to="/wholesale">Wholesale Marketplace</Link>
-                <Link to="/eventcards">Event Cards</Link>
-                <Link to="/rules">Game Rules</Link>
-                <Link to="/create">Create Game</Link>
-                <Link to="/JoinGamePage">Join Game</Link>
-            </nav>
+  return (
+    <div className="col">
+      <h3>Menu</h3>
 
-            {/* Display information for the current user */}
-            {currentUserData && (
-                <div className={`user-info ${userBackgroundColorClass}`} >
-                    <p>Id: {currentUserData.user_id}</p>
-                    <p>Name: {currentUserData.name}</p>
-                    <p className={user_color}>Color: {currentUserData.color}</p>
-                    <p>Coins: {currentUserData.coins}</p>
-                    <p>Traders Count: {currentUserData.tradersCount}</p>
-                    {currentUserData.traders && currentUserData.traders.length > 0 && (
-                        <div>
-                            <p>Products from Your Traders:</p>
-                            <ul className="list-unstyled">
-                                {currentUserData.traders.map((trader, traderIndex) => (
-                                    <li key={traderIndex}>
-                                        <p>Trader: {trader.traderName}</p>
-                                        <p>Trader sector: {trader.location}</p>
-                                        {trader.goods && trader.goods.length > 0 && (
-                                            <ul className="list-unstyled">
-                                                {trader.goods.map((product, productIndex) => (
-                                                    <li key={productIndex}>
-                                                        <p>Product: {product.productName}</p>
-                                                        {/* Include other product details as needed */}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    <p>Sectors with Traders: </p>
-                    <ul>
-                        {uniqueSectors.map((sector, index) => (
-                            <li key={index}>{sector}</li>
-                        ))}
-                    </ul>
+      {/* Navigation links */}
+      <nav className="d-flex justify-content-between flex-column mb-3">
+        <Link to="/">StartPage</Link>
+        <Link to="/privoz">Privoz</Link>
 
-                    <p>Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}</p>
-                    <p>Event Cards:</p>
-
-                    {currentUserData && currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
-                        <ul className="list-unstyled" >
-                            {currentUserData.eventCards.map((card, index) => (
-                                <li key={index} className={`event-card ${card.fortune === 'negative' ? 'bg-danger' : 'bg-success'}`}>
-                                    <p>Title: {card.title}</p>
-                                    <p>Description: {card.description}</p>
-                                    <p>Fortune: {card.fortune}</p>
-                                    <p>Quantity In Game: {card.quantity_ingame}</p>
-                                    <p>Quantity Active: {card.quantity_active}</p>
-                                    <p>Position In Game: {card.position_in_game}</p>
-                                    <p>Goal Action: {card.goal_action}</p>
-                                    <p>Goal Item: {card.goal_item}</p>
-                                    {card.effect && card.effect.length > 0 && (
-                                        <div>
-                                            <p>Effect:</p>
-                                            <ul className="list-unstyled">
-                                                {card.effect.map((effect, effectIndex) => (
-                                                    <li key={effectIndex}>
-                                                        {Object.keys(effect).map((key, subIndex) => (
-                                                            <p key={subIndex}>{key}: {JSON.stringify(effect[key])}</p>
-                                                        ))}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No Event Cards.</p>
-                    )}
-
-                    {/* Additional details from currentUserData */}
-                    {/* Include any additional details you want to display */}
-
-                    {/* Display information about other users, their traders, and products */}
-
-                </div>
+        <Link to="/wholesale">Wholesale Marketplace</Link>
+        <Link to="/eventcards">Event Cards</Link>
+        <Link to="/rules">Game Rules</Link>
+        <Link to="/create">Create Game</Link>
+        <Link to="/JoinGamePage">Join Game</Link>
+      </nav>
+      {/* {End turn button} */}
+      {isGamePage && myTurn ? (
+        <button className="btn btn-warning mt-3" onClick={handleEndTurn}>
+          Закончить ход{isHost ? ' (Хост)' : ''}
+        </button>
+      ) : (
+        gameState?.players && (
+          <div className="alert alert-info mt-3">
+            Сейчас ходит:{' '}
+            {gameState.players.find(p => p.user_id === gameState.currentTurnUserId)?.name || (
+              <span>...</span>
             )}
-            <div className='other-users'>
-                {/* Display information about other users, their traders, and products */}
-                {otherUsers && otherUsers.length > 0 && (
-                    <div className={`user-info`}>
-                        <p>Other Users in Game:</p>
-                        <ul className="list-unstyled">
-                            {otherUsers.map((user, userIndex) => {
-                                const userBackgroundColorClass = user.color ? `bg-${user.color}` : '';
-                                return (
-                                    <li key={userIndex} className={userBackgroundColorClass}>
-                                        <p>User: {user.name}</p>
-                                        <p>Coins: {user.coins}</p>
-                                        {user.traders && user.traders.length > 0 && (
-                                            <ul className="list-unstyled">
-                                                {user.traders.map((trader, traderIndex) => {
-                                                    const traderBackgroundColorClass = trader.location ? `bg-${trader.location.toLowerCase()}` : '';
-                                                    return (
-                                                        <li key={traderIndex} className={traderBackgroundColorClass}>
-                                                            <p>Trader: {trader.traderName}</p>
-                                                            {trader.goods && trader.goods.length > 0 && (
-                                                                <ul className="list-unstyled">
-                                                                    {trader.goods.map((product, productIndex) => (
-                                                                        <li key={productIndex}>
-                                                                            <p>Product: {product.productName}</p>
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            )}
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-                )}
-            </div>
+          </div>
+        )
+      )}
 
+      {/* Display information for the current user */}
+      {currentUserData && (
+        <div className={`user-info ${userBackgroundColorClass}`}>
+          <p>Id: {currentUserData.user_id}</p>
+          <p>Name: {currentUserData.name}</p>
+          <p className={user_color}>Color: {currentUserData.color}</p>
+          <p>Coins: {currentUserData.coins}</p>
+          <p>Traders Count: {currentUserData.tradersCount}</p>
+          {currentUserData.traders && currentUserData.traders.length > 0 && (
+            <div>
+              <p>Products from Your Traders:</p>
+              <ul className="list-unstyled">
+                {currentUserData.traders.map((trader, traderIndex) => (
+                  <li key={traderIndex}>
+                    <p>Trader: {trader.traderName}</p>
+                    <p>Trader sector: {trader.location}</p>
+                    {trader.goods && trader.goods.length > 0 && (
+                      <ul className="list-unstyled">
+                        {trader.goods.map((product, productIndex) => (
+                          <li key={productIndex}>
+                            <p>Product: {product.productName}</p>
+                            {/* Include other product details as needed */}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p>Sectors with Traders: </p>
+          <ul>
+            {uniqueSectors.map((sector, index) => (
+              <li key={index}>{sector}</li>
+            ))}
+          </ul>
+
+          <p>
+            Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}
+          </p>
+          <p>Event Cards:</p>
+
+          {currentUserData &&
+          currentUserData.eventCards &&
+          currentUserData.eventCards.length > 0 ? (
+            <ul className="list-unstyled">
+              {currentUserData.eventCards.map((card, index) => (
+                <li
+                  key={index}
+                  className={`event-card ${
+                    card.fortune === 'negative' ? 'bg-danger' : 'bg-success'
+                  }`}
+                >
+                  <p>Title: {card.title}</p>
+                  <p>Description: {card.description}</p>
+                  <p>Fortune: {card.fortune}</p>
+                  <p>Quantity In Game: {card.quantity_ingame}</p>
+                  <p>Quantity Active: {card.quantity_active}</p>
+                  <p>Position In Game: {card.position_in_game}</p>
+                  <p>Goal Action: {card.goal_action}</p>
+                  <p>Goal Item: {card.goal_item}</p>
+                  {card.effect && card.effect.length > 0 && (
+                    <div>
+                      <p>Effect:</p>
+                      <ul className="list-unstyled">
+                        {card.effect.map((effect, effectIndex) => (
+                          <li key={effectIndex}>
+                            {Object.keys(effect).map((key, subIndex) => (
+                              <p key={subIndex}>
+                                {key}: {JSON.stringify(effect[key])}
+                              </p>
+                            ))}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No Event Cards.</p>
+          )}
+
+          {/* Additional details from currentUserData */}
+          {/* Include any additional details you want to display */}
+
+          {/* Display information about other users, their traders, and products */}
         </div>
-    );
+      )}
+      <div className="other-users">
+        {otherUsers.length > 0 && (
+          <div className="user-info">
+            <p>Other Users in Game:</p>
+            <ul className="list-unstyled">
+              {otherUsers.map((user, userIndex) => {
+                const userBackgroundColorClass = user.color ? `bg-${user.color}` : '';
+                return (
+                  <li key={userIndex} className={userBackgroundColorClass}>
+                    <p>User: {user.name}</p>
+                    <p>Coins: {user.coins}</p>
+                    {user.traders && user.traders.length > 0 && (
+                      <ul className="list-unstyled">
+                        {user.traders.map((trader, traderIndex) => {
+                          const traderBackgroundColorClass = trader.location
+                            ? `bg-${trader.location.toLowerCase()}`
+                            : '';
+                          return (
+                            <li key={traderIndex} className={traderBackgroundColorClass}>
+                              <p>Trader: {trader.traderName}</p>
+                              {trader.goods && trader.goods.length > 0 && (
+                                <ul className="list-unstyled">
+                                  {trader.goods.map((product, productIndex) => (
+                                    <li key={productIndex}>
+                                      <p>Product: {product.productName}</p>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default Menu;

@@ -1,332 +1,228 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Modal, Button, Row, Col } from "react-bootstrap";
-import Trader from "./Trader";
+import React, { useState, useEffect, useRef } from 'react';
+import { Modal, Button, Row, Col } from 'react-bootstrap';
+import Trader from './Trader';
 
-import { handleSectorClickLogic, handleAddTraderLogic } from "../logic/logic";
+import { handleSectorClickLogic, handleAddTraderLogic } from '../logic/logic';
+import productsData from '../products.json';
 
-import productsData from "../products.json"; // Data with all products
+import { handleAddTraderToSector } from '../logic/logic';
 
 const PrivozSector = ({
-    category,
-    maxTraders,
-    traders,
-    setTraders,
-    setCurrentUserData,
-    currentUserData,
-    otherUsers
+  category,
+  maxTraders,
+  gameState,
+  myUserId,
+  connection,
+
+  setGameState,
 }) => {
-    const [clickedSector, setClickedSector] = useState(null);
-    const [showModal, setShowModal] = useState(false);
-    const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
-    const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null); // !!!
-    const [coinsDecrease, setCoinsDecrease] = useState(0); // Declare coinsDecrease here
-    const traderContainerRef = useRef(null); // Create a ref for the container   
-    const [showUpdatedInfoModal, setShowUpdatedInfoModal] = useState(false);
-    const [showWholeModal, setShowWholeModal] = useState(false);
-    const [sectorProducts, setSectorProducts] = useState([]);
+  const [clickedSector, setClickedSector] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
+  const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
+  const [showUpdatedInfoModal, setShowUpdatedInfoModal] = useState(false);
+  const [coinsDecrease, setCoinsDecrease] = useState(0);
+  const [showWholeModal, setShowWholeModal] = useState(false);
+  const [sectorProducts, setSectorProducts] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
-    const handleUpdatedInfoModalClose = () => {
-        setShowUpdatedInfoModal(false);
-        generateSectorProducts();
-        setShowWholeModal(true);
-    };
+  // Всегда работаем через gameState.players!
+  const players = gameState?.players || [];
+  const myTurn = gameState?.currentTurnUserId === myUserId;
 
-    const handleWholeModalClose = () => {
-        setShowWholeModal(false);
-    };
+  // Собираем всех трейдеров в этом секторе
+  const sectorTraders = players.flatMap(player =>
+    (player.traders || [])
+      .filter(trader => trader.location === category)
+      .map(trader => ({ ...trader, owner: player }))
+  );
 
-    // Ensure users and users.traders are defined
-    const filteredUsers = traders
-        .filter(
-            (user) =>
-                user.traders &&
-                user.traders.some((trader) => trader.location === category)
-        )
-        .map((user) => {
-            // Filter traders based on location and user ID
-            const filteredTraders = user.traders.filter(
-                (trader) =>
-                    trader.location === category && user.user_id === trader.traderOwnerId
-            );
-            // Return a new object with the filtered traders
-            return {
-                ...user,
-                traders: filteredTraders,
-            };
-        })
-        .slice(0, maxTraders);
+  // для отображения трейдеров
+  const tradersList = sectorTraders.map((trader, idx) => (
+    <Trader key={idx} user={trader.owner} trader={trader} />
+  ));
 
-    const tradersList = filteredUsers.map((user, index) =>
-        user.traders.map((trader, traderIndex) => (
-            <Trader key={`${index}-${traderIndex}`} user={user} trader={trader} />
-        ))
-    );
+  const handleSectorClick = () => {
+    // setCurrentUser тут можно по myUserId найти игрока
+    setCurrentUser(players.find(p => p.user_id === myUserId));
+    setClickedSector(category);
+    setShowModal(true);
+    // coinsDecrease: если есть логика - вставь сюда
+    setCoinsDecrease((players.find(p => p.user_id === myUserId)?.tradersCount || 0) >= 1 ? 5 : 0);
+  };
 
-    const handleSectorClick = () => {
-        handleSectorClickLogic(
-            category,
-            setClickedSector,
-            setShowModal,
-            setCurrentUser,
-            setCurrentUserData,
-            setCoinsDecrease,
-            traders
-        );
-    };
+  // Добавление трейдера (логика разнесена, только пример)
+  // const handleAddTrader = () => {
+  //   // только если мой ход!
+  //   // if (!myTurn) {
+  //   //   setShowModal(false);
+  //   //   return;
+  //   // }
+  //   // console.error('handleAddTrader click 11');
 
-    const handleAddTrader = () => {
-        handleAddTraderLogic(
-            clickedSector,
-            maxTraders,
-            setShowModal,
-            setShowMaxTradersModal,
-            setShowNotEnoughMoneyModal,
-            setTraders,
-            setCurrentUserData,
-            setShowUpdatedInfoModal,
-            currentUser,
-            traders,
-            setCurrentUser
-        );
-    };
+  //   handleAddTraderToSector({
+  //     gameState,
+  //     setGameState,
+  //     category, // sector
+  //     myUserId,
+  //     maxTraders,
+  //     setShowModal,
+  //     setShowMaxTradersModal,
+  //     setShowNotEnoughMoneyModal,
+  //     setShowUpdatedInfoModal,
+  //     connection,
+  //   });
+  // };
 
-    useEffect(() => {
-        //console.log('Updated traders state:', traders);
-    }, []);
+  const handleAddTrader = () => {
+    // 1. Локально обновить state (optimistic update)
+    setGameState(prev => {
+      if (!prev || !prev.players) return prev;
 
-    const generateSectorProducts = () => {
-        // Ensure productsData has the expected structure
-        if (!productsData || !Array.isArray(productsData.sectors)) {
-            console.error('Invalid products data:', productsData);
-            return;
-        }
-        // Convert category to lowercase
-        const lowercaseCategory = category.toLowerCase();
+      // Тот же кусок, что у тебя в хосте!
+      const playerIdx = prev.players.findIndex(p => p.user_id === myUserId);
+      if (playerIdx === -1) return prev;
+      const player = prev.players[playerIdx];
 
-        const IllegalProducts = productsData.sectors
-            .find(sector => sector.sector === 'illegal')
-            .products.filter(product => product.quantity_card > 0);
+      const tradersInSelectedSector = prev.players
+        .flatMap(p => p.traders || [])
+        .filter(trader => trader.location === category);
 
+      if (tradersInSelectedSector.length >= maxTraders) {
+        setShowMaxTradersModal(true);
+        setShowModal(false);
+        return prev;
+      }
 
-        // Combine otherUsers and currentUserData into a single array
-        const allUsers = otherUsers.concat(currentUserData);
+      const totalTradersCount = player.tradersCount || 0;
+      const coinsDecrease = totalTradersCount <= 1 ? 0 : totalTradersCount * 5;
+      const updatedCoins = (player.coins || 0) - coinsDecrease;
+      if (updatedCoins < 0) {
+        setShowNotEnoughMoneyModal(true);
+        setShowModal(false);
+        return prev;
+      }
 
-        // Function to count traders in each location for all users
-        const countTradersByLocation = (users) => {
-            const traderCounts = {};
-            users.forEach((user) => {
-                if (user.traders) {
-                    user.traders.forEach((trader) => {
-                        const location = trader.location;
-                        if (!traderCounts[location]) {
-                            traderCounts[location] = 1;
-                        } else {
-                            traderCounts[location]++;
-                        }
-                    });
-                }
-            });
-            return traderCounts;
-        };
+      const newTrader = {
+        traderOwnerId: player.user_id,
+        traderName: `Trader${(player.traders?.length || 0) + 1}`,
+        location: category,
+        goods: [],
+      };
 
-        // Count traders for all users
-        const allUsersTraderCounts = countTradersByLocation(allUsers);
-        console.log('All Users Trader Counts:', allUsersTraderCounts);
+      // Можно без раздачи eventCards локально, пусть хост выдаёт (но можно и тут)
+      const updatedPlayer = {
+        ...player,
+        traders: [...(player.traders || []), newTrader],
+        tradersCount: totalTradersCount + 1,
+        coins: updatedCoins,
+        // eventCards: updatedEventCards,
+      };
 
-        // Initialize activeProducts array
-        const activeProducts = [];
-        // Iterate over each location in allUsersTraderCounts
-        for (const location in allUsersTraderCounts) {
-            if (allUsersTraderCounts.hasOwnProperty(location)) {
-                // Find the sector data for the current location
-                const sectorData = productsData.sectors.find(sector => sector.sector.toLowerCase() === location.toLowerCase());
+      const updatedPlayers = [...prev.players];
+      updatedPlayers[playerIdx] = updatedPlayer;
 
-                if (sectorData && Array.isArray(sectorData.products)) {
-                    // Shuffle products to get random selection
-                    const shuffledProducts = sectorData.products.sort(() => Math.random() - 0.5);
+      return {
+        ...prev,
+        players: updatedPlayers,
+      };
+    });
 
-                    // Take the first three products (or less if there are fewer)
-                    const selectedProducts = shuffledProducts.slice(0, Math.min(3, shuffledProducts.length));
+    // 2. Отправить действие хосту (пусть только он раздаёт eventCard и т.д.)
+    if (connection) {
+      connection.send({
+        type: 'addTrader',
+        payload: {
+          sector: category,
+          userId: myUserId,
+        },
+      });
+    }
 
-                    // Add the selected products to activeProducts array
-                    activeProducts.push({
-                        location,
-                        products: selectedProducts
-                    });
-                }
-            }
-        }
+    setShowModal(false);
+    setShowUpdatedInfoModal(true);
+  };
 
-        // Add illegal products to activeProducts if available
-        if (IllegalProducts && IllegalProducts.length > 0) {
-            activeProducts.push({
-                location: 'Illegal',
-                products: IllegalProducts
-            });
-        }
-        // Generate sector products list
-        const sectorProductsList = activeProducts.map(({ location, products }) => ({
-            traderId: location, // Assuming traderId is set to location for simplicity
-            traderLocation: location,
-            products: products
-        }));
+  // --- Модальные окна и прочее без изменений ---
 
-        setSectorProducts(sectorProductsList);
-    };
-
-
-
-    const sectorClassName = `sector border p-3 mb-3 ${category.toLowerCase()}`;
-
-    return (
-        <div className="col" ref={traderContainerRef}>
-            <div className={sectorClassName} onClick={handleSectorClick}>
-                <div className="row gap-1">
-                    {tradersList.length > 0 ? (
-                        tradersList
-                    ) : (
-                        <div className="col">
-                            <p>No traders in this sector</p>
-                        </div>
-                    )}
-                </div>
+  return (
+    <div className="yarr2">
+      <div
+        className={`sector border p-3 mb-3 ${category.toLowerCase()}`}
+        onClick={handleSectorClick}
+      >
+        <div className="row gap-1">
+          {tradersList.length > 0 ? (
+            tradersList
+          ) : (
+            <div className="col border text-center pb-4 trader-block ">
+              <p>No traders in this sector yet</p>
             </div>
-
-            <Modal show={showModal} onHide={() => setShowModal(false)}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Confirm Trader Addition</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    Are you sure you want to add a trader to {category} sector?
-                    <p>New Trader price is {coinsDecrease} coins</p>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowModal(false)}>
-                        Cancel
-                    </Button>
-                    <Button variant="primary" onClick={handleAddTrader}>
-                        Add Trader
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            <Modal show={showMaxTradersModal} onHide={() => setShowMaxTradersModal(false)}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Maximum Traders Reached</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    Maximum number of traders ({maxTraders}) reached in this sector. You
-                    cannot add another trader.
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button
-                        variant="primary"
-                        onClick={() => setShowMaxTradersModal(false)}
-                    >
-                        OK
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            <Modal
-                show={showNotEnoughMoneyModal}
-                onHide={() => setShowNotEnoughMoneyModal(false)}
-            >
-                <Modal.Header closeButton>
-                    <Modal.Title>Not Enough Money</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    You do not have enough money to add a trader. Please acquire more
-                    coins before adding a trader.
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button
-                        variant="primary"
-                        onClick={() => setShowNotEnoughMoneyModal(false)}
-                    >
-                        OK
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            <Modal show={showUpdatedInfoModal} onHide={handleUpdatedInfoModalClose}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Trader Added Successfully!</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <div>Your traders have been updated:</div>
-
-                    {currentUserData &&
-                        currentUserData.traders &&
-                        currentUserData.traders.length > 0 ? (
-                        <ul>
-                            {currentUserData.traders.map((trader, index) => (
-                                <li key={index}>
-                                    <p>Trader: {trader.traderName}</p>
-                                    <p>Location: {trader.location}</p>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No traders have been updated.</p>
-                    )}
-
-                    <div>You get a new Event Card:</div>
-
-                    {currentUserData &&
-                        currentUserData.eventCards &&
-                        currentUserData.eventCards.length > 0 ? (
-                        <ul>
-                            {currentUserData.eventCards.map((card, index) => (
-                                <li key={index}>{card.title}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No new Event Cards.</p>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="primary" onClick={handleUpdatedInfoModalClose}>
-                        OK
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            <Modal
-                show={showWholeModal}
-                onHide={handleWholeModalClose}
-                dialogClassName="modal-dialog-centered wholesale-window"
-
-            >
-                <Modal.Header closeButton>
-                    <Modal.Title>Wholesale Marketplace</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {sectorProducts.map((sectorProduct) => (
-                        <Row key={sectorProduct.traderId}>
-                            <Col>
-                                <h5>{`Products in ${sectorProduct.traderLocation}`}</h5>
-                                <ul>
-                                    {sectorProduct.products.map((product, index) => (
-                                        <li key={index}>
-                                            {product.productName} - ${product.wholesalePrice}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </Col>
-                        </Row>
-                    ))}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={handleWholeModalClose}>
-                        Close
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
+          )}
         </div>
-    );
+      </div>
+
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Trader Addition</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to add a trader to {category} sector?
+          <p>New Trader price is {coinsDecrease} coins</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleAddTrader}>
+            Add Trader
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showMaxTradersModal} onHide={() => setShowMaxTradersModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Maximum Traders Reached</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Maximum number of traders ({maxTraders}) reached in this sector. You cannot add another
+          trader.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowMaxTradersModal(false)}>
+            OK
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showNotEnoughMoneyModal} onHide={() => setShowNotEnoughMoneyModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Not Enough Money</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          You do not have enough money to add a trader. Please acquire more coins before adding a
+          trader.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowNotEnoughMoneyModal(false)}>
+            OK
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showUpdatedInfoModal} onHide={() => setShowUpdatedInfoModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Trader Added Successfully!</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Trader has been added! (Обнови меню, если хочешь показать детали)</Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowUpdatedInfoModal(false)}>
+            OK
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </div>
+  );
 };
 
 export default PrivozSector;

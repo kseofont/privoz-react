@@ -76,35 +76,39 @@ const PrivozPage = () => {
         }
     }, []);
 
-    return (
-        <div className="container">
-            <div className="row">
-                <h2>Privoz Bazar</h2>
-                <div className="col-9">
-                    {allLocations.map((location, index) => (
-                        <div className="row" key={index}>
-                            <h3>{location}</h3>
-                            <PrivozSector
-                                key={index}
-                                category={location}
-                                maxTraders={maxTraders}
-                                traders={traders}  // Pass traders and setTraders props
-                                setTraders={setTraders}
-                                currentUserData={currentUserData}
-                                setCurrentUserData={setCurrentUserData}
-                                otherUsers={otherUsers}  // Pass otherUsers prop
-                            />
-                        </div>
-                    ))}
-                </div>
-                <div className="col-3">
-                    <Menu
-                        currentUserData={currentUserData}
-                        otherUsers={otherUsers}  // Pass otherUsers prop
-                    />
-                </div>
-            </div>
-        </div>
+    return ( <
+        div className = "container" >
+        <
+        div className = "row" >
+        <
+        h2 > Privoz Bazar < /h2> <
+        div className = "col-9 yarr-row" > {
+            allLocations.map((location, index) => ( <
+                div className = "row yarrrow"
+                key = { index } >
+                <
+                h3 > { location } < /h3> <
+                PrivozSector key = { index }
+                category = { location }
+                maxTraders = { maxTraders }
+                traders = { traders } // Pass traders and setTraders props
+                setTraders = { setTraders }
+                currentUserData = { currentUserData }
+                setCurrentUserData = { setCurrentUserData }
+                otherUsers = { otherUsers } // Pass otherUsers prop
+                /> <
+                /div>
+            ))
+        } <
+        /div> <
+        div className = "col-3" >
+        <
+        Menu currentUserData = { currentUserData }
+        otherUsers = { otherUsers } // Pass otherUsers prop
+        /> <
+        /div> <
+        /div> <
+        /div>
     );
 };
 
