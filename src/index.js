@@ -15,6 +15,7 @@ import JoinGamePage from './pages/JoinGamePage';
 import GamePage from './pages/GamePage';
 import StartPage from './pages/StartPage';
 import TraderList from './pages/TraderList';
+import './i18n';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

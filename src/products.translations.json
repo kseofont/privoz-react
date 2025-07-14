@@ -1,0 +1,424 @@
+{
+    "sectors": [
+        {
+            "sector": "vegetables",
+            "products": [
+                {
+                    "productId": 1,
+                    "productName": {
+                        "en": "Onion",
+                        "ru": "Лук",
+                        "ua": "Цибуля",
+                        "es": "Cebolla"
+                    },
+                    "wholesalePrice": 2,
+                    "sellingPrice": 4,
+                    "profit": 2,
+                    "quantity_card": 16,
+                    "total_profit": 32,
+                    "product_sector": "vegetables",
+                    "imageSrc": "onion.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 2,
+                    "productName": {
+                        "en": "Zucchini",
+                        "ru": "Кабачок",
+                        "ua": "Кабачок",
+                        "es": "Calabacín"
+                    },
+                    "wholesalePrice": 3,
+                    "sellingPrice": 6,
+                    "profit": 3,
+                    "quantity_card": 12,
+                    "total_profit": 36,
+                    "product_sector": "vegetables",
+                    "imageSrc": "zucchini.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 3,
+                    "productName": {
+                        "en": "Tomato",
+                        "ru": "Помидор",
+                        "ua": "Помідор",
+                        "es": "Tomate"
+                    },
+                    "wholesalePrice": 5,
+                    "sellingPrice": 9,
+                    "profit": 4,
+                    "quantity_card": 10,
+                    "total_profit": 40,
+                    "product_sector": "vegetables",
+                    "imageSrc": "tomato.svg"
+                }
+            ]
+        },
+        {
+            "sector": "fruits",
+            "products": [
+                {
+                    "productId": 4,
+                    "productName": {
+                        "en": "Apples",
+                        "ru": "Яблоки",
+                        "ua": "Яблука",
+                        "es": "Manzanas"
+                    },
+                    "wholesalePrice": 2,
+                    "sellingPrice": 4,
+                    "profit": 2,
+                    "quantity_card": 16,
+                    "total_profit": 32,
+                    "product_sector": "fruits",
+                    "imageSrc": "apples.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 5,
+                    "productName": {
+                        "en": "Grapes",
+                        "ru": "Виноград",
+                        "ua": "Виноград",
+                        "es": "Uvas"
+                    },
+                    "wholesalePrice": 3,
+                    "sellingPrice": 6,
+                    "profit": 3,
+                    "quantity_card": 12,
+                    "total_profit": 36,
+                    "product_sector": "fruits",
+                    "imageSrc": "grapes.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 6,
+                    "productName": {
+                        "en": "Strawberries",
+                        "ru": "Клубника",
+                        "ua": "Полуниця",
+                        "es": "Fresas"
+                    },
+                    "wholesalePrice": 5,
+                    "sellingPrice": 9,
+                    "profit": 4,
+                    "quantity_card": 10,
+                    "total_profit": 40,
+                    "product_sector": "fruits",
+                    "imageSrc": "strawberries.svg"
+                }
+            ]
+        },
+        {
+            "sector": "dairy",
+            "products": [
+                {
+                    "productId": 7,
+                    "productName": {
+                        "en": "Milk",
+                        "ru": "Молоко",
+                        "ua": "Молоко",
+                        "es": "Leche"
+                    },
+                    "wholesalePrice": 3,
+                    "sellingPrice": 6,
+                    "profit": 3,
+                    "quantity_card": 16,
+                    "total_profit": 48,
+                    "product_sector": "dairy",
+                    "imageSrc": "milk.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 8,
+                    "productName": {
+                        "en": "Feta Cheese",
+                        "ru": "Сыр Фета",
+                        "ua": "Сир Фета",
+                        "es": "Queso feta"
+                    },
+                    "wholesalePrice": 5,
+                    "sellingPrice": 9,
+                    "profit": 4,
+                    "quantity_card": 12,
+                    "total_profit": 48,
+                    "product_sector": "dairy",
+                    "imageSrc": "feta_cheese.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 9,
+                    "productName": {
+                        "en": "Cheese",
+                        "ru": "Сыр",
+                        "ua": "Сир",
+                        "es": "Queso"
+                    },
+                    "wholesalePrice": 7,
+                    "sellingPrice": 12,
+                    "profit": 5,
+                    "quantity_card": 10,
+                    "total_profit": 50,
+                    "product_sector": "dairy",
+                    "imageSrc": "cheese.svg"
+                }
+            ]
+        },
+        {
+            "sector": "fish",
+            "products": [
+                {
+                    "productId": 10,
+                    "productName": {
+                        "en": "Anchovies",
+                        "ru": "Анчоусы",
+                        "ua": "Анчоуси",
+                        "es": "Anchoas"
+                    },
+                    "wholesalePrice": 3,
+                    "sellingPrice": 6,
+                    "profit": 3,
+                    "quantity_card": 16,
+                    "total_profit": 48,
+                    "product_sector": "fish",
+                    "imageSrc": "anchovies.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 11,
+                    "productName": {
+                        "en": "Mackerel",
+                        "ru": "Скумбрия",
+                        "ua": "Скумбрія",
+                        "es": "Caballa"
+                    },
+                    "wholesalePrice": 5,
+                    "sellingPrice": 9,
+                    "profit": 4,
+                    "quantity_card": 12,
+                    "total_profit": 48,
+                    "product_sector": "fish",
+                    "imageSrc": "mackerel.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 12,
+                    "productName": {
+                        "en": "Salmon",
+                        "ru": "Лосось",
+                        "ua": "Лосось",
+                        "es": "Salmón"
+                    },
+                    "wholesalePrice": 7,
+                    "sellingPrice": 12,
+                    "profit": 5,
+                    "quantity_card": 10,
+                    "total_profit": 50,
+                    "product_sector": "fish",
+                    "imageSrc": "salmon.svg"
+                }
+            ]
+        },
+        {
+            "sector": "meat",
+            "products": [
+                {
+                    "productId": 13,
+                    "productName": {
+                        "en": "Chicken",
+                        "ru": "Курица",
+                        "ua": "Курка",
+                        "es": "Pollo"
+                    },
+                    "wholesalePrice": 5,
+                    "sellingPrice": 10,
+                    "profit": 5,
+                    "quantity_card": 10,
+                    "total_profit": 50,
+                    "product_sector": "meat",
+                    "imageSrc": "chicken.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 14,
+                    "productName": {
+                        "en": "Pork",
+                        "ru": "Свинина",
+                        "ua": "Свинина",
+                        "es": "Cerdo"
+                    },
+                    "wholesalePrice": 7,
+                    "sellingPrice": 13,
+                    "profit": 6,
+                    "quantity_card": 7,
+                    "total_profit": 42,
+                    "product_sector": "meat",
+                    "imageSrc": "pork.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 15,
+                    "productName": {
+                        "en": "Sausage",
+                        "ru": "Колбаса",
+                        "ua": "Ковбаса",
+                        "es": "Salchicha"
+                    },
+                    "wholesalePrice": 9,
+                    "sellingPrice": 16,
+                    "profit": 7,
+                    "quantity_card": 4,
+                    "total_profit": 28,
+                    "product_sector": "meat",
+                    "imageSrc": "sausage.svg"
+                }
+            ]
+        },
+        {
+            "sector": "household",
+            "products": [
+                {
+                    "productId": 16,
+                    "productName": {
+                        "en": "Gloves",
+                        "ru": "Перчатки",
+                        "ua": "Рукавички",
+                        "es": "Guantes"
+                    },
+                    "wholesalePrice": 7,
+                    "sellingPrice": 12,
+                    "profit": 5,
+                    "quantity_card": 10,
+                    "total_profit": 50,
+                    "product_sector": "household",
+                    "imageSrc": "gloves.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 17,
+                    "productName": {
+                        "en": "Hats",
+                        "ru": "Шляпы",
+                        "ua": "Капелюхи",
+                        "es": "Sombreros"
+                    },
+                    "wholesalePrice": 9,
+                    "sellingPrice": 15,
+                    "profit": 6,
+                    "quantity_card": 7,
+                    "total_profit": 42,
+                    "product_sector": "household",
+                    "imageSrc": "hats.svg",
+                    "legality": "legal"
+                },
+                {
+                    "productId": 18,
+                    "productName": {
+                        "en": "Quilts",
+                        "ru": "Одеяла",
+                        "ua": "Ковдри",
+                        "es": "Edredones"
+                    },
+                    "wholesalePrice": 10,
+                    "sellingPrice": 18,
+                    "profit": 8,
+                    "quantity_card": 4,
+                    "total_profit": 32,
+                    "product_sector": "household",
+                    "imageSrc": "quilts.svg"
+                }
+            ]
+        },
+        {
+            "sector": "illegal",
+            "products": [
+                {
+                    "productId": 19,
+                    "productName": {
+                        "en": "Cigarettes",
+                        "ru": "Сигареты",
+                        "ua": "Сигарети",
+                        "es": "Cigarrillos"
+                    },
+                    "wholesalePrice": 4,
+                    "sellingPrice": 9,
+                    "profit": 5,
+                    "quantity_card": 18,
+                    "total_profit": 90,
+                    "product_sector": "other",
+                    "imageSrc": "cigarettes.svg",
+                    "legality": "illegal"
+                },
+                {
+                    "productId": 20,
+                    "productName": {
+                        "en": "Beer",
+                        "ru": "Пиво",
+                        "ua": "Пиво",
+                        "es": "Cerveza"
+                    },
+                    "wholesalePrice": 5,
+                    "sellingPrice": 12,
+                    "profit": 7,
+                    "quantity_card": 16,
+                    "total_profit": 112,
+                    "product_sector": "other",
+                    "imageSrc": "beer.svg",
+                    "legality": "illegal"
+                },
+                {
+                    "productId": 21,
+                    "productName": {
+                        "en": "Wine",
+                        "ru": "Вино",
+                        "ua": "Вино",
+                        "es": "Vino"
+                    },
+                    "wholesalePrice": 6,
+                    "sellingPrice": 15,
+                    "profit": 9,
+                    "quantity_card": 14,
+                    "total_profit": 126,
+                    "product_sector": "other",
+                    "imageSrc": "wine.svg",
+                    "legality": "illegal"
+                },
+                {
+                    "productId": 22,
+                    "productName": {
+                        "en": "Vodka",
+                        "ru": "Водка",
+                        "ua": "Горілка",
+                        "es": "Vodka"
+                    },
+                    "wholesalePrice": 7,
+                    "sellingPrice": 19,
+                    "profit": 12,
+                    "quantity_card": 12,
+                    "total_profit": 144,
+                    "product_sector": "other",
+                    "imageSrc": "vodka.svg",
+                    "legality": "illegal"
+                },
+                {
+                    "productId": 23,
+                    "productName": {
+                        "en": "Drugs",
+                        "ru": "Наркотики",
+                        "ua": "Наркотики",
+                        "es": "Drogas"
+                    },
+                    "wholesalePrice": 10,
+                    "sellingPrice": 25,
+                    "profit": 15,
+                    "quantity_card": 10,
+                    "total_profit": 150,
+                    "product_sector": "other",
+                    "imageSrc": "drugs.svg",
+                    "legality": "illegal"
+                }
+            ]
+        }
+    ]
+}

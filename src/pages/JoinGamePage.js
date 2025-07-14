@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Peer from 'peerjs';
 import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -19,6 +20,7 @@ const JoinGamePage = () => {
 
   // Чтобы не терять свой user_id после входа:
   const [myUserId, setMyUserId] = useState(null);
+  const { t, i18n } = useTranslation();
 
   const addLog = message => {
     setLogs(prevLogs => [...prevLogs, message]);
@@ -145,10 +147,10 @@ const JoinGamePage = () => {
     <div className="container mt-5">
       <div className="row">
         <div className="col-9">
-          <h1>Join an Existing Game</h1>
+          <h1>{t('join_title')}</h1>
           <div className="mb-3">
             <label htmlFor="userName" className="form-label">
-              Enter your name:
+              {t('join_enter_name')}
             </label>
             <input
               type="text"
@@ -162,7 +164,7 @@ const JoinGamePage = () => {
 
           <div className="mb-3">
             <label htmlFor="colorSelect" className="form-label">
-              Select your color:
+              {t('join_select_color')}
             </label>
             <select
               className="form-select"
@@ -172,7 +174,7 @@ const JoinGamePage = () => {
               required
             >
               <option value="" disabled>
-                Select color...
+                {t('join_select_color_placeholder')}
               </option>
               {['red', 'green', 'blue', 'orange', 'purple', 'brown']
                 .filter(color => !(gameState?.players || []).some(player => player.color === color))
@@ -186,7 +188,7 @@ const JoinGamePage = () => {
 
           <div className="mb-3">
             <label htmlFor="hostPeerId" className="form-label">
-              Host Peer ID:
+              {t('join_host_peer_id')}
             </label>
             <input
               type="text"
@@ -199,7 +201,7 @@ const JoinGamePage = () => {
           </div>
 
           <button className="btn btn-success" onClick={handleJoinGame}>
-            Join Game
+            {t('join_game_button')}
           </button>
 
           {connected && (

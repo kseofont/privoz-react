@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Menu from '../components/Menu';
@@ -17,6 +18,8 @@ const CreateServerPage = () => {
   const [logs, setLogs] = useState([]);
   const [gameState, setGameState] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
+
+  const { t, i18n } = useTranslation();
 
   const [hostId, setHostId] = useState('');
   const [initialGameState, setInitialGameState] = useState(null);
@@ -252,10 +255,10 @@ const CreateServerPage = () => {
     <div className="container mt-5">
       <div className="row">
         <div className="col-9">
-          <h1>Create a new Game as Host</h1>
+          <h1> {t('create_game_as_host')}</h1>
           <div className="mb-3">
             <label htmlFor="userName" className="form-label">
-              Enter your name:
+              {t('enter_your_name')}
             </label>
             <input
               type="text"
@@ -268,7 +271,7 @@ const CreateServerPage = () => {
           </div>
           <div className="mb-3">
             <label htmlFor="colorSelect" className="form-label">
-              Select your color:
+              {t('select_your_color')}
             </label>
             <select
               className="form-select"
@@ -278,7 +281,7 @@ const CreateServerPage = () => {
               required
             >
               <option value="" disabled>
-                Select color...
+                {t('select_color_placeholder')}
               </option>
               {['red', 'green', 'blue', 'orange', 'purple', 'brown']
                 .filter(color => !(gameState?.players || []).some(player => player.color === color))
@@ -291,7 +294,7 @@ const CreateServerPage = () => {
           </div>
           <div className="mb-3">
             <label htmlFor="numberOfPlayers" className="form-label">
-              Number of players:
+              {t('number_of_players')}
             </label>
             <select
               className="form-select"
@@ -307,7 +310,7 @@ const CreateServerPage = () => {
             </select>
           </div>
           <button className="btn btn-primary" onClick={handleStartGame} disabled={serverStarted}>
-            Start Game
+            {t('start_game')}
           </button>
           {serverStarted && (
             <button
@@ -315,7 +318,7 @@ const CreateServerPage = () => {
               onClick={handleStopAddingPlayers}
               disabled={gameStarted}
             >
-              Stop Adding Players and Start Game
+              {t('host_start_game')}
             </button>
           )}
 

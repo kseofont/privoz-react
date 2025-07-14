@@ -1,91 +1,331 @@
 [
     {
         "traderId": "t1",
-        "name": "Aida Hottie",
-        "special": "Мастер лимонада: +1 монета за продажу фруктов",
-        "img": "/aida-hottie.webp",
-        "bio": "Fruit Queen",
-        "sector_favorite": "Fruits",
+        "img": "/img/aida-hottie.webp",
+        "name": {
+            "en": "Aida Hottie",
+            "ru": "Аида Хоти",
+            "ua": "Аїда Хотті",
+            "es": "Aida Hottie"
+        },
+        "bio": {
+            "en": "Fruit Queen",
+            "ru": "Королева фруктов",
+            "ua": "Королева фруктів",
+            "es": "Reina de las frutas"
+        },
+        "special": {
+            "en": "Lemonade Master: +1 coin for selling fruits",
+            "ru": "Мастер лимонада: +1 монета за продажу фруктов",
+            "ua": "Майстер лимонаду: +1 монета за продаж фруктів",
+            "es": "Maestra de la limonada: +1 moneda por vender frutas"
+        },
+        "sector_favorite": {
+            "en": "Fruits",
+            "ru": "Фрукты",
+            "ua": "Фрукти",
+            "es": "Frutas"
+        },
         "eventcards_favorite_id": "ec_fruit_01",
-        "trader_benefit": "+1 монета за каждую продажу фруктов",
-        "special_power": "Может один раз за раунд продать все фрукты по двойной цене",
-        "best_sector": "Fruits",
-        "extra_abilities": "Первой выбирает сектор при старте",
+        "trader_benefit": {
+            "en": "+1 coin for fruits",
+            "ru": "+1 монета за фрукты",
+            "ua": "+1 монета за фрукти",
+            "es": "+1 moneda por frutas"
+        },
+        "special_power": {
+            "en": "Add +1 coin when selling fruits",
+            "ru": "+1 монета при продаже фруктов",
+            "ua": "+1 монета при продажі фруктів",
+            "es": "+1 moneda al vender frutas"
+        },
+        "best_sector": {
+            "en": "Fruits",
+            "ru": "Фрукты",
+            "ua": "Фрукти",
+            "es": "Frutas"
+        },
+        "extra_abilities": {
+            "en": "Can sell illegal goods",
+            "ru": "Может продавать нелегальные товары",
+            "ua": "Може продавати нелегальні товари",
+            "es": "Puede vender bienes ilegales"
+        },
         "taken": false,
         "goods": []
     },
     {
         "traderId": "t2",
-        "name": "Gypsy Aza",
-        "special": "Лук от слёз: снижает штрафы на овощи на 1 монету",
-        "img": "/aza.webp",
-        "bio": "Onion Master",
-        "sector_favorite": "Vegetables",
+        "img": "/img/aza.webp",
+        "name": {
+            "en": "Gypsy Aza",
+            "ru": "Цыганка Аза",
+            "ua": "Циганка Аза",
+            "es": "Gitana Aza"
+        },
+        "bio": {
+            "en": "Onion Master",
+            "ru": "Мастер лука",
+            "ua": "Майстер цибулі",
+            "es": "Maestra de la cebolla"
+        },
+        "special": {
+            "en": "No tears onion: reduces vegetable penalties by 1 coin",
+            "ru": "Лук от слёз: снижает штрафы на овощи на 1 монету",
+            "ua": "Цибуля без сліз: знижує штрафи на овочі на 1 монету",
+            "es": "Cebolla sin lágrimas: reduce penalizaciones por verduras en 1 moneda"
+        },
+        "sector_favorite": {
+            "en": "Vegetables",
+            "ru": "Овощи",
+            "ua": "Овочі",
+            "es": "Verduras"
+        },
         "eventcards_favorite_id": "ec_veg_02",
-        "trader_benefit": "Снижает штрафы на овощи на 1 монету",
-        "special_power": "Один раз за игру продаёт все овощи по двойной цене",
-        "best_sector": "Vegetables",
-        "extra_abilities": "Может добавить один бесплатный овощ при закупке",
+        "trader_benefit": {
+            "en": "Reduces vegetable penalties by 1 coin",
+            "ru": "Снижает штрафы на овощи на 1 монету",
+            "ua": "Знижує штрафи на овочі на 1 монету",
+            "es": "Reduce penalizaciones por verduras en 1 moneda"
+        },
+        "special_power": {
+            "en": "Once per game sells all vegetables at double price",
+            "ru": "Один раз за игру продаёт все овощи по двойной цене",
+            "ua": "Один раз за гру продає всі овочі за подвійною ціною",
+            "es": "Una vez por partida vende todas las verduras al doble de precio"
+        },
+        "best_sector": {
+            "en": "Vegetables",
+            "ru": "Овощи",
+            "ua": "Овочі",
+            "es": "Verduras"
+        },
+        "extra_abilities": {
+            "en": "Can add one free vegetable when buying",
+            "ru": "Может добавить один бесплатный овощ при закупке",
+            "ua": "Може додати один безкоштовний овоч при закупівлі",
+            "es": "Puede añadir una verdura gratis al comprar"
+        },
         "taken": false,
         "goods": []
     },
     {
         "traderId": "t3",
-        "name": "LyudaTheHostess",
-        "special": "Творог с душой: не платит аренду за первого продавца",
-        "img": "/LyudaTheHostess.webp",
-        "bio": "Queen of Dairy",
-        "sector_favorite": "Dairy",
+        "img": "/img/LyudaTheHostess.webp",
+        "name": {
+            "en": "LyudaTheHostess",
+            "ru": "Люда Хозяйка",
+            "ua": "Люда Господиня",
+            "es": "Lyuda La Ama de Casa"
+        },
+        "bio": {
+            "en": "Queen of Dairy",
+            "ru": "Королева молочки",
+            "ua": "Королева молочної продукції",
+            "es": "Reina de los lácteos"
+        },
+        "special": {
+            "en": "Cottage cheese with soul: does not pay rent for the first seller",
+            "ru": "Творог с душой: не платит аренду за первого продавца",
+            "ua": "Сир з душею: не платить оренду за першого продавця",
+            "es": "Queso cottage con alma: no paga alquiler por el primer vendedor"
+        },
+        "sector_favorite": {
+            "en": "Dairy",
+            "ru": "Молочка",
+            "ua": "Молочна продукція",
+            "es": "Lácteos"
+        },
         "eventcards_favorite_id": "ec_dairy_03",
-        "trader_benefit": "Не платит аренду за первого продавца",
-        "special_power": "Может получить любую карту товара из сброса",
-        "best_sector": "Dairy",
-        "extra_abilities": "Может передать одну карту другому игроку",
+        "trader_benefit": {
+            "en": "Does not pay rent for the first seller",
+            "ru": "Не платит аренду за первого продавца",
+            "ua": "Не платить оренду за першого продавця",
+            "es": "No paga alquiler por el primer vendedor"
+        },
+        "special_power": {
+            "en": "Can take any product card from the discard pile",
+            "ru": "Может получить любую карту товара из сброса",
+            "ua": "Може отримати будь-яку картку товару зі скиду",
+            "es": "Puede tomar cualquier carta de producto de la pila de descarte"
+        },
+        "best_sector": {
+            "en": "Dairy",
+            "ru": "Молочка",
+            "ua": "Молочна продукція",
+            "es": "Lácteos"
+        },
+        "extra_abilities": {
+            "en": "Can give one card to another player",
+            "ru": "Может передать одну карту другому игроку",
+            "ua": "Може передати одну картку іншому гравцю",
+            "es": "Puede dar una carta a otro jugador"
+        },
         "taken": false,
         "goods": []
     },
     {
         "traderId": "t4",
-        "name": "Vasya Myasnik",
-        "special": "Колбасный барон: +2 монеты за продажу мяса",
-        "img": "/butcher.webp",
-        "bio": "Meat King",
-        "sector_favorite": "Meat",
+        "img": "/img/butcher.webp",
+        "name": {
+            "en": "Vasya Myasnik",
+            "ru": "Вася Мясник",
+            "ua": "Вася М'ясник",
+            "es": "Vasya el Carnicero"
+        },
+        "bio": {
+            "en": "Meat King",
+            "ru": "Король мяса",
+            "ua": "Король м'яса",
+            "es": "Rey de la carne"
+        },
+        "special": {
+            "en": "Sausage baron: +2 coins for selling meat",
+            "ru": "Колбасный барон: +2 монеты за продажу мяса",
+            "ua": "Ковбасний барон: +2 монети за продаж м'яса",
+            "es": "Barón de las salchichas: +2 monedas por vender carne"
+        },
+        "sector_favorite": {
+            "en": "Meat",
+            "ru": "Мясо",
+            "ua": "М'ясо",
+            "es": "Carne"
+        },
         "eventcards_favorite_id": "ec_meat_04",
-        "trader_benefit": "+2 монеты за каждый товар из мяса",
-        "special_power": "Один раз за игру отменяет штраф за нелегальный товар",
-        "best_sector": "Meat",
-        "extra_abilities": "Может взять один нелегальный товар без риска штрафа",
+        "trader_benefit": {
+            "en": "+2 coins for every meat product",
+            "ru": "+2 монеты за каждый товар из мяса",
+            "ua": "+2 монети за кожен м'ясний товар",
+            "es": "+2 monedas por cada producto de carne"
+        },
+        "special_power": {
+            "en": "Once per game cancels penalty for illegal goods",
+            "ru": "Один раз за игру отменяет штраф за нелегальный товар",
+            "ua": "Один раз за гру скасовує штраф за нелегальний товар",
+            "es": "Una vez por partida cancela penalización por bienes ilegales"
+        },
+        "best_sector": {
+            "en": "Meat",
+            "ru": "Мясо",
+            "ua": "М'ясо",
+            "es": "Carne"
+        },
+        "extra_abilities": {
+            "en": "Can take one illegal product without risk of penalty",
+            "ru": "Может взять один нелегальный товар без риска штрафа",
+            "ua": "Може взяти один нелегальний товар без ризику штрафу",
+            "es": "Puede tomar un producto ilegal sin riesgo de penalización"
+        },
         "taken": false,
         "goods": []
     },
     {
         "traderId": "t5",
-        "name": "Sonya Fisherwoman",
-        "special": "Звезда причала: всегда получает первую карту рыбы",
-        "img": "/fisherwoman-sonya.webp",
-        "bio": "Fish Queen",
-        "sector_favorite": "Fish",
+        "img": "/img/fisherwoman-sonya.webp",
+        "name": {
+            "en": "Sonya Fisherwoman",
+            "ru": "Соня Рыбачка",
+            "ua": "Соня Рибачка",
+            "es": "Sonya la Pescadora"
+        },
+        "bio": {
+            "en": "Fish Queen",
+            "ru": "Королева рыбы",
+            "ua": "Королева риби",
+            "es": "Reina del pescado"
+        },
+        "special": {
+            "en": "Star of the pier: always gets the first fish card",
+            "ru": "Звезда причала: всегда получает первую карту рыбы",
+            "ua": "Зірка причалу: завжди отримує першу карту риби",
+            "es": "Estrella del muelle: siempre obtiene la primera carta de pescado"
+        },
+        "sector_favorite": {
+            "en": "Fish",
+            "ru": "Рыба",
+            "ua": "Риба",
+            "es": "Pescado"
+        },
         "eventcards_favorite_id": "ec_fish_05",
-        "trader_benefit": "Всегда получает первую карту из сектора рыбы",
-        "special_power": "Может взять две карты рыбы за один ход",
-        "best_sector": "Fish",
-        "extra_abilities": "На 1 монету больше за продажу рыбы в воскресенье",
+        "trader_benefit": {
+            "en": "Always gets the first card from the fish sector",
+            "ru": "Всегда получает первую карту из сектора рыбы",
+            "ua": "Завжди отримує першу карту із сектора риби",
+            "es": "Siempre obtiene la primera carta del sector de pescado"
+        },
+        "special_power": {
+            "en": "Can take two fish cards in one turn",
+            "ru": "Может взять две карты рыбы за один ход",
+            "ua": "Може взяти дві картки риби за один хід",
+            "es": "Puede tomar dos cartas de pescado en un turno"
+        },
+        "best_sector": {
+            "en": "Fish",
+            "ru": "Рыба",
+            "ua": "Риба",
+            "es": "Pescado"
+        },
+        "extra_abilities": {
+            "en": "+1 coin for selling fish on Sunday",
+            "ru": "На 1 монету больше за продажу рыбы в воскресенье",
+            "ua": "На 1 монету більше за продаж риби у неділю",
+            "es": "+1 moneda por vender pescado el domingo"
+        },
         "taken": false,
         "goods": []
     },
     {
         "traderId": "t6",
-        "name": "SemyonTheClaw",
-        "special": "Хозяйка рынка: продаёт два товара за один ход",
-        "img": "/rSemyonTheClaw.webp",
-        "bio": "King of Household",
-        "sector_favorite": "Household goods",
+        "img": "/img/SemyonTheClaw.webp",
+        "name": {
+            "en": "SemyonTheClaw",
+            "ru": "Семён Клешня",
+            "ua": "Семен Клешня",
+            "es": "Semyon la Garra"
+        },
+        "bio": {
+            "en": "King of Household",
+            "ru": "Хозяин хозтоваров",
+            "ua": "Король господарчих товарів",
+            "es": "Rey de los artículos para el hogar"
+        },
+        "special": {
+            "en": "Market master: sells two products in one turn",
+            "ru": "Хозяйка рынка: продаёт два товара за один ход",
+            "ua": "Господарка ринку: продає два товари за один хід",
+            "es": "Maestro del mercado: vende dos productos en un turno"
+        },
+        "sector_favorite": {
+            "en": "Household goods",
+            "ru": "Хозтовары",
+            "ua": "Господарчі товари",
+            "es": "Artículos para el hogar"
+        },
         "eventcards_favorite_id": "ec_house_06",
-        "trader_benefit": "Может продать два товара за один ход",
-        "special_power": "Меняется местами с другим трейдером на поле",
-        "best_sector": "Household goods",
-        "extra_abilities": "Может получить любую карту события бесплатно (1 раз за игру)",
+        "trader_benefit": {
+            "en": "Can sell two products in one turn",
+            "ru": "Может продать два товара за один ход",
+            "ua": "Може продати два товари за один хід",
+            "es": "Puede vender dos productos en un turno"
+        },
+        "special_power": {
+            "en": "Swaps places with another trader on the field",
+            "ru": "Меняется местами с другим трейдером на поле",
+            "ua": "Міняється місцями з іншим трейдером на полі",
+            "es": "Intercambia lugares con otro comerciante en el campo"
+        },
+        "best_sector": {
+            "en": "Household goods",
+            "ru": "Хозтовары",
+            "ua": "Господарчі товари",
+            "es": "Artículos para el hogar"
+        },
+        "extra_abilities": {
+            "en": "Can get any event card for free (once per game)",
+            "ru": "Может получить любую карту события бесплатно (1 раз за игру)",
+            "ua": "Може отримати будь-яку картку події безкоштовно (1 раз за гру)",
+            "es": "Puede obtener cualquier carta de evento gratis (una vez por partida)"
+        },
         "taken": false,
         "goods": []
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-
+import { useTranslation } from 'react-i18next';
 import { endTurn } from '../logic/logic';
 import { connectionsRef } from '../globals';
 import { Link, useLocation } from 'react-router-dom';
@@ -64,21 +64,29 @@ const Menu = ({
   console.log('myTurn:', myTurn);
   console.log('gameState:', gameState);
 
+  const { t, i18n } = useTranslation();
+
   return (
     <div className="col">
+      <div className="language-block col-12">
+        <button onClick={() => i18n.changeLanguage('ua')}>Українська</button>
+        <button onClick={() => i18n.changeLanguage('ru')}>Русский</button>
+        <button onClick={() => i18n.changeLanguage('es')}>Español</button>
+        <button onClick={() => i18n.changeLanguage('en')}>English</button>
+      </div>
+
       <h3>Menu</h3>
 
       {/* Navigation links */}
       <nav className="d-flex justify-content-between flex-column mb-3">
-        <Link to="/">StartPage</Link>
-        <Link to="/privoz">Privoz</Link>
-
-        <Link to="/wholesale">Wholesale Marketplace</Link>
-        <Link to="/eventcards">Event Cards</Link>
-        <Link to="/rules">Game Rules</Link>
-        <Link to="/create">Create Game</Link>
-        <Link to="/JoinGamePage">Join Game</Link>
-        <Link to="/traders">All traders in the Game</Link>
+        <Link to="/">{t('menu_start_page')}</Link>
+        <Link to="/privoz">{t('menu_privoz')}</Link>
+        <Link to="/wholesale">{t('menu_wholesale')}</Link>
+        <Link to="/eventcards">{t('menu_eventcards')}</Link>
+        <Link to="/rules">{t('menu_rules')}</Link>
+        <Link to="/create">{t('menu_create')}</Link>
+        <Link to="/JoinGamePage">{t('menu_join')}</Link>
+        <Link to="/traders">{t('menu_traders')}</Link>
       </nav>
       {/* {End turn button} */}
       {isGamePage && myTurn ? (
