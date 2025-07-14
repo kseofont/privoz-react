@@ -58,11 +58,11 @@ const Menu = ({
   const uniqueSectors = [
     ...new Set(currentUserData?.traders?.map(trader => trader.location) || []),
   ];
-  console.log('myUserId:', myUserId);
-  console.log('otherUsers:', otherUsers);
-  console.log('currentTurnUserId:', gameState?.currentTurnUserId);
-  console.log('myTurn:', myTurn);
-  console.log('gameState:', gameState);
+  // console.log('myUserId:', myUserId);
+  // console.log('otherUsers:', otherUsers);
+  // console.log('currentTurnUserId:', gameState?.currentTurnUserId);
+  // console.log('myTurn:', myTurn);
+  // console.log('gameState:', gameState);
 
   const { t, i18n } = useTranslation();
 

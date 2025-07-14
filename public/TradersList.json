@@ -328,5 +328,170 @@
         },
         "taken": false,
         "goods": []
+    },
+    {
+        "traderId": "t7",
+        "img": "/img/thief-benya.webp",
+        "name": {
+            "en": "Thief Benya",
+            "ru": "Вор Беня",
+            "ua": "Злодій Беня",
+            "es": "Benya el Ladrón"
+        },
+        "bio": {
+            "en": "Shadow King",
+            "ru": "Король теней",
+            "ua": "Король тіней",
+            "es": "Rey de las Sombras"
+        },
+        "special": {
+            "en": "Shadow master: can steal 1 coin from any player once per round",
+            "ru": "Мастер теней: может украсть 1 монету у любого игрока раз за раунд",
+            "ua": "Майстер тіней: може вкрасти 1 монету у будь-якого гравця раз за раунд",
+            "es": "Maestro de las sombras: puede robar 1 moneda a cualquier jugador una vez por ronda"
+        },
+        "sector_favorite": {
+            "en": "Illigal",
+            "ru": "Нелегал",
+            "ua": "Нелегал",
+            "es": "Ilegal"
+        },
+        "eventcards_favorite_id": "ec_illigal_07",
+        "trader_benefit": {
+            "en": "Can steal 1 coin from any player once per round",
+            "ru": "Может украсть 1 монету у любого игрока раз за раунд",
+            "ua": "Може вкрасти 1 монету у будь-якого гравця раз за раунд",
+            "es": "Puede robar 1 moneda a cualquier jugador una vez por ronda"
+        },
+        "special_power": {
+            "en": "May swap all goods with another player once per game",
+            "ru": "Может обменяться всеми товарами с другим игроком один раз за игру",
+            "ua": "Може обмінятися всіма товарами з іншим гравцем один раз за гру",
+            "es": "Puede intercambiar todos los bienes con otro jugador una vez por partida"
+        },
+        "best_sector": {
+            "en": "Illigal",
+            "ru": "Нелегал",
+            "ua": "Нелегал",
+            "es": "Ilegal"
+        },
+        "extra_abilities": {
+            "en": "Ignores illegal goods penalty once per game",
+            "ru": "Игнорирует штраф за нелегальный товар один раз за игру",
+            "ua": "Ігнорує штраф за нелегальний товар один раз за гру",
+            "es": "Ignora la penalización por bienes ilegales una vez por partida"
+        },
+        "taken": false,
+        "goods": []
+    },
+    {
+        "traderId": "t8",
+        "img": "/img/raya.webp",
+        "name": {
+            "en": "Raisa The Vendor",
+            "ru": "Раиса Торговка",
+            "ua": "Раїса Торгівка",
+            "es": "Raisa la Vendedora"
+        },
+        "bio": {
+            "en": "Household Queen",
+            "ru": "Королева хозтоваров",
+            "ua": "Королева господарчих товарів",
+            "es": "Reina de los artículos para el hogar"
+        },
+        "special": {
+            "en": "Courtyard mistress: +1 coin for household goods",
+            "ru": "Хозяйка двора: +1 монета за товары для дома",
+            "ua": "Господарка двору: +1 монета за товари для дому",
+            "es": "Señora del patio: +1 moneda por artículos para el hogar"
+        },
+        "sector_favorite": {
+            "en": "Household goods",
+            "ru": "Хозтовары",
+            "ua": "Господарчі товари",
+            "es": "Artículos para el hogar"
+        },
+        "eventcards_favorite_id": "ec_house_08",
+        "trader_benefit": {
+            "en": "+1 coin for each household item sold",
+            "ru": "+1 монета за каждый проданный товар для дома",
+            "ua": "+1 монета за кожен проданий товар для дому",
+            "es": "+1 moneda por cada artículo para el hogar vendido"
+        },
+        "special_power": {
+            "en": "May occupy any household sector for free once per round",
+            "ru": "Может бесплатно занять любой сектор для дома раз за раунд",
+            "ua": "Може безкоштовно зайняти будь-який сектор для дому раз за раунд",
+            "es": "Puede ocupar cualquier sector del hogar gratis una vez por ronda"
+        },
+        "best_sector": {
+            "en": "Household goods",
+            "ru": "Хозтовары",
+            "ua": "Господарчі товари",
+            "es": "Artículos para el hogar"
+        },
+        "extra_abilities": {
+            "en": "Starts with one free household item",
+            "ru": "Начинает с одним бесплатным товаром для дома",
+            "ua": "Починає з одного безкоштовного товару для дому",
+            "es": "Empieza con un artículo para el hogar gratis"
+        },
+        "taken": false,
+        "goods": []
+    },
+    {
+        "traderId": "t9",
+        "img": "/img/grigory-the-gardener.webp",
+        "name": {
+            "en": "Grigory The Gardener",
+            "ru": "Григорий Садовник",
+            "ua": "Григорій Садівник",
+            "es": "Grigory el Jardinero"
+        },
+        "bio": {
+            "en": "Vegetable Master",
+            "ru": "Мастер овощей",
+            "ua": "Майстер овочів",
+            "es": "Maestro de las verduras"
+        },
+        "special": {
+            "en": "Green thumb: +1 coin for vegetables",
+            "ru": "Зелёный палец: +1 монета за овощи",
+            "ua": "Зелений палець: +1 монета за овочі",
+            "es": "Pulgar verde: +1 moneda por verduras"
+        },
+        "sector_favorite": {
+            "en": "Vegetables",
+            "ru": "Овощи",
+            "ua": "Овочі",
+            "es": "Verduras"
+        },
+        "eventcards_favorite_id": "ec_veg_09",
+        "trader_benefit": {
+            "en": "+1 coin for selling vegetables",
+            "ru": "+1 монета за продажу овощей",
+            "ua": "+1 монета за продаж овочів",
+            "es": "+1 moneda por vender verduras"
+        },
+        "special_power": {
+            "en": "May sell all vegetables for double price once per game",
+            "ru": "Может продать все овощи за двойную цену один раз за игру",
+            "ua": "Може продати всі овочі за подвійну ціну один раз за гру",
+            "es": "Puede vender todas las verduras al doble de precio una vez por partida"
+        },
+        "best_sector": {
+            "en": "Vegetables",
+            "ru": "Овощи",
+            "ua": "Овочі",
+            "es": "Verduras"
+        },
+        "extra_abilities": {
+            "en": "May pick two vegetables when buying",
+            "ru": "Может взять два овоща при покупке",
+            "ua": "Може взяти два овочі при купівлі",
+            "es": "Puede coger dos verduras al comprar"
+        },
+        "taken": false,
+        "goods": []
     }
 ]

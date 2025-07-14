@@ -200,9 +200,11 @@ const JoinGamePage = () => {
             />
           </div>
 
-          <button className="btn btn-success" onClick={handleJoinGame}>
-            {t('join_game_button')}
-          </button>
+          {!connected && (
+            <button className="btn btn-success" onClick={handleJoinGame}>
+              {t('join_game_button')}
+            </button>
+          )}
 
           {connected && (
             <div className="mt-3">

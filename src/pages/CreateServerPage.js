@@ -309,9 +309,11 @@ const CreateServerPage = () => {
               ))}
             </select>
           </div>
-          <button className="btn btn-primary" onClick={handleStartGame} disabled={serverStarted}>
-            {t('start_game')}
-          </button>
+          {!serverStarted && (
+            <button className="btn btn-primary" onClick={handleStartGame}>
+              {t('start_game')}
+            </button>
+          )}
           {serverStarted && (
             <button
               className="btn btn-danger ms-3"
