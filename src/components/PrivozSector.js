@@ -214,7 +214,7 @@ const PrivozSector = ({
         <Modal.Header closeButton>
           <Modal.Title>Trader Added Successfully!</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Trader has been added! (Обнови меню, если хочешь показать детали)</Modal.Body>
+        <Modal.Body>Trader has been added! </Modal.Body>
         <Modal.Footer>
           <Button variant="primary" onClick={() => setShowUpdatedInfoModal(false)}>
             OK

@@ -14,6 +14,7 @@ import CreateServerPage from './pages/CreateServerPage';
 import JoinGamePage from './pages/JoinGamePage';
 import GamePage from './pages/GamePage';
 import StartPage from './pages/StartPage';
+import TraderList from './pages/TraderList';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -22,6 +23,8 @@ root.render(
       <Route path="/" element={<StartPage />} />
       <Route path="/privoz" element={<PrivozPage />} />
       <Route path="/wholesale" element={<Wholesale />} />
+      <Route path="/traders" element={<TraderList />} />
+
       <Route path="/eventcards" element={<EventCards />} />
       <Route path="/app" element={<App />} />
       <Route path="/rules" element={<Rules />} />

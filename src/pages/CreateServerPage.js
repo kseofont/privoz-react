@@ -235,8 +235,8 @@ const CreateServerPage = () => {
     // const hostId = peerId;
     const currentUserData = gameState?.players?.find(p => p.user_id === hostId) || null;
     const otherUsers = gameState?.players?.filter(p => p.user_id !== hostId) || [];
-    console.log('Передаю в navigate:', gameState);
-    console.log('Передаю в navigate initialGameState:', initialGameState);
+    // console.log('Передаю в navigate:', gameState);
+    // console.log('Передаю в navigate initialGameState:', initialGameState);
     navigate(`/game/${peerId}`, {
       state: {
         gameState,

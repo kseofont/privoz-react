@@ -78,6 +78,7 @@ const Menu = ({
         <Link to="/rules">Game Rules</Link>
         <Link to="/create">Create Game</Link>
         <Link to="/JoinGamePage">Join Game</Link>
+        <Link to="/traders">All traders in the Game</Link>
       </nav>
       {/* {End turn button} */}
       {isGamePage && myTurn ? (

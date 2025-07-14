@@ -223,6 +223,7 @@ export const handleAddTraderLogic = (
         eventCards: updatedEventCards,
       };
     });
+
     // setUpdatedInfo({
     //     traders: newTraderData.traders,
     //     randomCard: randomCard,
