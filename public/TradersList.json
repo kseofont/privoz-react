@@ -52,6 +52,7 @@
             "es": "Puede vender bienes ilegales"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -107,6 +108,7 @@
             "es": "Puede añadir una verdura gratis al comprar"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -162,6 +164,7 @@
             "es": "Puede dar una carta a otro jugador"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -217,6 +220,7 @@
             "es": "Puede tomar un producto ilegal sin riesgo de penalización"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -272,6 +276,7 @@
             "es": "+1 moneda por vender pescado el domingo"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -327,6 +332,7 @@
             "es": "Puede obtener cualquier carta de evento gratis (una vez por partida)"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -382,6 +388,7 @@
             "es": "Ignora la penalización por bienes ilegales una vez por partida"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -437,6 +444,7 @@
             "es": "Empieza con un artículo para el hogar gratis"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     },
     {
@@ -492,6 +500,7 @@
             "es": "Puede coger dos verduras al comprar"
         },
         "taken": false,
+        "card_in_game": "deck",
         "goods": []
     }
 ]
