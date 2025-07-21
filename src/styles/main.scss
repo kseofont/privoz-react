@@ -1,4 +1,3 @@
-
 @import 'bootstrap/scss/bootstrap';
 
 // Your custom styles here
@@ -10,35 +9,35 @@ body {
 $enable-gradients: true;
 $enable-shadows: true;
 
-$offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175);
+$offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
 
 // Include functions first
-@import "bootstrap/scss/functions";
+@import 'bootstrap/scss/functions';
 
 // Customize some defaults
 $body-color: #333;
 $body-bg: #fff;
-$border-radius: .4rem;
+$border-radius: 0.4rem;
 $success: #7952b3;
 
 // Required
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/variables-dark";
-@import "bootstrap/scss/maps";
-@import "bootstrap/scss/mixins";
-@import "bootstrap/scss/utilities";
-@import "bootstrap/scss/root";
-@import "bootstrap/scss/reboot";
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/utilities';
+@import 'bootstrap/scss/root';
+@import 'bootstrap/scss/reboot';
 
-@import "bootstrap/scss/type";
+@import 'bootstrap/scss/type';
 // @import "bootstrap/scss/images";
-@import "bootstrap/scss/containers";
-@import "bootstrap/scss/grid";
+@import 'bootstrap/scss/containers';
+@import 'bootstrap/scss/grid';
 // @import "bootstrap/scss/tables";
 // @import "bootstrap/scss/forms";
-@import "bootstrap/scss/buttons";
-@import "bootstrap/scss/transitions";
-@import "bootstrap/scss/dropdown";
+@import 'bootstrap/scss/buttons';
+@import 'bootstrap/scss/transitions';
+@import 'bootstrap/scss/dropdown';
 // @import "bootstrap/scss/button-group";
 // @import "bootstrap/scss/nav";
 // @import "bootstrap/scss/navbar"; // Requires nav
@@ -50,35 +49,37 @@ $success: #7952b3;
 // @import "bootstrap/scss/alert";
 // @import "bootstrap/scss/progress";
 // @import "bootstrap/scss/list-group";
-@import "bootstrap/scss/close";
+@import 'bootstrap/scss/close';
 // @import "bootstrap/scss/toasts";
-@import "bootstrap/scss/modal"; // Requires transitions
+@import 'bootstrap/scss/modal'; // Requires transitions
 // @import "bootstrap/scss/tooltip";
-@import "bootstrap/scss/popover";
+@import 'bootstrap/scss/popover';
 // @import "bootstrap/scss/carousel";
 // @import "bootstrap/scss/spinners";
-@import "bootstrap/scss/offcanvas"; // Requires transitions
+@import 'bootstrap/scss/offcanvas'; // Requires transitions
 // @import "bootstrap/scss/placeholders";
 
 // Helpers
 // @import "bootstrap/scss/helpers";
 
 // Utilities
-@import "bootstrap/scss/utilities/api";
+@import 'bootstrap/scss/utilities/api';
 
 //
 // Import Bootstrap Icons w/ custom path to fonts folder
 //
-@import "~bootstrap-icons/font/bootstrap-icons.css"; // Import the main CSS file
+@import '~bootstrap-icons/font/bootstrap-icons.css'; // Import the main CSS file
 @font-face {
   font-family: 'bootstrap-icons';
-  src: url('~bootstrap-icons/font/fonts/bootstrap-icons.woff2?24e3eb84d0bcaf83d77f904c78ac1f47') format('woff2');
+  src: url('~bootstrap-icons/font/fonts/bootstrap-icons.woff2?24e3eb84d0bcaf83d77f904c78ac1f47')
+    format('woff2');
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: 'bootstrap-icons';
-  src: url('~bootstrap-icons/font/fonts/bootstrap-icons.woff?24e3eb84d0bcaf83d77f904c78ac1f47') format('woff');
+  src: url('~bootstrap-icons/font/fonts/bootstrap-icons.woff?24e3eb84d0bcaf83d77f904c78ac1f47')
+    format('woff');
   font-weight: normal;
   font-style: normal;
 }
@@ -86,7 +87,7 @@ $success: #7952b3;
 // Custom styles
 //
 
-@import "icon-list";
+@import 'icon-list';
 
 body {
   padding: 1.5rem;
@@ -97,7 +98,7 @@ $blue: rgba(0, 0, 255, 0.2);
 $orange: rgba(255, 165, 0, 0.2);
 $purple: rgba(128, 0, 128, 0.2);
 $brown: rgba(56, 56, 6, 0.2);
-$yellow: #ffff00; 
+$yellow: #ffff00;
 
 .bg-red {
   background-color: $red;
@@ -106,7 +107,7 @@ $yellow: #ffff00;
 .bg-green {
   background-color: $green;
 }
-.bg-yellow{
+.bg-yellow {
   background-color: $yellow;
 }
 
@@ -147,82 +148,94 @@ $yellow: #ffff00;
 }
 
 .brown {
-  color: rgb(56 56 6)
+  color: rgb(56 56 6);
 }
 
-
-.product{
+.product {
   min-height: 6rem;
   font-size: 12px;
   background-color: #ccc;
   max-width: 250px;
 }
 .sector {
-    background-position: 100% 100% ;
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
+  background-position: 100% 100%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
-.trader-block{
+.trader-block {
   background: rgb(255 255 255 / 40%);
-
 }
 .fruits {
   background-color: rgba(255, 204, 153, 1);
   background-image: url(../../build/img/fruit.webp);
-
 }
 
 .vegetables {
   background-color: rgba(153, 204, 153, 1);
-   background-image: url(../../build/img/vegetables.webp);
+  background-image: url(../../build/img/vegetables.webp);
 }
 
-.milk, .dairy {
+.milk,
+.dairy {
   background-color: rgba(255, 255, 240, 1); /* Ivory */
-   background-image: url(../../build/img/dairy.webp);
+  background-image: url(../../build/img/dairy.webp);
 }
 
 .fish {
   background-color: rgba(153, 204, 255, 1);
-   background-image: url(../../build/img/fish.webp);
+  background-image: url(../../build/img/fish.webp);
 }
 
 .meat {
   background-color: rgba(255, 204, 204, 1);
-   background-image: url(../../build/img/meat.webp);
+  background-image: url(../../build/img/meat.webp);
 }
 
-.stuff, .household {
+.stuff,
+.household {
   background-color: rgba(188, 143, 143, 1); /* Rosy Brown */
-   background-image: url(../../build/img/household.webp);
+  background-image: url(../../build/img/household.webp);
 }
 
-
-.card-img-top{
-      margin: auto;
-    max-width: 70px;
+.card-img-top {
+  margin: auto;
+  max-width: 70px;
 }
-.positive-row{
-   background: rgba(153, 204, 153, 1);
+.positive-row {
+  background: rgba(153, 204, 153, 1);
 }
-.negative-row{
+.negative-row {
   background: rgba(255, 204, 153, 1);
 }
 
-
-.user-info{
+.user-info {
   padding: 10px;
   border: 1px solid #ccc;
 }
 
-.wholesale-window{
-        width: 100%;
-    max-width: 100%;
+.wholesale-window {
+  width: 100%;
+  max-width: 100%;
 }
-.traderimg{
+.traderimg {
   width: 40%;
 }
-.sector{
-      min-height: 300px;
+.sector {
+  min-height: 300px;
+}
+
+.custom-card {
+  background-color: #f8f9fa; /* легкий светлый фон */
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.custom-card:hover {
+  background-color: #ffffff;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  border-color: #0d6efd; /* Bootstrap primary */
 }

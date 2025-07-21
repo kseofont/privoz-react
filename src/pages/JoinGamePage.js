@@ -42,8 +42,13 @@ const JoinGamePage = () => {
         }
         if (data.type === 'startGame') {
           // В этот момент клиент получает финальный gameState и свой myUserId
+
           window.currentPrivozConnection = connection;
-          navigate(`/game/${data.myUserId}`, {
+          window.gameState = data.gameState;
+          window.myUserId = data.myUserId; // получено от хоста
+          window.peerId = hostPeerId; // ты к нему коннектился
+
+          navigate(`/traders/${data.myUserId}`, {
             state: {
               gameState: data.gameState,
               myUserId: data.myUserId,

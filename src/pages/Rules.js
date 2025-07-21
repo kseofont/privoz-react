@@ -1,5 +1,12 @@
-import React from 'react';
-import Menu from '../components/Menu'; // Import the Menu component
+// import React from 'react';
+// import Menu from '../components/Menu'; // Import the Menu component
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
+import PrivozSector from '../components/PrivozSector';
+import Menu from '../components/Menu';
+import { connectionsRef } from '../globals';
+import { handleHostEndTurn } from '../logic/logic';
 
 const Rules = () => {
   return (

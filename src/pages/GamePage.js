@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import PrivozSector from '../components/PrivozSector';
 import Menu from '../components/Menu';
 import { connectionsRef } from '../globals';
@@ -10,18 +10,24 @@ import { handleHostEndTurn } from '../logic/logic';
 
 const GamePage = () => {
   const location = useLocation();
-  const {
-    gameState: initialGameState,
-    connection: initialConnection,
-    myUserId: initialMyUserId,
-  } = location.state || {};
+  const params = useParams();
 
-  // --- State
-  const [gameState, setGameState] = useState(initialGameState || null);
-  const [connection, setConnection] = useState(
-    () => window.currentPrivozConnection || initialConnection || null
-  );
-  const [myUserId, setMyUserId] = useState(initialMyUserId || null);
+  // --- Универсальная инициализация ---
+  const initialGameState = location.state?.gameState || window.gameState || null;
+
+  const initialMyUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
+
+  const initialConnection = location.state?.connection || window.currentPrivozConnection || null;
+
+  const [gameState, setGameState] = useState(initialGameState);
+  const [connection, setConnection] = useState(initialConnection);
+  const [myUserId, setMyUserId] = useState(initialMyUserId);
+
+  useEffect(() => {
+    if (gameState) window.gameState = gameState;
+    if (myUserId) window.myUserId = myUserId;
+    if (connection) window.currentPrivozConnection = connection;
+  }, [gameState, myUserId, connection]);
 
   // --- isHost логика (нет connection)
   const isHost = !connection;

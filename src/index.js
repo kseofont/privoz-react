@@ -24,11 +24,16 @@ root.render(
       <Route path="/" element={<StartPage />} />
       <Route path="/privoz" element={<PrivozPage />} />
       <Route path="/wholesale" element={<Wholesale />} />
+      <Route path="/wholesale/:peerId" element={<Wholesale />} />
+
       <Route path="/traders" element={<TraderList />} />
+      <Route path="/traders/:peerId" element={<TraderList />} />
 
       <Route path="/eventcards" element={<EventCards />} />
+      <Route path="/eventcards/:peerId" element={<EventCards />} />
       <Route path="/app" element={<App />} />
       <Route path="/rules" element={<Rules />} />
+      <Route path="/rules/:peerId" element={<Rules />} />
       <Route path="/create" element={<CreateServerPage />} />
       <Route path="/JoinGamePage" element={<JoinGamePage />} />
       <Route path="/game/:peerId" element={<GamePage />} />

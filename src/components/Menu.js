@@ -1,70 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { endTurn } from '../logic/logic';
 import { connectionsRef } from '../globals';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 
 const Menu = ({
-  // currentUserData = null,
-
-  myUserId,
-  gameState = null,
+  myUserId: propMyUserId,
+  gameState: propGameState = null,
   connection = null,
   setGameState,
   broadcastGameState,
 }) => {
-  let user_color;
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const { peerId: urlPeerId } = useParams();
+  const pathname = location.pathname;
+
+  // --- Вычисляем myUserId и gameState (fallback из window, если нет в props)
+  const myUserId =
+    propMyUserId ||
+    urlPeerId ||
+    (typeof window !== 'undefined' && window.myUserId) ||
+    (propGameState?.players?.[0]?.user_id ?? null);
+
+  const gameState = propGameState || (typeof window !== 'undefined' && window.gameState) || null;
+
+  // Текущий игрок и другие игроки
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
   const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
 
-  const userBackgroundColorClass = currentUserData ? `bg-${currentUserData.color}` : '';
-  //let myUserId = currentUserData?.user_id || null;
-  const location = useLocation();
-  const isGamePage = location.pathname.startsWith('/game');
+  const user_color = currentUserData?.color || 'red';
+  const userBackgroundColorClass = currentUserData ? `bg-${user_color}` : '';
 
-  if (currentUserData && currentUserData.color) {
-    user_color = currentUserData.color;
-  } else {
-    user_color = 'red';
-  }
-  // Определяем, твой ли ход
+  // Для каких страниц показываем кнопку "Конец хода"
+  const specialPages = ['/game', '/traders', '/wholesale', '/eventcards'];
+  const isSpecialPage = specialPages.some(page => pathname.startsWith(page));
+
   const myTurn = gameState?.currentTurnUserId === myUserId;
   const isHost = !connection; // у хоста нет connection
 
-  console.log('myTurn', myTurn);
-  console.log('gameState', gameState);
-
   const handleEndTurn = () => {
-    console.log('END TURN CLICK', {
-      connection,
-      myTurn,
-      myUserId,
-      setGameState,
-      broadcastGameState,
-      gameState,
-      connectionsRef,
-    });
+    console.log('connection in menu', connection);
     endTurn({
       connection,
       myTurn,
       myUserId,
+      gameState,
       setGameState,
       broadcastGameState,
-      gameState,
       connectionsRef,
     });
   };
-  // Extract unique sectors from traders
+
+  useEffect(() => {
+    if (isHost) {
+      console.log('[TraderList][HOST] connectionsRef.current:', connectionsRef.current);
+    }
+  }, [isHost, gameState]);
+
+  // Уникальные сектора, в которых есть твои трейдеры
   const uniqueSectors = [
     ...new Set(currentUserData?.traders?.map(trader => trader.location) || []),
   ];
-  // console.log('myUserId:', myUserId);
-  // console.log('otherUsers:', otherUsers);
-  // console.log('currentTurnUserId:', gameState?.currentTurnUserId);
-  // console.log('myTurn:', myTurn);
-  // console.log('gameState:', gameState);
-
-  const { t, i18n } = useTranslation();
 
   return (
     <div className="col">
@@ -77,19 +74,20 @@ const Menu = ({
 
       <h3>Menu</h3>
 
-      {/* Navigation links */}
+      {/* Навигация */}
       <nav className="d-flex justify-content-between flex-column mb-3">
         <Link to="/">{t('menu_start_page')}</Link>
-        <Link to="/privoz">{t('menu_privoz')}</Link>
+        <Link to={`/game/${myUserId}`}>{t('menu_privoz')}</Link>
         <Link to="/wholesale">{t('menu_wholesale')}</Link>
         <Link to="/eventcards">{t('menu_eventcards')}</Link>
         <Link to="/rules">{t('menu_rules')}</Link>
         <Link to="/create">{t('menu_create')}</Link>
         <Link to="/JoinGamePage">{t('menu_join')}</Link>
-        <Link to="/traders">{t('menu_traders')}</Link>
+        <Link to={`/traders/${myUserId}`}>{t('menu_traders')}</Link>
       </nav>
-      {/* {End turn button} */}
-      {isGamePage && myTurn ? (
+
+      {/* Кнопка конец хода/инфо о ходе */}
+      {isSpecialPage && myTurn ? (
         <button className="btn btn-warning mt-3" onClick={handleEndTurn}>
           Закончить ход{isHost ? ' (Хост)' : ''}
         </button>
@@ -104,7 +102,7 @@ const Menu = ({
         )
       )}
 
-      {/* Display information for the current user */}
+      {/* Информация о текущем игроке */}
       {currentUserData && (
         <div className={`user-info ${userBackgroundColorClass}`}>
           <p>Id: {currentUserData.user_id}</p>
@@ -125,7 +123,6 @@ const Menu = ({
                         {trader.goods.map((product, productIndex) => (
                           <li key={productIndex}>
                             <p>Product: {product.productName}</p>
-                            {/* Include other product details as needed */}
                           </li>
                         ))}
                       </ul>
@@ -146,10 +143,7 @@ const Menu = ({
             Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}
           </p>
           <p>Event Cards:</p>
-
-          {currentUserData &&
-          currentUserData.eventCards &&
-          currentUserData.eventCards.length > 0 ? (
+          {currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
             <ul className="list-unstyled">
               {currentUserData.eventCards.map((card, index) => (
                 <li
@@ -188,13 +182,10 @@ const Menu = ({
           ) : (
             <p>No Event Cards.</p>
           )}
-
-          {/* Additional details from currentUserData */}
-          {/* Include any additional details you want to display */}
-
-          {/* Display information about other users, their traders, and products */}
         </div>
       )}
+
+      {/* Информация о других игроках */}
       <div className="other-users">
         {otherUsers.length > 0 && (
           <div className="user-info">

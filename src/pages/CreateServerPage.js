@@ -7,6 +7,10 @@ import Menu from '../components/Menu';
 import { connectionsRef } from '../globals';
 import { endTurn } from '../logic/logic'; // путь исправь если надо
 
+import traderList from '../data/TradersList.json';
+import products from '../data/products.json';
+import eventcards from '../data/eventcards.json';
+
 const CreateServerPage = () => {
   const [userName, setUserName] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -87,14 +91,23 @@ const CreateServerPage = () => {
             players: [hostPlayer],
             currentTurnUserId: id,
             round: 1,
+            traderList: traderList,
+            products: products,
+            eventcards: eventcards,
           };
           setGameState(initialGameState);
-          // setInitialGameState(initialGameState);
-          // broadcastGameState(initialGameState);
+          window.gameState = initialGameState;
+          window.myUserId = id;
+          window.peerId = id;
+          window.currentPrivozConnection = null; // у хоста нет connection
         });
 
         newPeer.on('connection', conn => {
           addLog('New player connected: ' + conn.peer);
+
+          // Вот тут!
+          connectionsRef.current.push(conn); // ← добавить новое соединение в глобальный массив
+          setConnections([...connectionsRef.current]); // ← обновить локальный стейт (для реактивности)
 
           // Проверка на gameState и лимит игроков
           if (gameState && gameState.players && gameState.players.length >= numberOfPlayers) {
@@ -159,41 +172,6 @@ const CreateServerPage = () => {
                 };
               });
             }
-
-            if (data.type === 'addTrader') {
-              setGameState(prev => {
-                const playerIdx = prev.players.findIndex(p => p.user_id === data.payload.userId);
-                if (playerIdx === -1) return prev;
-                const player = prev.players[playerIdx];
-
-                // Пример добавления нового трейдера
-                const newTrader = {
-                  traderOwnerId: player.user_id,
-                  traderName: `Trader${(player.traders?.length || 0) + 1}`,
-                  location: data.payload.sector,
-                  goods: [],
-                };
-                const updatedCoins = player.coins; // посчитай нужную логику
-                const updatedPlayer = {
-                  ...player,
-                  traders: [...(player.traders || []), newTrader],
-                  tradersCount: (player.tradersCount || 0) + 1,
-                  coins: updatedCoins,
-                  // eventCards: ... если надо
-                };
-
-                const updatedPlayers = [...prev.players];
-                updatedPlayers[playerIdx] = updatedPlayer;
-
-                const updatedGameState = { ...prev, players: updatedPlayers };
-
-                connectionsRef.current.forEach(conn => {
-                  conn.send({ type: 'gameState', gameState: updatedGameState });
-                });
-
-                return updatedGameState;
-              });
-            }
           });
 
           conn.on('close', () => {
@@ -225,22 +203,25 @@ const CreateServerPage = () => {
     setGameStarted(true);
     addLog('Game started with players: ' + (gameState?.players?.map(p => p.name).join(', ') || ''));
 
-    // broadcastGameState(gameState);
+    window.gameState = gameState;
+    window.myUserId = peerId;
+    window.peerId = peerId;
+    window.currentPrivozConnection = null;
+
     connectionsRef.current.forEach(conn => {
       conn.send({
         type: 'startGame',
         gameState,
         myUserId: conn.peer,
+        redirect: '/traders',
       });
     });
 
-    // Для backward-совместимости:
-    // const hostId = peerId;
     const currentUserData = gameState?.players?.find(p => p.user_id === hostId) || null;
     const otherUsers = gameState?.players?.filter(p => p.user_id !== hostId) || [];
-    // console.log('Передаю в navigate:', gameState);
-    // console.log('Передаю в navigate initialGameState:', initialGameState);
-    navigate(`/game/${peerId}`, {
+    window.connectionsRefPrivozConnection = connectionsRef;
+
+    navigate(`/traders/${peerId}`, {
       state: {
         gameState,
         myUserId: peerId,

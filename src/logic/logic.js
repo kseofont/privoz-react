@@ -234,65 +234,13 @@ export const handleAddTraderLogic = (
   }
 };
 
-// endTurn
-// logic.js
-// export function endTurn({
-//   connection,
-//   myTurn,
-//   myUserId,
-//   setGameState,
-//   broadcastGameState,
-//   connectionsRef, // <= только хосту
-// }) {
-//   if (connection && myTurn) {
-//     console.log('[CLIENT] Отправляю endTurn хосту');
-//     connection.send({ type: 'endTurn', playerId: myUserId });
-//   } else if (
-//     !connection &&
-//     myTurn &&
-//     typeof setGameState === 'function' &&
-//     typeof broadcastGameState === 'function'
-//   ) {
-//     setGameState(prev => {
-//       if (!prev || !prev.players) return prev;
-//       const currentIndex = prev.players.findIndex(p => p.user_id === prev.currentTurnUserId);
-//       const nextIndex = (currentIndex + 1) % prev.players.length;
-//       const nextUserId = prev.players[nextIndex].user_id;
-//       const updatedGameState = {
-//         ...prev, // ← prev, не gameState!
-//         currentTurnUserId: nextUserId,
-//       };
-//       // *** ВАЖНО! ***
-//       console.log('[HOST] Новый updatedGameState для рассылки:', updatedGameState);
-//       if (connectionsRef && Array.isArray(connectionsRef.current)) {
-//         connectionsRef.current.forEach(conn => {
-//           try {
-//             console.log('[HOST] Пытаюсь отправить клиенту:', conn.peer);
-//             conn.send({ type: 'gameState', gameState: updatedGameState });
-//           } catch (e) {
-//             console.warn('[HOST] Failed to send gameState to', conn.peer, e);
-//           }
-//         });
-//       } else {
-//         console.warn('[HOST] Нет connectionsRef или это не массив', connectionsRef);
-//       }
-//       setTimeout(() => {
-//         if (typeof broadcastGameState === 'function') {
-//           broadcastGameState(updatedGameState);
-//         }
-//         if (connectionsRef && Array.isArray(connectionsRef.current)) {
-//           connectionsRef.current.forEach(conn => {
-//             conn.send({ type: 'gameState', gameState: updatedGameState });
-//           });
-//         }
-//       }, 0);
-
-//       return updatedGameState;
-//     });
-//   }
-// }
 // logic.js
 export function endTurn({ connection, myTurn, myUserId, gameState, setGameState, connectionsRef }) {
+  console.log(' endTurn + gameState ', gameState);
+  console.log(' connection ', connection);
+  console.log(' connectionsRef ', connectionsRef);
+  console.log(' myTurn ', myTurn);
+  console.log(' setGameState ', setGameState);
   if (connection && myTurn) {
     // Только на клиенте
     console.log('[CLIENT] Отправляю endTurn + gameState хосту');
@@ -338,6 +286,7 @@ export function endTurn({ connection, myTurn, myUserId, gameState, setGameState,
 export function handleHostEndTurn({ connectionsRef, setGameState }) {
   // Верни функцию, которую будешь использовать как обработчик данных
   return function onHostData(data, conn) {
+    console.log('[HOST] Получил g');
     if (data.type === 'endTurn') {
       console.log(`[HOST] Получил endTurn от ${conn.peer}`, data);
 
