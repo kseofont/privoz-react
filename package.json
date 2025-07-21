@@ -2,7 +2,6 @@
   "name": "privoz-react-app",
   "version": "0.1.0",
   "private": true,
-  "proxy": "https://privoz-api.lavron.dev",
   "dependencies": {
     "@babel/core": "^7.23.7",
     "@babel/preset-env": "^7.23.8",

@@ -5,9 +5,14 @@ import { useLocation, useParams } from 'react-router-dom';
 import { connectionsRef } from '../globals';
 
 import { Modal, Button } from 'react-bootstrap';
+import localTradersData from '../data/TradersList.json';
 
 import Menu from '../components/Menu';
-import { handleHostEndTurn, endTurn } from '../logic/logic';
+import {
+  handleHostEndTurn,
+  endTurn,
+  handleSelectTrader as logicHandleSelectTrader,
+} from '../logic/logic';
 
 const TraderList = () => {
   const [all_traders, setAllTraders] = useState([]);
@@ -28,6 +33,26 @@ const TraderList = () => {
   const [connection, setConnection] = useState(initialConnection);
   const [myUserId, setMyUserId] = useState(initialMyUserId);
 
+  const defaultTraders = Array.isArray(localTradersData)
+    ? localTradersData
+    : Array.isArray(localTradersData.traders)
+    ? localTradersData.traders
+    : [];
+
+  const isAuthorized =
+    !!myUserId &&
+    !!gameState &&
+    Array.isArray(gameState.players) &&
+    gameState.players.some(p => p.user_id === myUserId);
+
+  const safeTraders = isAuthorized
+    ? Array.isArray(gameState?.traderList)
+      ? gameState.traderList
+      : []
+    : all_traders.length
+    ? all_traders
+    : defaultTraders;
+
   useEffect(() => {
     if (gameState) window.gameState = gameState;
     if (myUserId) window.myUserId = myUserId;
@@ -45,21 +70,17 @@ const TraderList = () => {
   const [selectedTrader, setSelectedTrader] = useState(null);
   const [showModal, setShowModal] = useState(false);
   useEffect(() => {
-    if (gameState && gameState.traderList) {
-      setAllTraders(gameState.traderList);
-    } else {
-      // fallback — если traderList не передан
+    if (!isAuthorized) {
+      // fallback — если не авторизован
       fetch('/data/TradersList.json')
         .then(response => {
-          if (!response.ok) {
-            throw new Error('Ошибка при загрузке TradersList.json');
-          }
+          if (!response.ok) throw new Error('Ошибка при загрузке TradersList.json');
           return response.json();
         })
         .then(data => setAllTraders(data))
         .catch(error => console.error('Ошибка при fetch TradersList.json:', error));
     }
-  }, [gameState]);
+  }, [isAuthorized]);
 
   // Вынесем функцию безопасного доступа к переводимым полям
   const getField = (obj, field) => {
@@ -69,13 +90,13 @@ const TraderList = () => {
     return value[lang] || value.en || Object.values(value)[0] || '';
   };
   useEffect(() => {
-    console.log('[CLIENT] GameState обновился:', gameState);
-    console.log('[CLIENT] Мой userId:', myUserId);
+    // console.log('[CLIENT] GameState обновился:', gameState);
+    //  console.log('[CLIENT] Мой userId:', myUserId);
     if (gameState) {
       const curr = gameState.players.find(p => p.user_id === myUserId);
-      console.log('[CLIENT] Текущий игрок:', curr);
-      console.log('[CLIENT] Все игроки:', gameState.players);
-      console.log('[CLIENT] Сейчас ходит:', gameState.currentTurnUserId);
+      //   console.log('[CLIENT] Текущий игрок:', curr);
+      //   console.log('[CLIENT] Все игроки:', gameState.players);
+      //  console.log('[CLIENT] Сейчас ходит:', gameState.currentTurnUserId);
     }
   }, [gameState, myUserId]);
   // --- isHost логика (нет connection)
@@ -120,37 +141,14 @@ const TraderList = () => {
     if (!gameState || !myUserId) return;
 
     setGameState(prev => {
-      if (!prev) return prev;
-      const players = prev.players.map(player => {
-        if (player.user_id !== myUserId) return player;
-        // Уже есть этот трейдер — выходим
-        if (player.traders?.some(t => t.traderId === trader.traderId)) return player;
-
-        // Если не хватает монет, не даём купить
-        const tradersLen = player.traders?.length || 0;
-        const currPrice = tradersLen * 15;
-        if ((player.coins || 0) < currPrice) return player;
-
-        const traderToAdd = {
-          ...trader,
-          card_in_game: `${myUserId}_hand`,
-          taken: true,
-        };
-        return {
-          ...player,
-          traders: [...(player.traders || []), traderToAdd],
-          tradersCount: (player.tradersCount || 0) + 1,
-          coins: player.coins - currPrice,
-        };
+      const nextState = logicHandleSelectTrader({
+        gameState: prev,
+        myUserId,
+        trader,
       });
 
-      const traderList = prev.traderList
-        ? prev.traderList.map(t => (t.traderId === trader.traderId ? { ...t, taken: true } : t))
-        : prev.traderList;
-
       setShowModal(false);
-
-      return { ...prev, players, traderList };
+      return nextState;
     });
   }
 
@@ -171,7 +169,11 @@ const TraderList = () => {
     };
   }, [connection]);
 
-  const player = gameState.players.find(p => p.user_id === myUserId) || {};
+  const player =
+    gameState && Array.isArray(gameState.players)
+      ? gameState.players.find(p => p.user_id === myUserId) || {}
+      : {};
+
   const price = (player.traders?.length || 0) * 15;
   const enoughCoins = (player.coins || 0) >= price;
 
@@ -185,9 +187,15 @@ const TraderList = () => {
     <div className="container mt-4">
       <div className="row">
         <div className="col-9">
+          {!isAuthorized && (
+            <div className="alert alert-warning mb-3">
+              Вы не подключены к игре. Ниже — список всех доступных продавцов, но их нельзя выбрать.
+              Для участия войдите в игру.
+            </div>
+          )}
           <h2>All available traders</h2>
           <div className="row">
-            {all_traders.map(trader => {
+            {safeTraders.map(trader => {
               const isTaken = !!trader.taken;
               return (
                 <div
@@ -309,21 +317,25 @@ const TraderList = () => {
           <Modal.Title>{selectedTrader ? getField(selectedTrader, 'name') : ''}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {enoughCoins ? (
-            <>
-              <div>Вы уверены, что хотите выбрать этого торговца?</div>
-              <div>
-                Цена: <b>{price} монет</b> <br />
-                Ваши монеты: {player.coins || 0}
+          {isAuthorized ? (
+            enoughCoins ? (
+              <>
+                <div>Вы уверены, что хотите выбрать этого торговца?</div>
+                <div>
+                  Цена: <b>{price} монет</b> <br />
+                  Ваши монеты: {player.coins || 0}
+                </div>
+                <div>
+                  <b>Биография:</b> {selectedTrader ? getField(selectedTrader, 'bio') : ''}
+                </div>
+              </>
+            ) : (
+              <div className="text-danger">
+                Недостаточно монет для покупки! Не хватает {price - (player.coins || 0)} монет.
               </div>
-              <div>
-                <b>Биография:</b> {selectedTrader ? getField(selectedTrader, 'bio') : ''}
-              </div>
-            </>
+            )
           ) : (
-            <div className="text-danger">
-              Недостаточно монет для покупки! Не хватает {price - (player.coins || 0)} монет.
-            </div>
+            <div className="text-warning">Для выбора продавца нужно быть подключённым к игре!</div>
           )}
         </Modal.Body>
         <Modal.Footer>
@@ -332,10 +344,10 @@ const TraderList = () => {
           </Button>
           <Button
             variant="primary"
-            disabled={!enoughCoins}
+            disabled={!enoughCoins || !isAuthorized}
             onClick={() => selectedTrader && handleSelectTrader(selectedTrader, price)}
           >
-            {enoughCoins ? 'Выбрать торговца' : 'Не хватает монет'}
+            {isAuthorized ? (enoughCoins ? 'Выбрать торговца' : 'Не хватает монет') : 'Недоступно'}
           </Button>
         </Modal.Footer>
       </Modal>

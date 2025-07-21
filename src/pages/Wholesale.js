@@ -4,37 +4,37 @@ import { useLocation, useParams } from 'react-router-dom';
 import Product from '../components/Product';
 import Menu from '../components/Menu';
 import localProductsData from '../data/products.json';
+import { Modal, Button } from 'react-bootstrap';
 
 const Wholesale = () => {
   const { i18n } = useTranslation();
   const lang = i18n.language || 'en';
   const location = useLocation();
+  const params = useParams();
 
   const initialGameState = location.state?.gameState || window.gameState || null;
   const [gameState, setGameState] = useState(initialGameState);
+  const myUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
 
+  const isAuthorized = !!myUserId && !!gameState && Array.isArray(gameState.players);
+
+  // --- список продуктов
   const defaultProducts = Array.isArray(localProductsData.products)
     ? localProductsData.products
     : Array.isArray(localProductsData)
     ? localProductsData
     : [];
 
-  const [allProducts, setAllProducts] = useState(defaultProducts);
+  // Если авторизован — берем из gameState, иначе дефолт
+  const safeProducts = isAuthorized
+    ? Array.isArray(gameState?.products)
+      ? gameState.products
+      : Array.isArray(gameState?.products?.products)
+      ? gameState.products.products
+      : []
+    : defaultProducts;
 
-  useEffect(() => {
-    // Если gameState.products — массив, то ставим его, иначе — дефолт
-    if (gameState && Array.isArray(gameState.products)) {
-      setAllProducts(gameState.products);
-    } else if (gameState && gameState.products && Array.isArray(gameState.products.products)) {
-      setAllProducts(gameState.products.products);
-    } else {
-      setAllProducts(defaultProducts);
-    }
-  }, [gameState]);
-
-  // Если вдруг попал не массив — делаем защиту
-  const safeProducts = Array.isArray(allProducts) ? allProducts : [];
-
+  // Группировка по секторам
   const groupedBySector = safeProducts.reduce((acc, product) => {
     const sector = product.sector || product.product_sector || 'unknown';
     if (!acc[sector]) acc[sector] = [];
@@ -42,11 +42,32 @@ const Wholesale = () => {
     return acc;
   }, {});
 
+  // --- модалка выбора товара ---
+  const [showModal, setShowModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  function handleSelectProduct(product) {
+    if (!isAuthorized) return; // Защита на всякий случай
+    setSelectedProduct(product);
+    setShowModal(true);
+  }
+
+  function handleConfirmProduct() {
+    // тут — твоя логика добавления товара игроку
+    // setGameState(...);
+    setShowModal(false);
+  }
+
   return (
     <div className="container mt-4 mb-4">
       <h2>Wholesale Marketplace</h2>
       <div className="row">
         <div className="col-9">
+          {!isAuthorized && (
+            <div className="alert alert-warning mb-3">
+              Вы не подключены к игре. Ниже — полный список товаров. Для участия войдите в игру.
+            </div>
+          )}
           <div className="row">
             <h2>All cards in the game</h2>
           </div>
@@ -54,7 +75,18 @@ const Wholesale = () => {
             <div key={sector} className={`row ${sector}`}>
               <h3>{sector.charAt(0).toUpperCase() + sector.slice(1)}</h3>
               {groupedBySector[sector].map((product, index) => (
-                <div key={index} className="col" style={{ minWidth: 240 }}>
+                <div
+                  key={index}
+                  className="col"
+                  style={{
+                    minWidth: 240,
+                    cursor: isAuthorized ? 'pointer' : 'not-allowed',
+                    opacity: isAuthorized ? 1 : 0.5,
+                  }}
+                  onClick={() => {
+                    if (isAuthorized) handleSelectProduct(product);
+                  }}
+                >
                   <div className={`sector border p-3 mb-3 ${sector}`}>
                     <Product
                       sector={sector}
@@ -73,12 +105,31 @@ const Wholesale = () => {
               ))}
             </div>
           ))}
-          <div className="row">
-            <h2>Here is a real Wholesale Marketplace</h2>
-          </div>
+
+          {/* Модалка подтверждения */}
+          <Modal show={showModal} onHide={() => setShowModal(false)}>
+            <Modal.Header closeButton>
+              <Modal.Title>
+                {selectedProduct
+                  ? typeof selectedProduct.productName === 'object'
+                    ? selectedProduct.productName[lang] || selectedProduct.productName.en
+                    : selectedProduct.productName
+                  : ''}
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>Вы действительно хотите выбрать этот товар?</Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Отмена
+              </Button>
+              <Button variant="primary" onClick={handleConfirmProduct}>
+                Подтвердить выбор
+              </Button>
+            </Modal.Footer>
+          </Modal>
         </div>
         <div className="col-3">
-          <Menu />
+          <Menu gameState={gameState} myUserId={myUserId} />
         </div>
       </div>
     </div>
