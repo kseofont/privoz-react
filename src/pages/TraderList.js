@@ -229,10 +229,7 @@ const TraderList = () => {
                       <p className="card-text">
                         <strong>Bio:</strong> {getField(trader, 'bio')}
                       </p>
-                      <h5 className="card-title">{getField(trader, 'name')}</h5>
-                      <p className="card-text">
-                        <strong>Bio:</strong> {getField(trader, 'bio')}
-                      </p>
+
                       <p className="card-text">
                         <strong>Special:</strong> {getField(trader, 'special')}
                       </p>

@@ -5,6 +5,11 @@ import Product from '../components/Product';
 import Menu from '../components/Menu';
 import localProductsData from '../data/products.json';
 import { Modal, Button } from 'react-bootstrap';
+import {
+  handleHostEndTurn,
+  endTurn,
+  handleSelectTrader as logicHandleSelectTrader,
+} from '../logic/logic';
 
 const Wholesale = () => {
   const { i18n } = useTranslation();
@@ -13,10 +18,86 @@ const Wholesale = () => {
   const params = useParams();
 
   const initialGameState = location.state?.gameState || window.gameState || null;
+
+  const initialMyUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
+
+  const initialConnection = location.state?.connection || window.currentPrivozConnection || null;
+  const initialConnections =
+    location.state?.connections || window.connectionsRefPrivozConnection?.current || [];
+
   const [gameState, setGameState] = useState(initialGameState);
-  const myUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
+  const [connection, setConnection] = useState(initialConnection);
+  const [myUserId, setMyUserId] = useState(initialMyUserId);
 
   const isAuthorized = !!myUserId && !!gameState && Array.isArray(gameState.players);
+  const connectionsRef =
+    window.connectionsRefPrivozConnection || require('../globals').connectionsRef;
+
+  useEffect(() => {
+    if (gameState) window.gameState = gameState;
+    if (myUserId) window.myUserId = myUserId;
+    if (connection) window.currentPrivozConnection = connection;
+    // Здесь перепишем защиту:
+    if (Array.isArray(initialConnections) && initialConnections.length > 0) {
+      connectionsRef.current = initialConnections;
+    } else if (Array.isArray(window.connectionsRefPrivozConnection?.current)) {
+      connectionsRef.current = window.connectionsRefPrivozConnection.current;
+    } else {
+      console.warn('[TraderList] connectionsRef.current не инициализирован!');
+    }
+  }, [gameState, myUserId, connection]);
+
+  const isHost = !connection;
+
+  // --- Хост: объяви broadcastGameState (можно скопировать из CreateServerPage)
+  function broadcastGameState(state = gameState) {
+    // connectionsRef должен содержать все conn для PeerJS!
+    // connectionsRef.current = [conn1, conn2, ...]
+    if (!connectionsRef.current) return;
+    connectionsRef.current.forEach(conn => {
+      try {
+        conn.send({ type: 'gameState', gameState: state });
+      } catch (e) {
+        // Отлов ошибок — чтобы не падало при недоступном клиенте
+        // Можно залогировать
+        console.log('[CLIENT] Получено сообщение gameState:', conn.state);
+      }
+    });
+  }
+  useEffect(() => {
+    console.log('GameState изменился!', gameState);
+  }, [gameState]);
+  // end turn from gamepage
+  useEffect(() => {
+    const isHost = !connection;
+    if (!isHost) return;
+
+    // Навешиваем обработчик на все новые подключения (или на имеющиеся)
+    connectionsRef.current.forEach(conn => {
+      const handler = handleHostEndTurn({ connectionsRef, setGameState });
+      conn.on('data', data => handler(data, conn));
+    });
+    console.log('[TraderList] myUserId, connection, isHost:', { myUserId, connection, isHost });
+    // Чистка при размонтировании, если потребуется
+    // return () => { ... }
+  }, [connection, setGameState]);
+
+  useEffect(() => {
+    if (!connection) return;
+
+    const onData = data => {
+      console.log('[TraderList] Received data:', data);
+      if (data.type === 'gameState' && data.gameState) {
+        setGameState(data.gameState);
+      }
+    };
+
+    connection.on('data', onData);
+
+    return () => {
+      connection.off('data', onData);
+    };
+  }, [connection]);
 
   // --- список продуктов
   const defaultProducts = Array.isArray(localProductsData.products)
@@ -53,9 +134,96 @@ const Wholesale = () => {
   }
 
   function handleConfirmProduct() {
-    // тут — твоя логика добавления товара игроку
-    // setGameState(...);
-    setShowModal(false);
+    if (!selectedProduct || !isAuthorized || !gameState) return;
+
+    setGameState(prev => {
+      if (!prev) return prev;
+
+      // Получаем актуальный продукт из gamestate (по id, а не копии!)
+      let productList = Array.isArray(prev.products)
+        ? prev.products
+        : Array.isArray(prev.products?.products)
+        ? prev.products.products
+        : [];
+
+      const prodIdx = productList.findIndex(p => p.productId === selectedProduct.productId);
+      if (prodIdx === -1) return prev;
+
+      const product = productList[prodIdx];
+
+      // Проверка: есть ли свободные карточки
+      if ((product.quantity_free_card || 0) <= 0) return prev;
+
+      // Находим игрока
+      const playerIdx = prev.players.findIndex(p => p.user_id === myUserId);
+      if (playerIdx === -1) return prev;
+
+      const player = prev.players[playerIdx];
+
+      // Проверка: хватает ли денег
+      if ((player.coins || 0) < (product.wholesalePrice || 0)) return prev;
+
+      // 1. Обновляем продукт (минус 1 свободная карта, не меньше 0)
+      const updatedProduct = {
+        ...product,
+        quantity_free_card: Math.max(0, (product.quantity_free_card || 0) - 1),
+      };
+      const updatedProductList = [...productList];
+      updatedProductList[prodIdx] = updatedProduct;
+
+      // 2. Добавляем товар игроку (products или goods)
+      let playerProducts = Array.isArray(player.products) ? [...player.products] : [];
+
+      const playerProdIdx = playerProducts.findIndex(p => p.productId === product.productId);
+
+      if (playerProdIdx !== -1) {
+        // Уже есть — увеличиваем количество
+        playerProducts[playerProdIdx] = {
+          ...playerProducts[playerProdIdx],
+          quantity_player_card: (playerProducts[playerProdIdx].quantity_player_card || 1) + 1,
+        };
+      } else {
+        // Новая карточка у игрока
+        playerProducts.push({
+          ...product,
+          quantity_player_card: 1,
+        });
+      }
+
+      // 3. Уменьшаем деньги игрока
+      const newCoins = Math.max(0, (player.coins || 0) - (product.wholesalePrice || 0));
+
+      // 4. Собираем нового игрока и стейт
+      const updatedPlayer = {
+        ...player,
+        products: playerProducts,
+        coins: newCoins,
+      };
+
+      const updatedPlayers = [...prev.players];
+      updatedPlayers[playerIdx] = updatedPlayer;
+
+      // 5. Обновляем products в gamestate
+      let newProducts;
+      if (Array.isArray(prev.products)) {
+        newProducts = updatedProductList;
+      } else if (prev.products && Array.isArray(prev.products.products)) {
+        newProducts = {
+          ...prev.products,
+          products: updatedProductList,
+        };
+      } else {
+        newProducts = prev.products;
+      }
+
+      setShowModal(false);
+
+      return {
+        ...prev,
+        players: updatedPlayers,
+        products: newProducts,
+      };
+    });
   }
 
   return (
@@ -87,7 +255,7 @@ const Wholesale = () => {
                     if (isAuthorized) handleSelectProduct(product);
                   }}
                 >
-                  <div className={`sector border p-3 mb-3 ${sector}`}>
+                  <div className={` border p-3 mb-3 `}>
                     <Product
                       sector={sector}
                       productName={
@@ -129,7 +297,14 @@ const Wholesale = () => {
           </Modal>
         </div>
         <div className="col-3">
-          <Menu gameState={gameState} myUserId={myUserId} />
+          <Menu
+            gameState={gameState}
+            myUserId={myUserId}
+            connection={connection}
+            setGameState={isHost ? setGameState : undefined}
+            broadcastGameState={isHost ? broadcastGameState : undefined}
+            connectionsRef
+          />
         </div>
       </div>
     </div>

@@ -65,11 +65,17 @@ const Menu = ({
 
   return (
     <div className="col">
-      <div className="language-block col-12">
-        <button onClick={() => i18n.changeLanguage('ua')}>Українська</button>
-        <button onClick={() => i18n.changeLanguage('ru')}>Русский</button>
-        <button onClick={() => i18n.changeLanguage('es')}>Español</button>
-        <button onClick={() => i18n.changeLanguage('en')}>English</button>
+      <div className="language-block col-12 mb-4">
+        <button onClick={() => i18n.changeLanguage('ua')}>Укр</button>
+        <button onClick={() => i18n.changeLanguage('ru')}>Рус</button>
+        <button onClick={() => i18n.changeLanguage('es')}>Esp</button>
+        <button onClick={() => i18n.changeLanguage('en')}>Eng</button>
+      </div>
+
+      <div className="rules">
+        <Link to="/rules" className="btn btn-primary mb-2">
+          {t('menu_rules')}
+        </Link>
       </div>
 
       <h3>Menu</h3>
@@ -80,10 +86,11 @@ const Menu = ({
         <Link to={`/game/${myUserId}`}>{t('menu_privoz')}</Link>
         <Link to={`/wholesale/${myUserId}`}>{t('menu_wholesale')}</Link>
         <Link to="/eventcards">{t('menu_eventcards')}</Link>
-        <Link to="/rules">{t('menu_rules')}</Link>
+        <Link to={`/traders/${myUserId}`} className="mb-2">
+          {t('menu_traders')}
+        </Link>
         <Link to="/create">{t('menu_create')}</Link>
         <Link to="/JoinGamePage">{t('menu_join')}</Link>
-        <Link to={`/traders/${myUserId}`}>{t('menu_traders')}</Link>
       </nav>
 
       {/* Кнопка конец хода/инфо о ходе */}
@@ -104,40 +111,96 @@ const Menu = ({
 
       {/* Информация о текущем игроке */}
       {currentUserData && (
-        <div className={`user-info ${userBackgroundColorClass}`}>
+        <div className={`user-info mt-5 ${userBackgroundColorClass}`}>
           <p>Id: {currentUserData.user_id}</p>
           <p>Name: {currentUserData.name}</p>
           <p className={user_color}>Color: {currentUserData.color}</p>
           <p>Coins: {currentUserData.coins}</p>
           <p>Traders Count: {currentUserData.tradersCount}</p>
-          {currentUserData.traders && currentUserData.traders.length > 0 && (
-            <div>
-              <p>Products from Your Traders:</p>
+          {/* Торговцы игрока */}
+          {currentUserData.traders && currentUserData.traders.length > 0 ? (
+            <>
+              <p>Ваши торговцы:</p>
               <ul className="list-unstyled">
                 {currentUserData.traders.map((trader, traderIndex) => (
-                  <li key={traderIndex}>
-                    <p>Trader: {trader.traderName}</p>
-                    <p>Trader sector: {trader.location}</p>
-                    {trader.goods && trader.goods.length > 0 && (
-                      <ul className="list-unstyled">
-                        {trader.goods.map((product, productIndex) => (
-                          <li key={productIndex}>
-                            <p>Product: {product.productName}</p>
-                          </li>
-                        ))}
-                      </ul>
+                  <li key={traderIndex} className="mb-2 p-2 border rounded">
+                    <p>
+                      Торговец: {trader.traderName || trader.name?.[i18n.language] || 'Без имени'}
+                    </p>
+                    <p>
+                      Избранный сектор:{' '}
+                      {trader.sector_favorite?.[i18n.language] ||
+                        trader.sector_favorite ||
+                        'неизвестно'}
+                    </p>
+
+                    {trader.products && trader.products.length > 0 && (
+                      <div>
+                        <p>Товары:</p>
+                        <ul className="list-unstyled">
+                          {trader.products.map((product, productIndex) => (
+                            <li key={productIndex} className="mb-1">
+                              <p>
+                                Название:{' '}
+                                {typeof product.productName === 'object'
+                                  ? product.productName[i18n.language] || product.productName.en
+                                  : product.productName}
+                              </p>
+                              {product.description && (
+                                <p>
+                                  Описание:{' '}
+                                  {typeof product.description === 'object'
+                                    ? product.description[i18n.language] || product.description.en
+                                    : product.description}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p>У вас пока нет торговцев</p>
+          )}
+
+          {/* Уникальные сектора */}
+          <p>Sectors with Traders:</p>
+          <ul>
+            {uniqueSectors.map((sector, index) => (
+              <li key={index}>{sector}</li>
+            ))}
+          </ul>
+
+          {/* Товары игрока напрямую */}
+          {currentUserData.products && currentUserData.products.length > 0 && (
+            <div>
+              <p>Ваши товары:</p>
+              <ul className="list-unstyled">
+                {currentUserData.products.map((product, productIndex) => (
+                  <li key={productIndex} className="mb-1">
+                    <p>
+                      Название:{' '}
+                      {typeof product.productName === 'object'
+                        ? product.productName[i18n.language] || product.productName.en
+                        : product.productName}
+                    </p>
+                    {product.description && (
+                      <p>
+                        Описание:{' '}
+                        {typeof product.description === 'object'
+                          ? product.description[i18n.language] || product.description.en
+                          : product.description}
+                      </p>
                     )}
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          <p>Sectors with Traders: </p>
-          <ul>
-            {uniqueSectors.map((sector, index) => (
-              <li key={index}>{sector}</li>
-            ))}
-          </ul>
 
           <p>
             Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}
@@ -186,6 +249,7 @@ const Menu = ({
       )}
 
       {/* Информация о других игроках */}
+      {/* Информация о других игроках */}
       <div className="other-users">
         {otherUsers.length > 0 && (
           <div className="user-info">
@@ -194,31 +258,36 @@ const Menu = ({
               {otherUsers.map((user, userIndex) => {
                 const userBackgroundColorClass = user.color ? `bg-${user.color}` : '';
                 return (
-                  <li key={userIndex} className={userBackgroundColorClass}>
-                    <p>User: {user.name}</p>
+                  <li key={userIndex} className={`p-2 mb-2 rounded ${userBackgroundColorClass}`}>
+                    <p>
+                      <strong>{user.name}</strong> ({user.color})
+                    </p>
                     <p>Coins: {user.coins}</p>
-                    {user.traders && user.traders.length > 0 && (
-                      <ul className="list-unstyled">
-                        {user.traders.map((trader, traderIndex) => {
-                          const traderBackgroundColorClass = trader.location
-                            ? `bg-${trader.location.toLowerCase()}`
-                            : '';
-                          return (
-                            <li key={traderIndex} className={traderBackgroundColorClass}>
-                              <p>Trader: {trader.traderName}</p>
-                              {trader.goods && trader.goods.length > 0 && (
-                                <ul className="list-unstyled">
-                                  {trader.goods.map((product, productIndex) => (
-                                    <li key={productIndex}>
-                                      <p>Product: {product.productName}</p>
-                                    </li>
-                                  ))}
-                                </ul>
+
+                    {/* Товары игрока напрямую */}
+                    {user.products && user.products.length > 0 && (
+                      <p>Продукты у игрока: {user.products.length}</p>
+                    )}
+
+                    {/* Торговцы игрока */}
+                    {user.traders && user.traders.length > 0 ? (
+                      <div>
+                        <p>Торговцы: {user.traders.length}</p>
+                        <ul className="list-unstyled">
+                          {user.traders.map((trader, traderIndex) => (
+                            <li key={traderIndex} className="ms-3">
+                              <p>
+                                {trader.traderName || trader.name?.[i18n.language] || 'Без имени'}
+                              </p>
+                              {trader.products && trader.products.length > 0 && (
+                                <p>Продукты у этого торговца: {trader.products.length}</p>
                               )}
                             </li>
-                          );
-                        })}
-                      </ul>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p>Нет торговцев</p>
                     )}
                   </li>
                 );

@@ -465,7 +465,9 @@ export function handleSelectTrader({ gameState, myUserId, trader }) {
   });
 
   const traderList = gameState.traderList
-    ? gameState.traderList.map(t => (t.traderId === trader.traderId ? { ...t, taken: true } : t))
+    ? gameState.traderList.map(t =>
+        t.traderId === trader.traderId ? { ...t, taken: true, card_in_game: `${myUserId}_hand` } : t
+      )
     : gameState.traderList;
 
   return { ...gameState, players, traderList };
