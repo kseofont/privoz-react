@@ -454,6 +454,7 @@ export function handleSelectTrader({ gameState, myUserId, trader }) {
       ...trader,
       card_in_game: `${myUserId}_hand`,
       taken: true,
+      traderOwnerId: myUserId,
     };
 
     return {
@@ -488,3 +489,15 @@ export function handleEndRound(setGameState, isHost, broadcastGameState) {
     return newState;
   });
 }
+
+export const getField = (obj, field, lang = 'en') => {
+  if (!obj || !obj[field]) return '';
+  if (typeof obj[field] === 'string') return obj[field];
+  if (typeof obj[field] === 'object') {
+    return obj[field][lang] || obj[field].en || Object.values(obj[field])[0] || '';
+  }
+  if (typeof obj[field] === 'object') {
+    console.warn('❗ ПОЛЕ НЕ ПРЕОБРАЗОВАНО:', field, obj[field]);
+  }
+  return '';
+};

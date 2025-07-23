@@ -53,7 +53,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t2",
@@ -109,7 +109,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t3",
@@ -165,7 +165,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t4",
@@ -221,7 +221,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t5",
@@ -277,7 +277,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t6",
@@ -333,7 +333,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t7",
@@ -389,7 +389,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t8",
@@ -445,7 +445,7 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     },
     {
         "traderId": "t9",
@@ -501,6 +501,6 @@
         },
         "taken": false,
         "card_in_game": "deck",
-        "goods": []
+        "products": []
     }
 ]

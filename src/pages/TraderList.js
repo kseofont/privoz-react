@@ -12,6 +12,7 @@ import {
   handleHostEndTurn,
   endTurn,
   handleSelectTrader as logicHandleSelectTrader,
+  getField,
 } from '../logic/logic';
 
 const TraderList = () => {
@@ -82,13 +83,6 @@ const TraderList = () => {
     }
   }, [isAuthorized]);
 
-  // Вынесем функцию безопасного доступа к переводимым полям
-  const getField = (obj, field) => {
-    const value = obj[field];
-    if (!value) return '';
-    if (typeof value === 'string') return value; // fallback для старых данных
-    return value[lang] || value.en || Object.values(value)[0] || '';
-  };
   useEffect(() => {
     // console.log('[CLIENT] GameState обновился:', gameState);
     //  console.log('[CLIENT] Мой userId:', myUserId);

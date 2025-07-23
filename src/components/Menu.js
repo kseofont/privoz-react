@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { endTurn, handleEndRound } from '../logic/logic';
+import { endTurn, handleEndRound, getField } from '../logic/logic';
 import { connectionsRef } from '../globals';
 import { Link, useParams, useLocation } from 'react-router-dom';
 
@@ -12,6 +12,7 @@ const Menu = ({
   broadcastGameState,
 }) => {
   const { t, i18n } = useTranslation();
+  const lang = i18n.language || 'en';
   const location = useLocation();
   const { peerId: urlPeerId } = useParams();
   const pathname = location.pathname;
@@ -140,13 +141,11 @@ const Menu = ({
                 {currentUserData.traders.map((trader, traderIndex) => (
                   <li key={traderIndex} className="mb-2 p-2 border rounded">
                     <p>
-                      Торговец: {trader.traderName || trader.name?.[i18n.language] || 'Без имени'}
+                      Торговец: {trader.traderName || getField(trader, 'name', lang) || 'Без имени'}
                     </p>
+
                     <p>
-                      Избранный сектор:{' '}
-                      {trader.sector_favorite?.[i18n.language] ||
-                        trader.sector_favorite ||
-                        'неизвестно'}
+                      Избранный сектор: {getField(trader, 'sector_favorite', lang) || 'неизвестно'}
                     </p>
 
                     {trader.products && trader.products.length > 0 && (
@@ -155,19 +154,9 @@ const Menu = ({
                         <ul className="list-unstyled">
                           {trader.products.map((product, productIndex) => (
                             <li key={productIndex} className="mb-1">
-                              <p>
-                                Название:{' '}
-                                {typeof product.productName === 'object'
-                                  ? product.productName[i18n.language] || product.productName.en
-                                  : product.productName}
-                              </p>
+                              <p>Название: {getField(product, 'productName', lang)}</p>
                               {product.description && (
-                                <p>
-                                  Описание:{' '}
-                                  {typeof product.description === 'object'
-                                    ? product.description[i18n.language] || product.description.en
-                                    : product.description}
-                                </p>
+                                <p>Описание: {getField(trader, 'description', lang)}</p>
                               )}
                             </li>
                           ))}
@@ -197,19 +186,9 @@ const Menu = ({
               <ul className="list-unstyled">
                 {currentUserData.products.map((product, productIndex) => (
                   <li key={productIndex} className="mb-1">
-                    <p>
-                      Название:{' '}
-                      {typeof product.productName === 'object'
-                        ? product.productName[i18n.language] || product.productName.en
-                        : product.productName}
-                    </p>
+                    <p>Название: {getField(product, 'productName', lang)}</p>
                     {product.description && (
-                      <p>
-                        Описание:{' '}
-                        {typeof product.description === 'object'
-                          ? product.description[i18n.language] || product.description.en
-                          : product.description}
-                      </p>
+                      <p>Описание: {getField(product, 'description', lang)}</p>
                     )}
                   </li>
                 ))}
@@ -286,19 +265,9 @@ const Menu = ({
                         <ul className="list-unstyled">
                           {user.products.map((product, productIndex) => (
                             <li key={productIndex} className="mb-1">
-                              <p>
-                                Название:{' '}
-                                {typeof product.productName === 'object'
-                                  ? product.productName[i18n.language] || product.productName.en
-                                  : product.productName}
-                              </p>
+                              <p>Название: {getField(product, 'productName', lang)}</p>
                               {product.description && (
-                                <p>
-                                  Описание:{' '}
-                                  {typeof product.description === 'object'
-                                    ? product.description[i18n.language] || product.description.en
-                                    : product.description}
-                                </p>
+                                <p>Описание: {getField(product, 'description', lang)}</p>
                               )}
                             </li>
                           ))}
@@ -314,8 +283,10 @@ const Menu = ({
                           {user.traders.map((trader, traderIndex) => (
                             <li key={traderIndex} className="ms-3">
                               <p>
-                                {trader.traderName || trader.name?.[i18n.language] || 'Без имени'}
+                                Торговец:{' '}
+                                {trader.traderName || getField(trader, 'name', lang) || 'Без имени'}
                               </p>
+
                               {trader.products && trader.products.length > 0 && (
                                 <p>Продукты у этого торговца: {trader.products.length}</p>
                               )}

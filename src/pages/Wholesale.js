@@ -9,6 +9,7 @@ import {
   handleHostEndTurn,
   endTurn,
   handleSelectTrader as logicHandleSelectTrader,
+  getField,
 } from '../logic/logic';
 
 const Wholesale = () => {
@@ -259,11 +260,7 @@ const Wholesale = () => {
                   <div className={` border p-3 mb-3 `}>
                     <Product
                       sector={sector}
-                      productName={
-                        typeof product.productName === 'object'
-                          ? product.productName[lang] || product.productName.en
-                          : product.productName
-                      }
+                      productName={getField(product, 'productName', lang)}
                       imageSrc={`/img/${product.imageSrc}`}
                       wholesalePrice={product.wholesalePrice}
                       retailPrice={product.sellingPrice}
@@ -281,11 +278,7 @@ const Wholesale = () => {
           <Modal show={showModal} onHide={() => setShowModal(false)}>
             <Modal.Header closeButton>
               <Modal.Title>
-                {selectedProduct
-                  ? typeof selectedProduct.productName === 'object'
-                    ? selectedProduct.productName[lang] || selectedProduct.productName.en
-                    : selectedProduct.productName
-                  : ''}
+                {selectedProduct ? getField(selectedProduct, 'productName', lang) : ''}
               </Modal.Title>
             </Modal.Header>
             <Modal.Body>

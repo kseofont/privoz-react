@@ -12,20 +12,32 @@ const Product = ({
 }) => {
   return (
     <div className="card">
-      <div className="card-header d-flex">
-        <p className="card-text card-link">{sector}</p>
-        <h5 className="card-title card-link">{productName}</h5>
+      <div className="card-header d-flex justify-content-between">
+        <p className="card-text card-link mb-0">{sector}</p>
+        <h5 className="card-title card-link mb-0">{productName}</h5>
       </div>
-      <div className="cards-quant card-header d-flex">
-        <p className="card-text card-link ">{quantity_card} cards total</p>
-        <p className="card-text card-link">Free {quantity_free_card} cards</p>
+
+      <div className="cards-quant card-header d-flex justify-content-between">
+        <p className="card-text card-link mb-0">{quantity_card} cards total</p>
+        <p className="card-text card-link mb-0">Free {quantity_free_card} cards</p>
       </div>
-      <img src={imageSrc} className="card-img-top" alt={productName} />
+
+      {/* {imageSrc && (
+        <img
+          src={imageSrc}
+          className="card-img-top"
+          alt={productName}
+          onError={e => {
+            e.target.onerror = null;
+            e.target.src = '/img/default_product.webp';
+          }}
+        />
+      )} */}
 
       <div className="card-body">
-        <p>Wholesale price: {wholesalePrice}</p>
-        <p>Retail price: {retailPrice}</p>
-        <p>Possible income: {possibleIncome}</p>
+        {wholesalePrice !== undefined && <p>Wholesale price: {wholesalePrice}</p>}
+        {retailPrice !== undefined && <p>Retail price: {retailPrice}</p>}
+        {possibleIncome !== undefined && <p>Possible income: {possibleIncome}</p>}
       </div>
     </div>
   );

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import Trader from './Trader';
 
 const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, setGameState }) => {
+  const { i18n } = useTranslation();
+  const lang = i18n.language || 'en';
   const players = gameState?.players || [];
   const player = players.find(p => p.user_id === myUserId);
   const myTraders = player?.traders || [];
@@ -10,7 +13,7 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
   const sectorTraders = players
     .flatMap(p => p.traders || [])
     .filter(trader => trader.location === category)
-    .map(trader => ({ ...trader, owner: players.find(p => p.user_id === trader.traderOwnerId) }));
+    .map(trader => ({ ...trader, owner: { name: player.name, color: player.color } }));
 
   // Состояния для разных модалок
   const [showNoTradersModal, setShowNoTradersModal] = useState(false);
@@ -22,14 +25,34 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
 
   const totalTradersCount = player?.tradersCount || 0;
   const coinsDecrease = totalTradersCount <= 1 ? 0 : totalTradersCount * 5;
+  const getField = (obj, field, lang = 'en') => {
+    if (!obj || !obj[field]) return '';
+    if (typeof obj[field] === 'string') return obj[field];
+    return obj[field][lang] || obj[field].en || Object.values(obj[field])[0] || '';
+  };
+  const myAvailableTraders = myTraders.filter(trader => !trader.location);
+
+  const [showProductSelectModal, setShowProductSelectModal] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState([]); // Массив выбранных товаров для трейдера
 
   const handleSectorClick = () => {
     if (!myTraders.length) {
       setShowNoTradersModal(true);
       return;
     }
+    if (!myAvailableTraders.length) {
+      setShowNoTradersModal(true);
+      return;
+    }
     setShowTraderSelectModal(true);
   };
+
+  const handleSelectTraderForSector = trader => {
+    setSelectedTraderForSector(trader);
+    setShowProductSelectModal(true); // Показываем модалку выбора товаров
+  };
+
+  const playerProducts = player?.products || [];
 
   const handleConfirmAddTrader = () => {
     if (!selectedTraderForSector) return;
@@ -60,7 +83,9 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
 
       // Обновляем location только для выбранного трейдера
       const updatedTraders = (player.traders || []).map(t =>
-        t === selectedTraderForSector ? { ...t, location: category } : t
+        t === selectedTraderForSector
+          ? { ...t, card_in_game: `sector_${category}_user_${myUserId}`, location: category }
+          : t
       );
 
       const updatedPlayer = {
@@ -90,6 +115,58 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
     }
   };
 
+  const handleConfirmAddTraderWithProducts = () => {
+    if (!selectedTraderForSector) return;
+    setGameState(prev => {
+      if (!prev || !prev.players) return prev;
+      const playerIdx = prev.players.findIndex(p => p.user_id === myUserId);
+      if (playerIdx === -1) return prev;
+      const player = prev.players[playerIdx];
+
+      // Обновляем только выбранного трейдера (добавляем ему goods)
+      const updatedTraders = (player.traders || []).map(t =>
+        t === selectedTraderForSector
+          ? {
+              ...t,
+              card_in_game: `sector_${category}_user_${myUserId}`,
+              location: category,
+              goods: selectedProducts, // Здесь весь массив товаров с количеством
+            }
+          : t
+      );
+
+      // Можно убрать эти продукты из player.products если нужно
+
+      const updatedPlayer = {
+        ...player,
+        traders: updatedTraders,
+        coins: (player.coins || 0) - coinsDecrease,
+        // products: ... (если нужно удалять отданные товары из продуктов игрока)
+      };
+
+      const updatedPlayers = [...prev.players];
+      updatedPlayers[playerIdx] = updatedPlayer;
+
+      setShowTraderSelectModal(false);
+      setShowProductSelectModal(false);
+      setShowSuccessModal(true);
+      setSelectedProducts([]); // очищаем
+      return { ...prev, players: updatedPlayers };
+    });
+
+    if (connection) {
+      connection.send({
+        type: 'addTraderToSector',
+        payload: {
+          sector: category,
+          userId: myUserId,
+          traderId: selectedTraderForSector.traderId,
+          goods: selectedProducts,
+        },
+      });
+    }
+  };
+
   return (
     <div className="yarr2">
       <div
@@ -100,7 +177,7 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
         <div className="row gap-1">
           {sectorTraders.length > 0 ? (
             sectorTraders.map((trader, idx) => (
-              <Trader key={idx} user={trader.owner} trader={trader} />
+              <Trader key={idx} user={trader.owner} trader={trader} gameState={gameState} />
             ))
           ) : (
             <div className="col border text-center pb-4 trader-block ">
@@ -130,20 +207,36 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
         </Modal.Header>
         <Modal.Body>
           <Row>
-            {myTraders.map((trader, idx) => (
+            {myAvailableTraders.map((trader, idx) => (
               <Col key={idx} xs={12}>
                 <Button
                   variant={selectedTraderForSector === trader ? 'primary' : 'outline-primary'}
-                  className="w-100 mb-2"
-                  onClick={() => setSelectedTraderForSector(trader)}
-                  disabled={!!trader.location} // не даём выбрать уже размещённых
+                  className="w-100 mb-2 text-start"
+                  onClick={() => handleSelectTraderForSector(trader)}
                 >
-                  {trader.traderName || `Трейдер #${idx + 1}`}
-                  {trader.location && <span> (сектор: {trader.location})</span>}
+                  <div>
+                    <b>{getField(trader, 'name', lang)}</b>
+                    <div className="small text-muted">{getField(trader, 'bio', lang)}</div>
+                  </div>
                 </Button>
               </Col>
             ))}
           </Row>
+          {myAvailableTraders.length === 0 && (
+            <div className="text-center text-muted p-3">
+              У вас нет свободных торговцев для размещения.
+            </div>
+          )}
+
+          {selectedTraderForSector && (
+            <div className="mt-3 p-2 border rounded">
+              <b>Выбранный трейдер:</b>
+              <div>
+                <b>{getField(selectedTraderForSector, 'name', lang)}</b>
+              </div>
+              <div>{getField(selectedTraderForSector, 'bio', lang)}</div>
+            </div>
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowTraderSelectModal(false)}>
@@ -155,6 +248,54 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
             onClick={handleConfirmAddTrader}
           >
             Разместить трейдера
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showProductSelectModal} onHide={() => setShowProductSelectModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            Выберите товары для {getField(selectedTraderForSector, 'name', lang)}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            {playerProducts.length === 0 && (
+              <div className="text-muted">У вас нет товаров для передачи продавцу.</div>
+            )}
+            {playerProducts.map((prod, idx) => (
+              <Col key={idx} xs={12}>
+                <div className="d-flex align-items-center mb-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedProducts.some(p => p.productId === prod.productId)}
+                    onChange={() => {
+                      setSelectedProducts(prev =>
+                        prev.some(p => p.productId === prod.productId)
+                          ? prev.filter(p => p.productId !== prod.productId)
+                          : [...prev, { ...prod, quantity_player_card: 1 }]
+                      );
+                    }}
+                    style={{ marginRight: '8px' }}
+                  />
+                  <span>{getField(prod, 'productName', lang)}</span>
+                  {/* Тут можешь добавить выбор количества */}
+                </div>
+              </Col>
+            ))}
+          </Row>
+          {/* Можно добавить выбор количества товаров */}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowProductSelectModal(false)}>
+            Отмена
+          </Button>
+          <Button
+            variant="success"
+            disabled={selectedProducts.length === 0}
+            onClick={handleConfirmAddTraderWithProducts}
+          >
+            Передать товары продавцу
           </Button>
         </Modal.Footer>
       </Modal>

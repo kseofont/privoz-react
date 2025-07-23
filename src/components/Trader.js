@@ -1,57 +1,98 @@
-import React, { Component } from 'react';
+import React from 'react';
 import Product from './Product';
+import { getField } from '../logic/logic';
+import { useTranslation } from 'react-i18next';
 
-class Trader extends Component {
-  render() {
-    const { user, trader } = this.props;
+const Trader = ({ user, trader, gameState }) => {
+  const { i18n } = useTranslation();
+  const lang = i18n.language || 'en';
 
-    if (!user || !user.name || !user.color || !trader) {
-      return (
-        <div className="col border text-center pb-4">
-          <p>Error: Invalid user or trader data</p>
-        </div>
-      );
-    }
-
-    const { name, color } = user;
-
+  if (!user || !user.name || !user.color || !trader) {
+    console.warn('TRADER INVALID:', { user, trader });
     return (
-      <div className={`col border text-center pb-4 trader-block ${color}`}>
-        <div className="userdata">{trader.traderName}</div>
-
-        <img
-          src={trader.traderImg || '/img/aza.webp'}
-          alt={trader.traderName}
-          className="traderimg"
-          onError={e => {
-            e.target.onerror = null;
-            e.target.src = '/img/aza.webp';
-          }}
-        />
-        {/* <i className={`bi bi-shop-window ${name.toLowerCase()}`}></i> */}
-        <p>{name}</p>
-        <div className="container-fluid">
-          <div className="">
-            {trader.goods.map((good, goodIndex) => (
-              <div key={goodIndex} className="row gap-1">
-                <div key={goodIndex} className="col border p-0 text-center p-1 product">
-                  <Product
-                    sector={good.sector}
-                    productName={good.productName}
-                    imageSrc={good.imageSrc}
-                    wholesalePrice={good.wholesalePrice}
-                    retailPrice={good.retailPrice}
-                    possibleIncome={good.possibleIncome}
-                    quantity_card={good.quantity_card}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="col border text-center trader-block pb-4">
+        <p>Error: Invalid user or trader data</p>
       </div>
     );
   }
-}
+
+  const { name, color } = user;
+
+  // Попытка дополнить недостающие данные из gameState
+  let completeTrader = { ...trader };
+  if (gameState?.traders && trader.id) {
+    const fullTraderData = gameState.traders.find(t => t.id === trader.id);
+    if (fullTraderData) {
+      completeTrader = {
+        ...fullTraderData,
+        ...completeTrader,
+        goods: completeTrader.goods || fullTraderData.goods || [],
+      };
+    }
+  }
+
+  return (
+    <div className={`col border text-center pb-4 trader-block ${color}`}>
+      <div className="userdata">{completeTrader.traderName}</div>
+
+      <img
+        src={completeTrader.traderImg || '/img/aza.webp'}
+        alt={completeTrader.traderName}
+        className="traderimg"
+        onError={e => {
+          e.target.onerror = null;
+          e.target.src = '/img/aza.webp';
+        }}
+      />
+
+      <p>{name}</p>
+
+      <div className="container-fluid">
+        <div>
+          {completeTrader.goods && completeTrader.goods.length > 0 ? (
+            completeTrader.goods.map((good, goodIndex) => {
+              let enrichedGood = { ...good };
+
+              // Безопасный доступ к productData
+              let fullProductData = null;
+
+              if (Array.isArray(gameState?.products)) {
+                fullProductData = gameState.products.find(p => p.id === good.productId);
+              } else if (typeof gameState?.products === 'object' && gameState.products !== null) {
+                fullProductData = gameState.products[good.productId];
+              }
+
+              if (fullProductData) {
+                enrichedGood = {
+                  ...fullProductData,
+                  ...enrichedGood,
+                };
+              }
+
+              return (
+                <div key={goodIndex} className="row gap-1">
+                  <div className="col border p-0 text-center p-1 product">
+                    <Product
+                      sector={enrichedGood.sector}
+                      productName={getField(enrichedGood, 'productName', lang)}
+                      imageSrc={enrichedGood.imageSrc}
+                      wholesalePrice={enrichedGood.wholesalePrice}
+                      retailPrice={enrichedGood.retailPrice}
+                      possibleIncome={enrichedGood.possibleIncome}
+                      quantity_card={enrichedGood.quantity_card}
+                      quantity_free_card={enrichedGood.quantity_free_card}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-muted">Нет товаров у этого торговца</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Trader;
