@@ -1,5 +1,5 @@
 import React from 'react';
-import Product from './Product';
+import ProductMini from './ProductMini';
 import { getField } from '../logic/logic';
 import { useTranslation } from 'react-i18next';
 
@@ -72,13 +72,12 @@ const Trader = ({ user, trader, gameState }) => {
               return (
                 <div key={goodIndex} className="row gap-1">
                   <div className="col border p-0 text-center p-1 product">
-                    <Product
+                    <ProductMini
                       sector={enrichedGood.sector}
                       productName={getField(enrichedGood, 'productName', lang)}
                       imageSrc={enrichedGood.imageSrc}
                       wholesalePrice={enrichedGood.wholesalePrice}
-                      retailPrice={enrichedGood.retailPrice}
-                      possibleIncome={enrichedGood.possibleIncome}
+                      retailPrice={enrichedGood.sellingPrice}
                       quantity_card={enrichedGood.quantity_card}
                       quantity_free_card={enrichedGood.quantity_free_card}
                     />

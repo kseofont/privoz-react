@@ -6,10 +6,15 @@ const Product = ({
   imageSrc,
   wholesalePrice,
   retailPrice,
-  possibleIncome,
+
   quantity_card,
   quantity_free_card,
 }) => {
+  console.log('imageSrc', imageSrc);
+  const possibleIncome =
+    typeof wholesalePrice === 'number' && typeof retailPrice === 'number'
+      ? retailPrice - wholesalePrice
+      : undefined;
   return (
     <div className="card">
       <div className="card-header d-flex justify-content-between">
@@ -22,9 +27,9 @@ const Product = ({
         <p className="card-text card-link mb-0">Free {quantity_free_card} cards</p>
       </div>
 
-      {/* {imageSrc && (
+      {imageSrc && (
         <img
-          src={imageSrc}
+          src={`/img/${imageSrc}`}
           className="card-img-top"
           alt={productName}
           onError={e => {
@@ -32,7 +37,7 @@ const Product = ({
             e.target.src = '/img/default_product.webp';
           }}
         />
-      )} */}
+      )}
 
       <div className="card-body">
         {wholesalePrice !== undefined && <p>Wholesale price: {wholesalePrice}</p>}

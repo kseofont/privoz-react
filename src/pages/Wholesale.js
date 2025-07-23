@@ -176,18 +176,19 @@ const Wholesale = () => {
       // 2. Добавляем товар игроку (products или goods)
       let playerProducts = Array.isArray(player.products) ? [...player.products] : [];
 
-      const playerProdIdx = playerProducts.findIndex(p => p.productId === product.productId);
+      const playerProdIdx = playerProducts.findIndex(p => p.productId === updatedProduct.productId);
 
       if (playerProdIdx !== -1) {
         // Уже есть — увеличиваем количество
         playerProducts[playerProdIdx] = {
           ...playerProducts[playerProdIdx],
+          ...updatedProduct,
           quantity_player_card: (playerProducts[playerProdIdx].quantity_player_card || 1) + 1,
         };
       } else {
         // Новая карточка у игрока
         playerProducts.push({
-          ...product,
+          ...updatedProduct,
           quantity_player_card: 1,
         });
       }
@@ -261,7 +262,7 @@ const Wholesale = () => {
                     <Product
                       sector={sector}
                       productName={getField(product, 'productName', lang)}
-                      imageSrc={`/img/${product.imageSrc}`}
+                      imageSrc={`${product.imageSrc}`}
                       wholesalePrice={product.wholesalePrice}
                       retailPrice={product.sellingPrice}
                       possibleIncome={product.profit}

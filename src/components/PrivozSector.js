@@ -263,27 +263,49 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
             {playerProducts.length === 0 && (
               <div className="text-muted">У вас нет товаров для передачи продавцу.</div>
             )}
-            {playerProducts.map((prod, idx) => (
-              <Col key={idx} xs={12}>
-                <div className="d-flex align-items-center mb-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedProducts.some(p => p.productId === prod.productId)}
-                    onChange={() => {
-                      setSelectedProducts(prev =>
-                        prev.some(p => p.productId === prod.productId)
-                          ? prev.filter(p => p.productId !== prod.productId)
-                          : [...prev, { ...prod, quantity_player_card: 1 }]
-                      );
-                    }}
-                    style={{ marginRight: '8px' }}
-                  />
-                  <span>{getField(prod, 'productName', lang)}</span>
-                  {/* Тут можешь добавить выбор количества */}
-                </div>
-              </Col>
-            ))}
+
+            {playerProducts.flatMap((prod, idx) =>
+              Array.from({ length: prod.quantity_player_card || 1 }, (_, i) => (
+                <Col key={`${prod.productId}-${i}`} xs={12}>
+                  <div className="d-flex align-items-center mb-2">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedProducts.filter(p => p.productId === prod.productId).length > i
+                      }
+                      onChange={() => {
+                        setSelectedProducts(prev => {
+                          const selectedOfThisProduct = prev.filter(
+                            p => p.productId === prod.productId
+                          );
+                          if (selectedOfThisProduct.length > i) {
+                            // Удаляем i-й экземпляр
+                            const indexToRemove = prev.findIndex(
+                              (p, idx) =>
+                                p.productId === prod.productId &&
+                                selectedOfThisProduct.indexOf(p) === i
+                            );
+                            return [
+                              ...prev.slice(0, indexToRemove),
+                              ...prev.slice(indexToRemove + 1),
+                            ];
+                          } else {
+                            // Добавляем новый экземпляр
+                            return [...prev, { ...prod, quantity_player_card: 1 }];
+                          }
+                        });
+                      }}
+                      style={{ marginRight: '8px' }}
+                    />
+                    <span>
+                      {getField(prod, 'productName', lang)} (#{i + 1})
+                    </span>
+                  </div>
+                </Col>
+              ))
+            )}
           </Row>
+
           {/* Можно добавить выбор количества товаров */}
         </Modal.Body>
         <Modal.Footer>
