@@ -32,6 +32,7 @@ const Wholesale = () => {
   const isAuthorized = !!myUserId && !!gameState && Array.isArray(gameState.players);
   const connectionsRef =
     window.connectionsRefPrivozConnection || require('../globals').connectionsRef;
+  const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
 
   useEffect(() => {
     if (gameState) window.gameState = gameState;
@@ -128,7 +129,7 @@ const Wholesale = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   function handleSelectProduct(product) {
-    if (!isAuthorized) return; // Защита на всякий случай
+    if (!isAuthorized || !myTurn) return;
     setSelectedProduct(product);
     setShowModal(true);
   }
@@ -248,8 +249,8 @@ const Wholesale = () => {
                   className="col"
                   style={{
                     minWidth: 240,
-                    cursor: isAuthorized ? 'pointer' : 'not-allowed',
-                    opacity: isAuthorized ? 1 : 0.5,
+                    cursor: isAuthorized && myTurn ? 'pointer' : 'not-allowed',
+                    opacity: isAuthorized && myTurn ? 1 : 0.5,
                   }}
                   onClick={() => {
                     if (isAuthorized) handleSelectProduct(product);
@@ -267,6 +268,8 @@ const Wholesale = () => {
                       wholesalePrice={product.wholesalePrice}
                       retailPrice={product.sellingPrice}
                       possibleIncome={product.profit}
+                      quantity_card={product.quantity_card}
+                      quantity_free_card={product.quantity_free_card}
                     />
                   </div>
                 </div>
@@ -285,12 +288,68 @@ const Wholesale = () => {
                   : ''}
               </Modal.Title>
             </Modal.Header>
-            <Modal.Body>Вы действительно хотите выбрать этот товар?</Modal.Body>
+            <Modal.Body>
+              {isAuthorized && !myTurn && (
+                <div className="text-danger">Сейчас не ваш ход. Покупка недоступна.</div>
+              )}
+              {isAuthorized ? (
+                selectedProduct ? (
+                  gameState &&
+                  (() => {
+                    // Находим игрока и цену
+                    const player = gameState.players.find(p => p.user_id === myUserId) || {};
+                    const price = selectedProduct.wholesalePrice || 0;
+                    const coins = player.coins || 0;
+                    const enoughCoins = coins >= price;
+                    if (!enoughCoins) {
+                      return (
+                        <div className="text-danger">
+                          Недостаточно монет для покупки! Не хватает {price - coins} монет.
+                        </div>
+                      );
+                    }
+                    // Можно также проверить остаток товара, если надо
+                    return (
+                      <>
+                        <div>Вы уверены, что хотите выбрать этот товар?</div>
+                        <div>
+                          Цена: <b>{price} монет</b> <br />
+                          Ваши монеты: {coins}
+                        </div>
+                        <div>
+                          <b>Сектор:</b> {selectedProduct.sector || selectedProduct.product_sector}
+                        </div>
+                        {/* Можно еще добавить описание или другие детали */}
+                      </>
+                    );
+                  })()
+                ) : (
+                  <div>Товар не выбран</div>
+                )
+              ) : (
+                <div className="text-warning">
+                  Для выбора товара нужно быть подключённым к игре!
+                </div>
+              )}
+            </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={() => setShowModal(false)}>
                 Отмена
               </Button>
-              <Button variant="primary" onClick={handleConfirmProduct}>
+              <Button
+                variant="primary"
+                onClick={handleConfirmProduct}
+                disabled={
+                  !isAuthorized ||
+                  !selectedProduct ||
+                  !myTurn ||
+                  (gameState &&
+                    (() => {
+                      const player = gameState.players.find(p => p.user_id === myUserId) || {};
+                      return (player.coins || 0) < (selectedProduct?.wholesalePrice || 0);
+                    })())
+                }
+              >
                 Подтвердить выбор
               </Button>
             </Modal.Footer>

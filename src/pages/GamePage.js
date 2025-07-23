@@ -23,6 +23,8 @@ const GamePage = () => {
   const [connection, setConnection] = useState(initialConnection);
   const [myUserId, setMyUserId] = useState(initialMyUserId);
 
+  const isAuthorized = !!myUserId && !!gameState && Array.isArray(gameState.players);
+
   useEffect(() => {
     if (gameState) window.gameState = gameState;
     if (myUserId) window.myUserId = myUserId;
@@ -101,11 +103,13 @@ const GamePage = () => {
   }, [isHost, setGameState]);
 
   // --- Вычисляем пользователей
+
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
   const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
   const myTurn = gameState?.currentTurnUserId === myUserId;
 
-  const sectors = ['Fruits', 'Vegetables', 'Dairy', 'Fish', 'Meat', 'Household goods'];
+  const fallbackSectors = ['Fruits', 'Vegetables', 'Dairy', 'Fish', 'Meat', 'Household goods'];
+  const sectors = gameState?.sectors || fallbackSectors;
 
   return (
     <div className="container">
@@ -174,6 +178,7 @@ const GamePage = () => {
                   connection={connection}
                   myTurn={myTurn}
                   setGameState={setGameState}
+                  clickable={isAuthorized && myTurn}
                 />
               </div>
             ))}

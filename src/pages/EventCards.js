@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import FortuneCards from '../components/FortuneCards';
 import Menu from '../components/Menu';
+import localEventCards from '../data/eventcards.json';
 
 const EventCard = () => {
   const { i18n } = useTranslation();
@@ -15,29 +16,58 @@ const EventCard = () => {
   const [gameState, setGameState] = useState(initialGameState);
   const [allEventCards, setAllEventCards] = useState([]);
 
-  // Универсальная логика: использовать eventcards из gameState, иначе fallback fetch
+  // ---- Определяем isAuthorized
+  const myUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
+  const isAuthorized =
+    !!myUserId &&
+    !!gameState &&
+    Array.isArray(gameState.players) &&
+    gameState.players.some(p => p.user_id === myUserId);
+
+  // ---- Подгружаем карты для неавторизованных
   useEffect(() => {
-    if (gameState && gameState.eventcards) {
-      setAllEventCards(gameState.eventcards);
-    } else {
+    if (!isAuthorized) {
       fetch('/data/eventcards.json')
         .then(response => {
           if (!response.ok) throw new Error('Ошибка загрузки eventcards.json');
           return response.json();
         })
         .then(data => setAllEventCards(data))
-        .catch(err => console.error('Ошибка при fetch eventcards.json:', err));
+        .catch(err => {
+          console.error('Ошибка при fetch eventcards.json:', err);
+          // fallback на импорт, если fetch не сработал
+          setAllEventCards(
+            Array.isArray(localEventCards) ? localEventCards : localEventCards.eventcards || []
+          );
+        });
     }
-  }, [gameState]);
+  }, [isAuthorized]);
 
-  // Отбор позитивных/негативных карточек
-  const positiveFortuneCards = allEventCards.filter(card => card.fortune === 'positive');
-  const negativeFortuneCards = allEventCards.filter(card => card.fortune === 'negative');
+  // ---- Основной список карт
+  const safeEventCards = isAuthorized
+    ? Array.isArray(gameState?.eventcards)
+      ? gameState.eventcards
+      : []
+    : allEventCards.length
+    ? allEventCards
+    : Array.isArray(localEventCards)
+    ? localEventCards
+    : localEventCards.eventcards || [];
+
+  // Фильтрация по типу удачи
+  const positiveFortuneCards = safeEventCards.filter(card => card.fortune === 'positive');
+  const negativeFortuneCards = safeEventCards.filter(card => card.fortune === 'negative');
 
   return (
     <div className="container">
       <div className="row">
         <div className="col-9">
+          {!isAuthorized && (
+            <div className="alert alert-warning mb-3">
+              Вы не подключены к игре. Ниже — список всех доступных событий. Для участия войдите в
+              игру.
+            </div>
+          )}
           <h2>Event Cards</h2>
           <div className="row positive-row">
             <FortuneCards cards={positiveFortuneCards} title="Positive Fortune Cards" />
@@ -48,7 +78,7 @@ const EventCard = () => {
         </div>
 
         <div className="col-3">
-          <Menu />
+          <Menu gameState={gameState} myUserId={myUserId} setGameState={setGameState} />
         </div>
       </div>
     </div>

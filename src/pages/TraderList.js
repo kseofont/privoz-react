@@ -101,6 +101,7 @@ const TraderList = () => {
   }, [gameState, myUserId]);
   // --- isHost логика (нет connection)
   const isHost = !connection;
+  const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
 
   // --- Хост: объяви broadcastGameState (можно скопировать из CreateServerPage)
   function broadcastGameState(state = gameState) {
@@ -202,7 +203,7 @@ const TraderList = () => {
                   key={trader.traderId}
                   className={`col-md-4 mb-4 ${isTaken ? 'opacity-50 pointer-events-none' : ''}`}
                   onClick={
-                    isTaken
+                    isTaken || !myTurn
                       ? undefined
                       : () => {
                           setSelectedTrader(trader);
@@ -210,7 +211,7 @@ const TraderList = () => {
                         }
                   }
                   style={{
-                    cursor: isTaken ? 'not-allowed' : 'pointer',
+                    cursor: isTaken || !myTurn ? 'not-allowed' : 'pointer',
                     position: 'relative',
                   }}
                 >
@@ -314,7 +315,9 @@ const TraderList = () => {
           <Modal.Title>{selectedTrader ? getField(selectedTrader, 'name') : ''}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {isAuthorized ? (
+          {isAuthorized && !myTurn ? (
+            <div className="text-danger">Сейчас не ваш ход. Выбор торговца невозможен.</div>
+          ) : isAuthorized ? (
             enoughCoins ? (
               <>
                 <div>Вы уверены, что хотите выбрать этого торговца?</div>
@@ -341,7 +344,7 @@ const TraderList = () => {
           </Button>
           <Button
             variant="primary"
-            disabled={!enoughCoins || !isAuthorized}
+            disabled={!enoughCoins || !isAuthorized || !myTurn}
             onClick={() => selectedTrader && handleSelectTrader(selectedTrader, price)}
           >
             {isAuthorized ? (enoughCoins ? 'Выбрать торговца' : 'Не хватает монет') : 'Недоступно'}

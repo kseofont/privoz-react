@@ -36,6 +36,7 @@ root.render(
       <Route path="/rules/:peerId" element={<Rules />} />
       <Route path="/create" element={<CreateServerPage />} />
       <Route path="/JoinGamePage" element={<JoinGamePage />} />
+      <Route path="/game/" element={<GamePage />} />
       <Route path="/game/:peerId" element={<GamePage />} />
     </Routes>
   </BrowserRouter>

@@ -1,85 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import Trader from './Trader';
 
-import { handleSectorClickLogic, handleAddTraderLogic } from '../logic/logic';
-import productsData from '../products.json';
-
-import { handleAddTraderToSector } from '../logic/logic';
-
-const PrivozSector = ({
-  category,
-  maxTraders,
-  gameState,
-  myUserId,
-  connection,
-
-  setGameState,
-}) => {
-  const [clickedSector, setClickedSector] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
-  const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
-  const [showUpdatedInfoModal, setShowUpdatedInfoModal] = useState(false);
-  const [coinsDecrease, setCoinsDecrease] = useState(0);
-  const [showWholeModal, setShowWholeModal] = useState(false);
-  const [sectorProducts, setSectorProducts] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-
-  // Всегда работаем через gameState.players!
+const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, setGameState }) => {
   const players = gameState?.players || [];
-  const myTurn = gameState?.currentTurnUserId === myUserId;
+  const player = players.find(p => p.user_id === myUserId);
+  const myTraders = player?.traders || [];
 
-  // Собираем всех трейдеров в этом секторе
-  const sectorTraders = players.flatMap(player =>
-    (player.traders || [])
-      .filter(trader => trader.location === category)
-      .map(trader => ({ ...trader, owner: player }))
-  );
+  const sectorTraders = players
+    .flatMap(p => p.traders || [])
+    .filter(trader => trader.location === category)
+    .map(trader => ({ ...trader, owner: players.find(p => p.user_id === trader.traderOwnerId) }));
 
-  // для отображения трейдеров
-  const tradersList = sectorTraders.map((trader, idx) => (
-    <Trader key={idx} user={trader.owner} trader={trader} />
-  ));
+  // Состояния для разных модалок
+  const [showNoTradersModal, setShowNoTradersModal] = useState(false);
+  const [showTraderSelectModal, setShowTraderSelectModal] = useState(false);
+  const [selectedTraderForSector, setSelectedTraderForSector] = useState(null);
+  const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
+  const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const totalTradersCount = player?.tradersCount || 0;
+  const coinsDecrease = totalTradersCount <= 1 ? 0 : totalTradersCount * 5;
 
   const handleSectorClick = () => {
-    // setCurrentUser тут можно по myUserId найти игрока
-    setCurrentUser(players.find(p => p.user_id === myUserId));
-    setClickedSector(category);
-    setShowModal(true);
-    // coinsDecrease: если есть логика - вставь сюда
-    setCoinsDecrease((players.find(p => p.user_id === myUserId)?.tradersCount || 0) >= 1 ? 5 : 0);
+    if (!myTraders.length) {
+      setShowNoTradersModal(true);
+      return;
+    }
+    setShowTraderSelectModal(true);
   };
 
-  // Добавление трейдера (логика разнесена, только пример)
-  // const handleAddTrader = () => {
-  //   // только если мой ход!
-  //   // if (!myTurn) {
-  //   //   setShowModal(false);
-  //   //   return;
-  //   // }
-  //   // console.error('handleAddTrader click 11');
-
-  //   handleAddTraderToSector({
-  //     gameState,
-  //     setGameState,
-  //     category, // sector
-  //     myUserId,
-  //     maxTraders,
-  //     setShowModal,
-  //     setShowMaxTradersModal,
-  //     setShowNotEnoughMoneyModal,
-  //     setShowUpdatedInfoModal,
-  //     connection,
-  //   });
-  // };
-
-  const handleAddTrader = () => {
-    // 1. Локально обновить state (optimistic update)
+  const handleConfirmAddTrader = () => {
+    if (!selectedTraderForSector) return;
     setGameState(prev => {
       if (!prev || !prev.players) return prev;
-
-      // Тот же кусок, что у тебя в хосте!
       const playerIdx = prev.players.findIndex(p => p.user_id === myUserId);
       if (playerIdx === -1) return prev;
       const player = prev.players[playerIdx];
@@ -90,7 +45,7 @@ const PrivozSector = ({
 
       if (tradersInSelectedSector.length >= maxTraders) {
         setShowMaxTradersModal(true);
-        setShowModal(false);
+        setShowTraderSelectModal(false);
         return prev;
       }
 
@@ -99,61 +54,54 @@ const PrivozSector = ({
       const updatedCoins = (player.coins || 0) - coinsDecrease;
       if (updatedCoins < 0) {
         setShowNotEnoughMoneyModal(true);
-        setShowModal(false);
+        setShowTraderSelectModal(false);
         return prev;
       }
 
-      const newTrader = {
-        traderOwnerId: player.user_id,
-        traderName: `Trader${(player.traders?.length || 0) + 1}`,
-        location: category,
-        goods: [],
-      };
+      // Обновляем location только для выбранного трейдера
+      const updatedTraders = (player.traders || []).map(t =>
+        t === selectedTraderForSector ? { ...t, location: category } : t
+      );
 
-      // Можно без раздачи eventCards локально, пусть хост выдаёт (но можно и тут)
       const updatedPlayer = {
         ...player,
-        traders: [...(player.traders || []), newTrader],
-        tradersCount: totalTradersCount + 1,
+        traders: updatedTraders,
         coins: updatedCoins,
-        // eventCards: updatedEventCards,
       };
 
       const updatedPlayers = [...prev.players];
       updatedPlayers[playerIdx] = updatedPlayer;
 
-      return {
-        ...prev,
-        players: updatedPlayers,
-      };
+      setShowTraderSelectModal(false);
+      setShowSuccessModal(true);
+      return { ...prev, players: updatedPlayers };
     });
 
-    // 2. Отправить действие хосту (пусть только он раздаёт eventCard и т.д.)
+    // Для P2P логики отправляй экшн хосту
     if (connection) {
       connection.send({
-        type: 'addTrader',
+        type: 'addTraderToSector',
         payload: {
           sector: category,
           userId: myUserId,
+          traderId: selectedTraderForSector.traderId,
         },
       });
     }
-
-    setShowModal(false);
-    setShowUpdatedInfoModal(true);
   };
-
-  // --- Модальные окна и прочее без изменений ---
 
   return (
     <div className="yarr2">
       <div
         className={`sector border p-3 mb-3 ${category.toLowerCase()}`}
         onClick={handleSectorClick}
+        style={{ cursor: 'pointer' }}
       >
         <div className="row gap-1">
-          {tradersList.length > 0 ? (
-            tradersList
+          {sectorTraders.length > 0 ? (
+            sectorTraders.map((trader, idx) => (
+              <Trader key={idx} user={trader.owner} trader={trader} />
+            ))
           ) : (
             <div className="col border text-center pb-4 trader-block ">
               <p>No traders in this sector yet</p>
@@ -162,24 +110,56 @@ const PrivozSector = ({
         </div>
       </div>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+      {/* Модалка: Нет торговцев */}
+      <Modal show={showNoTradersModal} onHide={() => setShowNoTradersModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Trader Addition</Modal.Title>
+          <Modal.Title>Нет торговцев</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to add a trader to {category} sector?
-          <p>New Trader price is {coinsDecrease} coins</p>
-        </Modal.Body>
+        <Modal.Body>Сначала купите торговца, чтобы разместить его в секторе!</Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleAddTrader}>
-            Add Trader
+          <Button variant="primary" onClick={() => setShowNoTradersModal(false)}>
+            ОК
           </Button>
         </Modal.Footer>
       </Modal>
 
+      {/* Модалка: Выбор трейдера */}
+      <Modal show={showTraderSelectModal} onHide={() => setShowTraderSelectModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Выберите трейдера для размещения в секторе "{category}"</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            {myTraders.map((trader, idx) => (
+              <Col key={idx} xs={12}>
+                <Button
+                  variant={selectedTraderForSector === trader ? 'primary' : 'outline-primary'}
+                  className="w-100 mb-2"
+                  onClick={() => setSelectedTraderForSector(trader)}
+                  disabled={!!trader.location} // не даём выбрать уже размещённых
+                >
+                  {trader.traderName || `Трейдер #${idx + 1}`}
+                  {trader.location && <span> (сектор: {trader.location})</span>}
+                </Button>
+              </Col>
+            ))}
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowTraderSelectModal(false)}>
+            Отмена
+          </Button>
+          <Button
+            variant="success"
+            disabled={!selectedTraderForSector || !!selectedTraderForSector?.location}
+            onClick={handleConfirmAddTrader}
+          >
+            Разместить трейдера
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Модалка: Максимум трейдеров */}
       <Modal show={showMaxTradersModal} onHide={() => setShowMaxTradersModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Maximum Traders Reached</Modal.Title>
@@ -195,6 +175,7 @@ const PrivozSector = ({
         </Modal.Footer>
       </Modal>
 
+      {/* Модалка: Не хватает денег */}
       <Modal show={showNotEnoughMoneyModal} onHide={() => setShowNotEnoughMoneyModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Not Enough Money</Modal.Title>
@@ -210,13 +191,14 @@ const PrivozSector = ({
         </Modal.Footer>
       </Modal>
 
-      <Modal show={showUpdatedInfoModal} onHide={() => setShowUpdatedInfoModal(false)}>
+      {/* Модалка: Успех */}
+      <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Trader Added Successfully!</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Trader has been added! </Modal.Body>
+        <Modal.Body>Trader has been added!</Modal.Body>
         <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowUpdatedInfoModal(false)}>
+          <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
             OK
           </Button>
         </Modal.Footer>

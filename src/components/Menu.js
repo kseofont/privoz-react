@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { endTurn } from '../logic/logic';
+import { endTurn, handleEndRound } from '../logic/logic';
 import { connectionsRef } from '../globals';
 import { Link, useParams, useLocation } from 'react-router-dom';
 
@@ -82,10 +82,13 @@ const Menu = ({
 
       {/* Навигация */}
       <nav className="d-flex justify-content-between flex-column mb-3">
-        <Link to="/">{t('menu_start_page')}</Link>
+        <Link to="/" className="mb-2">
+          {t('menu_start_page')}
+        </Link>
+        <h3>Game pages</h3>
         <Link to={`/game/${myUserId}`}>{t('menu_privoz')}</Link>
         <Link to={`/wholesale/${myUserId}`}>{t('menu_wholesale')}</Link>
-        <Link to="/eventcards">{t('menu_eventcards')}</Link>
+        <Link to={`/eventcards/${myUserId}`}>{t('menu_eventcards')}</Link>
         <Link to={`/traders/${myUserId}`} className="mb-2">
           {t('menu_traders')}
         </Link>
@@ -108,6 +111,18 @@ const Menu = ({
           </div>
         )
       )}
+      {/* Кнопка и инфо по раунду */}
+      <div className="mt-3">
+        <div className="alert alert-info mb-2">Раунд: {gameState?.round || 1}</div>
+
+        {/* Кнопка "Конец раунда" только для хоста, если был совершен хотя бы один ход */}
+        {isHost &&
+          (gameState?.round > 1 || gameState?.players?.some(p => p.traders?.length > 0)) && (
+            <button className="btn btn-danger" onClick={handleEndRound()}>
+              Конец раунда
+            </button>
+          )}
+      </div>
 
       {/* Информация о текущем игроке */}
       {currentUserData && (
@@ -266,7 +281,29 @@ const Menu = ({
 
                     {/* Товары игрока напрямую */}
                     {user.products && user.products.length > 0 && (
-                      <p>Продукты у игрока: {user.products.length}</p>
+                      <div>
+                        <p>Продукты у игрока: {user.products.length}</p>
+                        <ul className="list-unstyled">
+                          {user.products.map((product, productIndex) => (
+                            <li key={productIndex} className="mb-1">
+                              <p>
+                                Название:{' '}
+                                {typeof product.productName === 'object'
+                                  ? product.productName[i18n.language] || product.productName.en
+                                  : product.productName}
+                              </p>
+                              {product.description && (
+                                <p>
+                                  Описание:{' '}
+                                  {typeof product.description === 'object'
+                                    ? product.description[i18n.language] || product.description.en
+                                    : product.description}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
 
                     {/* Торговцы игрока */}

@@ -472,3 +472,19 @@ export function handleSelectTrader({ gameState, myUserId, trader }) {
 
   return { ...gameState, players, traderList };
 }
+
+// Конец раунда
+export function handleEndRound(setGameState, isHost, broadcastGameState) {
+  if (typeof setGameState !== 'function') {
+    console.log('setGameState is not available!');
+    return;
+  }
+  setGameState(prev => {
+    const nextRound = (prev.round || 1) + 1;
+    const newState = { ...prev, round: nextRound };
+    if (isHost && typeof broadcastGameState === 'function') {
+      broadcastGameState(newState);
+    }
+    return newState;
+  });
+}
