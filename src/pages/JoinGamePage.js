@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Peer from 'peerjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Menu from '../components/Menu';
 
@@ -26,6 +26,75 @@ const JoinGamePage = () => {
     setLogs(prevLogs => [...prevLogs, message]);
     console.log(message);
   };
+
+  // auto connection
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const peerIdFromUrl = params.get('peer_id');
+    const nameFromUrl = params.get('name');
+    const colorFromUrl = params.get('color');
+
+    if (peerIdFromUrl) setHostPeerId(peerIdFromUrl);
+    if (nameFromUrl) setUserName(nameFromUrl);
+    if (colorFromUrl) setSelectedColor(colorFromUrl);
+
+    // Если peer_id (и желательно имя+цвет) есть — сразу инициируй подключение
+    if (peerIdFromUrl && nameFromUrl && colorFromUrl) {
+      handleJoinGameAuto(peerIdFromUrl, nameFromUrl, colorFromUrl);
+    }
+  }, [location.search]);
+  const handleJoinGameAuto = (peerId, name, color) => {
+    setHostPeerId(peerId);
+    setUserName(name);
+    setSelectedColor(color);
+    // Не вызывай alert'ы и не проверяй через форму — сразу пытайся подключиться
+    // Но можно сделать небольшую проверку, если хочешь
+    const newPeer = new Peer();
+    setPeer(newPeer);
+
+    newPeer.on('open', id => {
+      setMyUserId(id);
+      const conn = newPeer.connect(peerId);
+      setConnection(conn);
+
+      conn.on('open', () => {
+        setConnected(true);
+        window.currentPrivozConnection = conn;
+        addLog(`[AUTO] Connected to host with ID: ${peerId}`);
+        conn.send({
+          type: 'join',
+          playerName: name,
+          color: color,
+        });
+      });
+
+      conn.on('error', error => {
+        setErrorMessage(
+          `Connection error: ${error.message || 'An error occurred while connecting to the host.'}`
+        );
+        addLog('Connection error: ' + error.message);
+      });
+
+      conn.on('close', () => {
+        setConnected(false);
+        setConnection(null);
+        setErrorMessage('Disconnected unexpectedly from the host. Please try reconnecting.');
+        addLog('[CLIENT] Disconnected from host.');
+      });
+    });
+
+    newPeer.on('error', error => {
+      setErrorMessage(
+        `Peer error: ${
+          error.message || 'An error occurred while initializing the peer connection.'
+        }`
+      );
+      addLog('Peer error: ' + error.message);
+    });
+  };
+
+  // end auto location
 
   useEffect(() => {
     if (connected && connection) {

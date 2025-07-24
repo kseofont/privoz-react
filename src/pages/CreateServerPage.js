@@ -304,14 +304,28 @@ const CreateServerPage = () => {
               {t('host_start_game')}
             </button>
           )}
-
+          <div className="connectlink d-flex flex-column ">
+            <p>Link to auto connection: </p>
+            <a
+              href={`http://localhost:3000/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
+              target="_blank"
+              className="mb-5"
+            >
+              {`http://localhost:3000/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
+            </a>
+            <a
+              href={`https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
+              target="_blank"
+            >
+              {`https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
+            </a>
+          </div>
           {serverStarted && peerId && (
             <div className="mt-3">
               <p>Server started! Share this Peer ID with other players to join the game:</p>
               <input type="text" readOnly className="form-control" value={peerId} />
             </div>
           )}
-
           {gameState?.players?.length > 0 && (
             <div className="mt-3">
               <h5>Connected Players:</h5>
@@ -334,7 +348,6 @@ const CreateServerPage = () => {
               )}
             </div>
           )}
-
           {logs.length > 0 && (
             <div className="mt-3">
               <h5>Logs:</h5>
