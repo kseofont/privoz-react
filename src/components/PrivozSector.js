@@ -126,6 +126,30 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
       if (playerIdx === -1) return prev;
       const player = prev.players[playerIdx];
 
+      // --- Новый блок: обновление продуктов на руке ---
+      // Создаем копию продуктов игрока
+      let updatedPlayerProducts = Array.isArray(player.products) ? [...player.products] : [];
+
+      // Для каждого переданного продукта:
+      selectedProducts.forEach(selectedProd => {
+        const prodIdx = updatedPlayerProducts.findIndex(
+          p => p.productId === selectedProd.productId
+        );
+        if (prodIdx !== -1) {
+          // Если у игрока больше 1 такого продукта — уменьшаем количество, иначе удаляем
+          const qty = updatedPlayerProducts[prodIdx].quantity_player_card || 1;
+          if (qty > 1) {
+            updatedPlayerProducts[prodIdx] = {
+              ...updatedPlayerProducts[prodIdx],
+              quantity_player_card: qty - 1,
+            };
+          } else {
+            // Был только один — удаляем товар из products
+            updatedPlayerProducts.splice(prodIdx, 1);
+          }
+        }
+      });
+
       // Обновляем только выбранного трейдера (добавляем ему goods)
       const updatedTraders = (player.traders || []).map(t =>
         t === selectedTraderForSector
@@ -144,7 +168,7 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
         ...player,
         traders: updatedTraders,
         coins: (player.coins || 0) - coinsDecrease,
-        // products: ... (если нужно удалять отданные товары из продуктов игрока)
+        products: updatedPlayerProducts,
       };
 
       const updatedPlayers = [...prev.players];
