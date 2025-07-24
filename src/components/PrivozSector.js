@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import Trader from './Trader';
+import { player_add_event } from '../logic/logic';
 
 const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, setGameState }) => {
   const { i18n } = useTranslation();
@@ -22,6 +23,8 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
   const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
   const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [lastAddedEventCard, setLastAddedEventCard] = useState(null);
 
   const totalTradersCount = player?.tradersCount || 0;
   const coinsDecrease = totalTradersCount <= 1 ? 0 : totalTradersCount * 5;
@@ -147,12 +150,19 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
       const updatedPlayers = [...prev.players];
       updatedPlayers[playerIdx] = updatedPlayer;
 
+      let newGameState = { ...prev, players: updatedPlayers };
+
+      // --- Добавляем карту и получаем результат ---
+      const [eventedGameState, card] = player_add_event(newGameState, myUserId);
+      setLastAddedEventCard(card); // <- сохранили выбранную карту в стейте
+
       setShowTraderSelectModal(false);
       setShowProductSelectModal(false);
       setShowSuccessModal(true);
       setSelectedProducts([]); // очищаем
-      return { ...prev, players: updatedPlayers };
+      return eventedGameState; // <-- вот ТАК возвращай!
     });
+    // Вызов добавления карты:
 
     if (connection) {
       connection.send({
@@ -359,7 +369,33 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
         <Modal.Header closeButton>
           <Modal.Title>Trader Added Successfully!</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Trader has been added!</Modal.Body>
+        <Modal.Body>
+          Trader has been added!
+          {/* Показываем инфу о выданной карте */}
+          {lastAddedEventCard && (
+            <div className="mt-3 p-2 border rounded bg-light">
+              <div>
+                <b>Вам выпала карта события!</b>
+              </div>
+              <div>
+                <b>
+                  {typeof lastAddedEventCard.title === 'object'
+                    ? lastAddedEventCard.title[lang] || lastAddedEventCard.title.en
+                    : lastAddedEventCard.title}
+                </b>
+              </div>
+              <div className="small text-muted">
+                {typeof lastAddedEventCard.description === 'object'
+                  ? lastAddedEventCard.description[lang] || lastAddedEventCard.description.en
+                  : lastAddedEventCard.description}
+              </div>
+              <div>
+                <b>Тип:</b>{' '}
+                {lastAddedEventCard.fortune === 'positive' ? 'Позитивная' : 'Негативная'}
+              </div>
+            </div>
+          )}
+        </Modal.Body>
         <Modal.Footer>
           <Button variant="primary" onClick={() => setShowSuccessModal(false)}>
             OK

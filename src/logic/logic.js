@@ -475,17 +475,71 @@ export function handleSelectTrader({ gameState, myUserId, trader }) {
 }
 
 // Конец раунда
+// Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {
   if (typeof setGameState !== 'function') {
     console.log('setGameState is not available!');
     return;
   }
+
   setGameState(prev => {
+    if (!prev || !Array.isArray(prev.players)) return prev;
+
+    const updatedPlayers = prev.players.map(player => {
+      let coinsEarned = 0;
+
+      // Обрабатываем всех трейдеров игрока
+      const updatedTraders = (player.traders || []).map(trader => {
+        // Проверка: торговец размещён в секторе и есть товары
+        if (
+          typeof trader.card_in_game === 'string' &&
+          trader.card_in_game.startsWith('sector_') &&
+          Array.isArray(trader.goods) &&
+          trader.goods.length > 0
+        ) {
+          // Считаем доход с каждого товара у этого торговца
+          trader.goods.forEach(product => {
+            const quantity = Number(product.quantity_player_card) || 0;
+            // Название цены может быть sellingPrice, retailPrice или что-то ещё
+            const sellingPrice =
+              Number(product.sellingPrice) ||
+              Number(product.retailPrice) ||
+              Number(product.profit) ||
+              0;
+            coinsEarned += quantity * sellingPrice;
+          });
+
+          // Очищаем товары (после продажи)
+          return {
+            ...trader,
+            goods: [],
+            card_in_game: `${player.user_id}_hand`, // <- ключевое изменение
+            location: null, // можно явно убрать сектор, если он был
+          };
+        }
+        // Если не размещён или нет товаров, ничего не меняем
+        return trader;
+      });
+
+      return {
+        ...player,
+        coins: (player.coins || 0) + coinsEarned,
+        traders: updatedTraders,
+      };
+    });
+
     const nextRound = (prev.round || 1) + 1;
-    const newState = { ...prev, round: nextRound };
+    const newState = {
+      ...prev,
+      round: nextRound,
+      players: updatedPlayers,
+      __roundProcessing: true, // временно блокируем повтор
+    };
+
     if (isHost && typeof broadcastGameState === 'function') {
       broadcastGameState(newState);
     }
+
     return newState;
   });
 }
@@ -501,3 +555,74 @@ export const getField = (obj, field, lang = 'en') => {
   }
   return '';
 };
+
+export function player_add_event(gameState, playerId) {
+  // 1. Собрать все eventcards в колоде, у которых quantity_active > 0
+  const deckCards = (gameState.eventcards || []).filter(
+    c => c.position_in_game === 'deck' && c.quantity_active > 0
+  );
+
+  if (!deckCards.length) return gameState; // Нет доступных карт
+
+  // 2. Выбрать случайную карту из этого массива (с учётом количества)
+  const expanded = [];
+  deckCards.forEach(card => {
+    for (let i = 0; i < card.quantity_active; i++) expanded.push(card);
+  });
+  const randomIdx = Math.floor(Math.random() * expanded.length);
+  const chosenCard = expanded[randomIdx];
+  if (!chosenCard) return gameState;
+
+  // 3. Найти её в eventcards по id для изменения quantity_active
+  const evIdx = gameState.eventcards.findIndex(c => c.id === chosenCard.id);
+  if (evIdx === -1) return gameState;
+
+  // 4. Уменьшаем quantity_active на 1 в общей колоде
+  const updatedEventCards = [...gameState.eventcards];
+  updatedEventCards[evIdx] = {
+    ...updatedEventCards[evIdx],
+    quantity_active: Math.max(0, updatedEventCards[evIdx].quantity_active - 1),
+  };
+
+  // 5. Копируем свойства карты для игрока
+  const cardForPlayer = {
+    ...chosenCard,
+    position_in_game: `hand_${playerId}`,
+    quantity_active: 1,
+  };
+
+  // 6. Добавляем игроку эту карту (или увеличиваем количество, если такая уже есть)
+  const playerIdx = gameState.players.findIndex(p => p.user_id === playerId);
+  if (playerIdx === -1) return { ...gameState, eventcards: updatedEventCards };
+
+  const player = gameState.players[playerIdx];
+  let playerEventCards = Array.isArray(player.eventCards) ? [...player.eventCards] : [];
+
+  const playerCardIdx = playerEventCards.findIndex(c => c.id === chosenCard.id);
+  if (playerCardIdx !== -1) {
+    // Уже есть такая карта у игрока — увеличиваем количество
+    playerEventCards[playerCardIdx] = {
+      ...playerEventCards[playerCardIdx],
+      quantity_active: (playerEventCards[playerCardIdx].quantity_active || 0) + 1,
+    };
+  } else {
+    // Новая карта
+    playerEventCards.push(cardForPlayer);
+  }
+
+  // 7. Обновить игрока в массиве
+  const updatedPlayer = { ...player, eventCards: playerEventCards };
+  const updatedPlayers = [...gameState.players];
+  updatedPlayers[playerIdx] = updatedPlayer;
+
+  // 8. Вернуть обновлённый gamestate
+  return [
+    // <--- вот тут меняется!
+    {
+      ...gameState,
+      eventcards: updatedEventCards,
+      players: updatedPlayers,
+    },
+    cardForPlayer, // <-- эта карта, которую выдали игроку
+  ];
+}

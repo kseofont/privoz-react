@@ -34,18 +34,15 @@ const ProductMini = ({
       </div>
 
       <div className="card-body">
-        {wholesalePrice !== undefined && (
+        {wholesalePrice !== undefined && retailPrice !== undefined && (
           <p>
-            Wholesale price: {wholesalePrice}{' '}
+            Price (Wholesale/Retail): {wholesalePrice}
+            <i className="bi bi-coin" style={{ marginLeft: '3px', color: '#ffc107' }}></i> /{' '}
+            {retailPrice}
             <i className="bi bi-coin" style={{ marginLeft: '3px', color: '#ffc107' }}></i>
           </p>
         )}
-        {retailPrice !== undefined && (
-          <p>
-            Retail price: {retailPrice}{' '}
-            <i className="bi bi-coin" style={{ marginLeft: '3px', color: '#ffc107' }}></i>
-          </p>
-        )}
+
         {possibleIncome !== undefined && (
           <p>
             Possible income: +{possibleIncome}{' '}

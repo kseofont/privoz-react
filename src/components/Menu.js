@@ -64,6 +64,14 @@ const Menu = ({
     ...new Set(currentUserData?.traders?.map(trader => trader.location) || []),
   ];
 
+  // ...внутри компонента Menu:
+  const [roundProcessing, setRoundProcessing] = useState(false);
+
+  useEffect(() => {
+    // Сбрасываем roundProcessing, если раунд обновился
+    setRoundProcessing(false);
+  }, [gameState?.round]); // или [gameState.round]
+
   return (
     <div className="col">
       <div className="language-block col-12 mb-4">
@@ -116,10 +124,16 @@ const Menu = ({
       <div className="mt-3">
         <div className="alert alert-info mb-2">Раунд: {gameState?.round || 1}</div>
 
-        {/* Кнопка "Конец раунда" только для хоста, если был совершен хотя бы один ход */}
         {isHost &&
           (gameState?.round > 1 || gameState?.players?.some(p => p.traders?.length > 0)) && (
-            <button className="btn btn-danger" onClick={handleEndRound()}>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                setRoundProcessing(true); // блокируем повторный клик
+                handleEndRound(setGameState, isHost, broadcastGameState);
+              }}
+              disabled={roundProcessing}
+            >
               Конец раунда
             </button>
           )}
@@ -209,30 +223,15 @@ const Menu = ({
                     card.fortune === 'negative' ? 'bg-danger' : 'bg-success'
                   }`}
                 >
-                  <p>Title: {card.title}</p>
-                  <p>Description: {card.description}</p>
+                  <p>Title: {getField(card, 'title', lang)}</p>
+                  <p>Description: {getField(card, 'description', lang)}</p>
                   <p>Fortune: {card.fortune}</p>
                   <p>Quantity In Game: {card.quantity_ingame}</p>
                   <p>Quantity Active: {card.quantity_active}</p>
                   <p>Position In Game: {card.position_in_game}</p>
                   <p>Goal Action: {card.goal_action}</p>
                   <p>Goal Item: {card.goal_item}</p>
-                  {card.effect && card.effect.length > 0 && (
-                    <div>
-                      <p>Effect:</p>
-                      <ul className="list-unstyled">
-                        {card.effect.map((effect, effectIndex) => (
-                          <li key={effectIndex}>
-                            {Object.keys(effect).map((key, subIndex) => (
-                              <p key={subIndex}>
-                                {key}: {JSON.stringify(effect[key])}
-                              </p>
-                            ))}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {/* и т.д. */}
                 </li>
               ))}
             </ul>
