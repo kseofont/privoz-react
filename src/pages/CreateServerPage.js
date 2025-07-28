@@ -233,9 +233,9 @@ const CreateServerPage = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <div className="row">
-        <div className="col-9">
+    <div className="container-fluid">
+      <div className="row flex-column flex-sm-row">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
           <h1> {t('create_game_as_host')}</h1>
           <div className="mb-3">
             <label htmlFor="userName" className="form-label">
@@ -319,6 +319,26 @@ const CreateServerPage = () => {
             >
               {`https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
             </a>
+
+            <div className="telegram-invite">
+              <p>Скопируй это приглашение и отправь в Telegram:</p>
+              <pre
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  background: '#f4f4f4',
+                  padding: 8,
+                  borderRadius: 8,
+                }}
+              >
+                {`🎲 Присоединяйся к игре «Привоз»!
+
+Твой код: \`${peerId}\`
+
+[🔗 Подключиться к игре](https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green)
+`}
+              </pre>
+            </div>
           </div>
           {serverStarted && peerId && (
             <div className="mt-3">
@@ -359,7 +379,7 @@ const CreateServerPage = () => {
             </div>
           )}
         </div>
-        <div className="col-3">
+        <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
           <Menu
             // currentUserData={gameState?.players ? gameState.players.find(p => p.myUserId) : null}
             // otherUsers={gameState?.players ? gameState.players.filter(p => !p.myUserId) : []}

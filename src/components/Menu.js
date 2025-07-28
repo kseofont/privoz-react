@@ -18,13 +18,18 @@ const Menu = ({
   const pathname = location.pathname;
 
   // --- Вычисляем myUserId и gameState (fallback из window, если нет в props)
+  const gameState = propGameState || (typeof window !== 'undefined' && window.gameState) || null;
   const myUserId =
     propMyUserId ||
     urlPeerId ||
     (typeof window !== 'undefined' && window.myUserId) ||
     (propGameState?.players?.[0]?.user_id ?? null);
 
-  const gameState = propGameState || (typeof window !== 'undefined' && window.gameState) || null;
+  const isAuthorized =
+    !!myUserId &&
+    !!gameState &&
+    Array.isArray(gameState.players) &&
+    gameState.players.some(p => p.user_id === myUserId);
 
   // Текущий игрок и другие игроки
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
@@ -39,6 +44,23 @@ const Menu = ({
 
   const myTurn = gameState?.currentTurnUserId === myUserId;
   const isHost = !connection; // у хоста нет connection
+  const [hadProducts, setHadProducts] = useState(false);
+  useEffect(() => {
+    if (!currentUserData) return;
+
+    const hasProducts =
+      Array.isArray(currentUserData.products) && currentUserData.products.length > 0;
+
+    if (hasProducts && !hadProducts) {
+      setHadProducts(true); // произошло первое добавление
+    }
+  }, [currentUserData?.products?.length]);
+
+  useEffect(() => {
+    if ((pathname === '/game' || pathname.startsWith('/game/')) && hadProducts) {
+      setHadProducts(false);
+    }
+  }, [pathname]);
 
   const handleEndTurn = () => {
     console.log('connection in menu', connection);
@@ -95,7 +117,10 @@ const Menu = ({
           {t('menu_start_page')}
         </Link>
         <h3>Game pages</h3>
-        <Link to={`/game/${myUserId}`}>{t('menu_privoz')}</Link>
+        <Link to={`/game/${myUserId}`} className={`mb-2 ${hadProducts ? 'next_move' : ''}`}>
+          {t('menu_privoz')}
+        </Link>
+
         <Link to={`/wholesale/${myUserId}`}>{t('menu_wholesale')}</Link>
         <Link to={`/eventcards/${myUserId}`}>{t('menu_eventcards')}</Link>
         <Link to={`/traders/${myUserId}`} className="mb-2">
@@ -121,23 +146,26 @@ const Menu = ({
         )
       )}
       {/* Кнопка и инфо по раунду */}
-      <div className="mt-3">
-        <div className="alert alert-info mb-2">Раунд: {gameState?.round || 1}</div>
+      {isAuthorized &&
+        location.pathname !== '/' &&
+        (gameState?.players?.some(p => p.traders?.length > 0) || gameState?.round > 1) && (
+          <div className="mt-3">
+            <div className="alert alert-info mb-2">Раунд: {gameState?.round || 1}</div>
 
-        {isHost &&
-          (gameState?.round > 1 || gameState?.players?.some(p => p.traders?.length > 0)) && (
-            <button
-              className="btn btn-danger"
-              onClick={() => {
-                setRoundProcessing(true); // блокируем повторный клик
-                handleEndRound(setGameState, isHost, broadcastGameState);
-              }}
-              disabled={roundProcessing}
-            >
-              Конец раунда
-            </button>
-          )}
-      </div>
+            {isHost && (
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  setRoundProcessing(true);
+                  handleEndRound(setGameState, isHost, broadcastGameState);
+                }}
+                disabled={roundProcessing}
+              >
+                Конец раунда
+              </button>
+            )}
+          </div>
+        )}
 
       {/* Информация о текущем игроке */}
       {currentUserData && (
@@ -162,16 +190,14 @@ const Menu = ({
                       Избранный сектор: {getField(trader, 'sector_favorite', lang) || 'неизвестно'}
                     </p>
 
-                    {trader.products && trader.products.length > 0 && (
+                    {trader.goods && trader.goods.length > 0 && (
                       <div>
                         <p>Товары:</p>
                         <ul className="list-unstyled">
-                          {trader.products.map((product, productIndex) => (
+                          {trader.goods.map((goods, productIndex) => (
                             <li key={productIndex} className="mb-1">
-                              <p>Название: {getField(product, 'productName', lang)}</p>
-                              {product.description && (
-                                <p>Описание: {getField(trader, 'description', lang)}</p>
-                              )}
+                              <p>Название: {getField(goods, 'productName', lang)}</p>
+                              {goods.sellingPrice && <p>Price:{goods.sellingPrice} </p>}
                             </li>
                           ))}
                         </ul>
@@ -200,9 +226,14 @@ const Menu = ({
               <ul className="list-unstyled">
                 {currentUserData.products.map((product, productIndex) => (
                   <li key={productIndex} className="mb-1">
-                    <p>Название: {getField(product, 'productName', lang)}</p>
+                    <p>
+                      Название: {getField(product, 'productName', lang)}{' '}
+                      {product.quantity_player_card && (
+                        <span> X {product.quantity_player_card}</span>
+                      )}
+                    </p>
                     {product.description && (
-                      <p>Описание: {getField(product, 'description', lang)}</p>
+                      <p>Описание: {getField(product, 'description', lang)} </p>
                     )}
                   </li>
                 ))}

@@ -41,6 +41,8 @@ i18n
           color_orange: 'Orange',
           color_purple: 'Purple',
           color_brown: 'Brown',
+          chooseYourTrader: 'Choose your trader',
+          makePurchaseAtWholesale: 'Make a purchase at the night (wholesale) market',
         },
       },
       ua: {
@@ -76,6 +78,8 @@ i18n
           color_orange: 'Помаранчевий',
           color_purple: 'Фіолетовий',
           color_brown: 'Коричневий',
+          chooseYourTrader: 'Обери свого продавця',
+          makePurchaseAtWholesale: 'Здійсни закупівлю товару на нічному (оптовому) ринку',
         },
       },
       ru: {
@@ -110,6 +114,8 @@ i18n
           color_orange: 'Оранжевый',
           color_purple: 'Фиолетовый',
           color_brown: 'Коричневый',
+          chooseYourTrader: 'Выбери своего продавца',
+          makePurchaseAtWholesale: 'Сделай закупку товара на ночном (оптовом) рынке',
         },
       },
       es: {
@@ -145,6 +151,8 @@ i18n
           color_orange: 'Naranja',
           color_purple: 'Púrpura',
           color_brown: 'Marrón',
+          chooseYourTrader: 'Elige a tu vendedor',
+          makePurchaseAtWholesale: 'Haz una compra en el mercado nocturno (mayorista)',
         },
       },
     },

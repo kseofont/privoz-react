@@ -15,6 +15,7 @@ import {
 const Wholesale = () => {
   const { i18n } = useTranslation();
   const lang = i18n.language || 'en';
+  const { t } = useTranslation();
   const location = useLocation();
   const params = useParams();
 
@@ -230,126 +231,132 @@ const Wholesale = () => {
   }
 
   return (
-    <div className="container mt-4 mb-4">
-      <h2>Wholesale Marketplace</h2>
-      <div className="row">
-        <div className="col-9">
-          {!isAuthorized && (
-            <div className="alert alert-warning mb-3">
-              Вы не подключены к игре. Ниже — полный список товаров. Для участия войдите в игру.
+    <div className="container-fluid">
+      <div className="row flex-column flex-sm-row">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
+          <div className="row flex-column flex-sm-row">
+            <h2>Wholesale Marketplace</h2>
+            {!isAuthorized && (
+              <div className="alert alert-warning mb-3">
+                Вы не подключены к игре. Ниже — полный список товаров. Для участия войдите в игру.
+              </div>
+            )}
+            <div className="row">
+              <h2>All cards in the game</h2>
+              <h2>{t('makePurchaseAtWholesale')}</h2>
             </div>
-          )}
-          <div className="row">
-            <h2>All cards in the game</h2>
-          </div>
-          {Object.keys(groupedBySector).map(sector => (
-            <div key={sector} className={`row ${sector}`}>
-              <h3>{sector.charAt(0).toUpperCase() + sector.slice(1)}</h3>
-              {groupedBySector[sector].map((product, index) => (
-                <div
-                  key={index}
-                  className="col"
-                  style={{
-                    minWidth: 240,
-                    cursor: isAuthorized && myTurn ? 'pointer' : 'not-allowed',
-                    opacity: isAuthorized && myTurn ? 1 : 0.5,
-                  }}
-                  onClick={() => {
-                    if (isAuthorized) handleSelectProduct(product);
-                  }}
-                >
-                  <div className={` border p-3 mb-3 `}>
-                    <Product
-                      sector={sector}
-                      productName={getField(product, 'productName', lang)}
-                      imageSrc={`${product.imageSrc}`}
-                      wholesalePrice={product.wholesalePrice}
-                      retailPrice={product.sellingPrice}
-                      possibleIncome={product.profit}
-                      quantity_card={product.quantity_card}
-                      quantity_free_card={product.quantity_free_card}
-                    />
-                  </div>
+            {Object.keys(groupedBySector).map(sector => (
+              <div key={sector} className={`col-12 col-sm-6 ${sector}`}>
+                <div className="row">
+                  <h3 className="bg-white">{sector.charAt(0).toUpperCase() + sector.slice(1)}</h3>
+                  {groupedBySector[sector].map((product, index) => (
+                    <div
+                      key={index}
+                      className="col"
+                      style={{
+                        minWidth: 240,
+                        cursor: isAuthorized && myTurn ? 'pointer' : 'not-allowed',
+                        opacity: isAuthorized && myTurn ? 1 : 0.5,
+                      }}
+                      onClick={() => {
+                        if (isAuthorized) handleSelectProduct(product);
+                      }}
+                    >
+                      <div className={` border  mb-3 `}>
+                        <Product
+                          sector={sector}
+                          productName={getField(product, 'productName', lang)}
+                          imageSrc={`${product.imageSrc}`}
+                          wholesalePrice={product.wholesalePrice}
+                          retailPrice={product.sellingPrice}
+                          possibleIncome={product.profit}
+                          quantity_card={product.quantity_card}
+                          quantity_free_card={product.quantity_free_card}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ))}
+              </div>
+            ))}
 
-          {/* Модалка подтверждения */}
-          <Modal show={showModal} onHide={() => setShowModal(false)}>
-            <Modal.Header closeButton>
-              <Modal.Title>
-                {selectedProduct ? getField(selectedProduct, 'productName', lang) : ''}
-              </Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              {isAuthorized && !myTurn && (
-                <div className="text-danger">Сейчас не ваш ход. Покупка недоступна.</div>
-              )}
-              {isAuthorized ? (
-                selectedProduct ? (
-                  gameState &&
-                  (() => {
-                    // Находим игрока и цену
-                    const player = gameState.players.find(p => p.user_id === myUserId) || {};
-                    const price = selectedProduct.wholesalePrice || 0;
-                    const coins = player.coins || 0;
-                    const enoughCoins = coins >= price;
-                    if (!enoughCoins) {
-                      return (
-                        <div className="text-danger">
-                          Недостаточно монет для покупки! Не хватает {price - coins} монет.
-                        </div>
-                      );
-                    }
-                    // Можно также проверить остаток товара, если надо
-                    return (
-                      <>
-                        <div>Вы уверены, что хотите выбрать этот товар?</div>
-                        <div>
-                          Цена: <b>{price} монет</b> <br />
-                          Ваши монеты: {coins}
-                        </div>
-                        <div>
-                          <b>Сектор:</b> {selectedProduct.sector || selectedProduct.product_sector}
-                        </div>
-                        {/* Можно еще добавить описание или другие детали */}
-                      </>
-                    );
-                  })()
-                ) : (
-                  <div>Товар не выбран</div>
-                )
-              ) : (
-                <div className="text-warning">
-                  Для выбора товара нужно быть подключённым к игре!
-                </div>
-              )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={() => setShowModal(false)}>
-                Отмена
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleConfirmProduct}
-                disabled={
-                  !isAuthorized ||
-                  !selectedProduct ||
-                  !myTurn ||
-                  (gameState &&
+            {/* Модалка подтверждения */}
+            <Modal show={showModal} onHide={() => setShowModal(false)}>
+              <Modal.Header closeButton>
+                <Modal.Title>
+                  {selectedProduct ? getField(selectedProduct, 'productName', lang) : ''}
+                </Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                {isAuthorized && !myTurn && (
+                  <div className="text-danger">Сейчас не ваш ход. Покупка недоступна.</div>
+                )}
+                {isAuthorized ? (
+                  selectedProduct ? (
+                    gameState &&
                     (() => {
+                      // Находим игрока и цену
                       const player = gameState.players.find(p => p.user_id === myUserId) || {};
-                      return (player.coins || 0) < (selectedProduct?.wholesalePrice || 0);
-                    })())
-                }
-              >
-                Подтвердить выбор
-              </Button>
-            </Modal.Footer>
-          </Modal>
+                      const price = selectedProduct.wholesalePrice || 0;
+                      const coins = player.coins || 0;
+                      const enoughCoins = coins >= price;
+                      if (!enoughCoins) {
+                        return (
+                          <div className="text-danger">
+                            Недостаточно монет для покупки! Не хватает {price - coins} монет.
+                          </div>
+                        );
+                      }
+                      // Можно также проверить остаток товара, если надо
+                      return (
+                        <>
+                          <div>Вы уверены, что хотите выбрать этот товар?</div>
+                          <div>
+                            Цена: <b>{price} монет</b> <br />
+                            Ваши монеты: {coins}
+                          </div>
+                          <div>
+                            <b>Сектор:</b>{' '}
+                            {selectedProduct.sector || selectedProduct.product_sector}
+                          </div>
+                          {/* Можно еще добавить описание или другие детали */}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <div>Товар не выбран</div>
+                  )
+                ) : (
+                  <div className="text-warning">
+                    Для выбора товара нужно быть подключённым к игре!
+                  </div>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowModal(false)}>
+                  Отмена
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleConfirmProduct}
+                  disabled={
+                    !isAuthorized ||
+                    !selectedProduct ||
+                    !myTurn ||
+                    (gameState &&
+                      (() => {
+                        const player = gameState.players.find(p => p.user_id === myUserId) || {};
+                        return (player.coins || 0) < (selectedProduct?.wholesalePrice || 0);
+                      })())
+                  }
+                >
+                  Подтвердить выбор
+                </Button>
+              </Modal.Footer>
+            </Modal>
+          </div>
         </div>
-        <div className="col-3">
+        <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
           <Menu
             gameState={gameState}
             myUserId={myUserId}

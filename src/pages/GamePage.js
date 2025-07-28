@@ -112,11 +112,11 @@ const GamePage = () => {
   const sectors = gameState?.sectors || fallbackSectors;
 
   return (
-    <div className="container">
+    <div className="container-fluid">
       <div className="row">
         <h2>Privoz Bazar Game Session</h2>
 
-        {/* Текущий игрок */}
+        {/* Текущий игрок
         {currentUserData && (
           <div className="user-info mt-3">
             <h4>Current User Data:</h4>
@@ -137,10 +137,10 @@ const GamePage = () => {
               <strong>Event Cards Count:</strong> {currentUserData.eventCards?.length || 0}
             </p>
           </div>
-        )}
+        )} */}
 
         {/* Остальные игроки */}
-        {otherUsers?.length > 0 && (
+        {/* {otherUsers?.length > 0 && (
           <div className="other-users-info mt-3">
             <h4>Other Users in Game:</h4>
             <ul className="list-unstyled">
@@ -163,38 +163,39 @@ const GamePage = () => {
               ))}
             </ul>
           </div>
-        )}
-
-        {/* Игровые сектора */}
-        <div className="col-9 mt-5">
-          <div className="row yarr1">
-            {sectors.map((sector, index) => (
-              <div className="col-6 yarr1" key={index}>
-                <PrivozSector
-                  category={sector}
-                  maxTraders={otherUsers.length + 1}
-                  gameState={gameState}
-                  myUserId={myUserId}
-                  connection={connection}
-                  myTurn={myTurn}
-                  setGameState={setGameState}
-                  clickable={isAuthorized && myTurn}
-                />
-              </div>
-            ))}
+        )} */}
+        <div className="row flex-column flex-sm-row">
+          {/* Игровые сектора */}
+          <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column align-items-center text-center">
+            <div className="row yarr1">
+              {sectors.map((sector, index) => (
+                <div className="col-6 yarr1" key={index}>
+                  <PrivozSector
+                    category={sector}
+                    maxTraders={otherUsers.length + 1}
+                    gameState={gameState}
+                    myUserId={myUserId}
+                    connection={connection}
+                    myTurn={myTurn}
+                    setGameState={setGameState}
+                    clickable={isAuthorized && myTurn}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Меню справа */}
-        <div className="col-3">
-          <Menu
-            gameState={gameState}
-            myUserId={myUserId}
-            connection={connection}
-            setGameState={isHost ? setGameState : undefined}
-            broadcastGameState={isHost ? broadcastGameState : undefined}
-            connectionsRef
-          />
+          {/* Меню справа */}
+          <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
+            <Menu
+              gameState={gameState}
+              myUserId={myUserId}
+              connection={connection}
+              setGameState={isHost ? setGameState : undefined}
+              broadcastGameState={isHost ? broadcastGameState : undefined}
+              connectionsRef
+            />
+          </div>
         </div>
       </div>
     </div>

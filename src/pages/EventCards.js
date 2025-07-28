@@ -59,9 +59,9 @@ const EventCard = () => {
   const negativeFortuneCards = safeEventCards.filter(card => card.fortune === 'negative');
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="col-9">
+    <div className="container-fluid">
+      <div className="row flex-column flex-sm-row">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
           {!isAuthorized && (
             <div className="alert alert-warning mb-3">
               Вы не подключены к игре. Ниже — список всех доступных событий. Для участия войдите в
@@ -77,7 +77,7 @@ const EventCard = () => {
           </div>
         </div>
 
-        <div className="col-3">
+        <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
           <Menu gameState={gameState} myUserId={myUserId} setGameState={setGameState} />
         </div>
       </div>

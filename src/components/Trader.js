@@ -30,13 +30,15 @@ const Trader = ({ user, trader, gameState }) => {
       };
     }
   }
+  console.log('completeTrader.traderImg', completeTrader.img);
+  console.log('completeTrader', completeTrader);
 
   return (
     <div className={`col border text-center pb-4 trader-block ${color}`}>
       <div className="userdata">{completeTrader.traderName}</div>
 
       <img
-        src={completeTrader.traderImg || '/img/aza.webp'}
+        src={completeTrader.img || '/img/aza.webp'}
         alt={completeTrader.traderName}
         className="traderimg"
         onError={e => {

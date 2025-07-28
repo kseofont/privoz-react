@@ -9,9 +9,9 @@ const StartPage = () => {
   const { t, i18n } = useTranslation();
   return (
     <div className="container-fluid">
-      <div className="row min-vh-100">
+      <div className="row flex-column flex-sm-row">
         {/* Main content */}
-        <div className="col-12 col-lg-9 d-flex flex-column justify-content-center align-items-center text-center">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
           <h1 className="mb-4">{t('welcome')}</h1>
 
           <div className="mb-3">
@@ -27,14 +27,7 @@ const StartPage = () => {
         </div>
 
         {/* Sidebar menu */}
-        <div className="d-none d-lg-block col-lg-3 border-start position-fixed end-0 top-0 h-100">
-          <Menu />
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <div className="d-block d-lg-none w-100 position-fixed bottom-0 start-0 bg-light border-top">
-        <div className="container-fluid">
+        <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
           <Menu />
         </div>
       </div>

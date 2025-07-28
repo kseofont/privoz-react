@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { connectionsRef } from '../globals';
 
 import { Modal, Button } from 'react-bootstrap';
@@ -19,7 +19,9 @@ const TraderList = () => {
   const [all_traders, setAllTraders] = useState([]);
   const { i18n } = useTranslation();
   const lang = i18n.language || 'en';
+  const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   // --- Универсальная инициализация ---
   const params = useParams();
   const initialGameState = location.state?.gameState || window.gameState || null;
@@ -54,6 +56,8 @@ const TraderList = () => {
     ? all_traders
     : defaultTraders;
 
+  const [selectedTraderIdForRedirect, setSelectedTraderIdForRedirect] = useState(null);
+
   useEffect(() => {
     if (gameState) window.gameState = gameState;
     if (myUserId) window.myUserId = myUserId;
@@ -84,13 +88,8 @@ const TraderList = () => {
   }, [isAuthorized]);
 
   useEffect(() => {
-    // console.log('[CLIENT] GameState обновился:', gameState);
-    //  console.log('[CLIENT] Мой userId:', myUserId);
     if (gameState) {
       const curr = gameState.players.find(p => p.user_id === myUserId);
-      //   console.log('[CLIENT] Текущий игрок:', curr);
-      //   console.log('[CLIENT] Все игроки:', gameState.players);
-      //  console.log('[CLIENT] Сейчас ходит:', gameState.currentTurnUserId);
     }
   }, [gameState, myUserId]);
   // --- isHost логика (нет connection)
@@ -143,6 +142,9 @@ const TraderList = () => {
       });
 
       setShowModal(false);
+
+      setSelectedTraderIdForRedirect(trader.traderId); // <- сохрани ID
+
       return nextState;
     });
   }
@@ -164,6 +166,17 @@ const TraderList = () => {
     };
   }, [connection]);
 
+  useEffect(() => {
+    if (!selectedTraderIdForRedirect) return;
+
+    const player = gameState?.players?.find(p => p.user_id === myUserId);
+    const hasTrader = player?.traders?.some(t => t.traderId === selectedTraderIdForRedirect);
+
+    if (hasTrader) {
+      navigate(`/wholesale/${params.peerId}`);
+    }
+  }, [gameState, myUserId, selectedTraderIdForRedirect, params.peerId, navigate]);
+
   const player =
     gameState && Array.isArray(gameState.players)
       ? gameState.players.find(p => p.user_id === myUserId) || {}
@@ -179,23 +192,23 @@ const TraderList = () => {
   }, [isHost, gameState]);
 
   return (
-    <div className="container mt-4">
-      <div className="row">
-        <div className="col-9">
+    <div className="container-fluid">
+      <div className="row flex-column flex-sm-row">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
           {!isAuthorized && (
             <div className="alert alert-warning mb-3">
               Вы не подключены к игре. Ниже — список всех доступных продавцов, но их нельзя выбрать.
               Для участия войдите в игру.
             </div>
           )}
-          <h2>All available traders</h2>
+          <h2>{t('chooseYourTrader')}</h2>
           <div className="row">
             {safeTraders.map(trader => {
               const isTaken = !!trader.taken;
               return (
                 <div
                   key={trader.traderId}
-                  className={`col-md-4 mb-4 ${isTaken ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`col-md-3 mb-4 ${isTaken ? 'opacity-50 pointer-events-none' : ''}`}
                   onClick={
                     isTaken || !myTurn
                       ? undefined
@@ -285,7 +298,7 @@ const TraderList = () => {
             })}
           </div>
         </div>
-        <div className="col-3">
+        <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
           {/* <Menu
             gameState={gameState}
             myUserId={myUserId}

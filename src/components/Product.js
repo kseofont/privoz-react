@@ -18,11 +18,11 @@ const Product = ({
   return (
     <div className="card">
       <div className="card-header d-flex justify-content-between">
-        <p className="card-text card-link mb-0">{sector}</p>
+        {/* <p className="card-text card-link mb-0">{sector}</p> */}
         <h5 className="card-title card-link mb-0">{productName}</h5>
       </div>
 
-      <div className="cards-quant card-header d-flex justify-content-between">
+      <div className="cards-quant card-header d-flex justify-content-between mb-2 ">
         <p className="card-text card-link mb-0">{quantity_card} cards total</p>
         <p className="card-text card-link mb-0">Free {quantity_free_card} cards</p>
       </div>
@@ -40,9 +40,24 @@ const Product = ({
       )}
 
       <div className="card-body">
-        {wholesalePrice !== undefined && <p>Wholesale price: {wholesalePrice}</p>}
-        {retailPrice !== undefined && <p>Retail price: {retailPrice}</p>}
-        {possibleIncome !== undefined && <p>Possible income: {possibleIncome}</p>}
+        {wholesalePrice !== undefined && (
+          <p>
+            Wholesale price: {wholesalePrice}{' '}
+            <i className="bi bi-coin" style={{ marginLeft: '3px', color: '#ffc107' }}></i>
+          </p>
+        )}
+        {retailPrice !== undefined && (
+          <p>
+            Retail price: {retailPrice}{' '}
+            <i className="bi bi-coin" style={{ marginLeft: '3px', color: '#ffc107' }}></i>
+          </p>
+        )}
+        {possibleIncome !== undefined && (
+          <p>
+            Possible income: {possibleIncome}{' '}
+            <i className="bi bi-coin" style={{ marginLeft: '3px', color: '#ffc107' }}></i>
+          </p>
+        )}
       </div>
     </div>
   );

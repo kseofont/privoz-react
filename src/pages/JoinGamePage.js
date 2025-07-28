@@ -218,9 +218,9 @@ const JoinGamePage = () => {
   }
 
   return (
-    <div className="container mt-5">
-      <div className="row">
-        <div className="col-9">
+    <div className="container-fluid">
+      <div className="row flex-column flex-sm-row">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
           <h1>{t('join_title')}</h1>
           <div className="mb-3">
             <label htmlFor="userName" className="form-label">
@@ -307,7 +307,7 @@ const JoinGamePage = () => {
           )}
         </div>
         {/* Передаем currentUserData и otherUsers в Menu — для совместимости */}
-        <div className="col-3">
+        <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
           <Menu
             currentUserData={gameState?.players ? gameState.players.find(p => p.isHost) : null}
             otherUsers={gameState?.players ? gameState.players.filter(p => !p.isHost) : []}

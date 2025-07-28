@@ -203,6 +203,7 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
 
   return (
     <div className="yarr2">
+      <h3>{category}</h3>
       <div
         className={`sector border p-3 mb-3 ${category.toLowerCase()}`}
         onClick={handleSectorClick}
@@ -298,8 +299,17 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
               <div className="text-muted">У вас нет товаров для передачи продавцу.</div>
             )}
 
-            {playerProducts.flatMap((prod, idx) =>
-              Array.from({ length: prod.quantity_player_card || 1 }, (_, i) => (
+            {playerProducts.flatMap((prod, idx) => {
+              // Можно ли добавить этот товар в выбранный сектор?
+              const prodSector = (prod.product_sector || '').toLowerCase();
+              const currSector = (category || '').toLowerCase();
+              const canAdd = prodSector === currSector || prod.legality === 'illegal';
+
+              console.log('prod:', prod);
+              console.log('prod.product_sector:', prod.product_sector);
+              console.log('category (sector):', category);
+
+              return Array.from({ length: prod.quantity_player_card || 1 }, (_, i) => (
                 <Col key={`${prod.productId}-${i}`} xs={12}>
                   <div className="d-flex align-items-center mb-2">
                     <input
@@ -307,7 +317,9 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
                       checked={
                         selectedProducts.filter(p => p.productId === prod.productId).length > i
                       }
+                      disabled={!canAdd}
                       onChange={() => {
+                        if (!canAdd) return; // блокируем
                         setSelectedProducts(prev => {
                           const selectedOfThisProduct = prev.filter(
                             p => p.productId === prod.productId
@@ -332,15 +344,18 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
                       style={{ marginRight: '8px' }}
                     />
                     <span>
-                      {getField(prod, 'productName', lang)} (#{i + 1})
+                      {getField(prod, 'productName', lang)} (#{i + 1}){' '}
+                      {!canAdd && (
+                        <span className="text-danger small ms-2">
+                          (нельзя добавить в этот сектор)
+                        </span>
+                      )}
                     </span>
                   </div>
                 </Col>
-              ))
-            )}
+              ));
+            })}
           </Row>
-
-          {/* Можно добавить выбор количества товаров */}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowProductSelectModal(false)}>
