@@ -58,12 +58,12 @@ const GamePage = () => {
       console.warn('[CLIENT] Нет connection — подписка не работает');
       return;
     }
-    console.log('[CLIENT] Подписка на события DATA');
+    //   console.log('[CLIENT] Подписка на события DATA');
     const handleData = data => {
-      console.log('[CLIENT] Получено сообщение:', data);
+      // console.log('[CLIENT] Получено сообщение:', data);
       if (data.type === 'gameState') {
         setGameState(data.gameState);
-        console.log('GameState изменился2!', data.gameState);
+        //  console.log('GameState изменился2!', data.gameState);
       }
     };
     connection.on('data', handleData);
@@ -76,7 +76,7 @@ const GamePage = () => {
     console.log('[CLIENT] GameState обновился:', gameState);
     console.log('[CLIENT] Мой userId:', myUserId);
     if (gameState) {
-      const curr = gameState.players.find(p => p.user_id === myUserId);
+      const curr = (gameState?.players || []).find(p => p.user_id === myUserId);
       console.log('[CLIENT] Текущий игрок:', curr);
       console.log('[CLIENT] Все игроки:', gameState.players);
       console.log('[CLIENT] Сейчас ходит:', gameState.currentTurnUserId);
@@ -84,8 +84,8 @@ const GamePage = () => {
   }, [gameState, myUserId]);
 
   useEffect(() => {
-    console.log('[CLIENT] window.currentPrivozConnection:', window.currentPrivozConnection);
-    console.log('[CLIENT] connection:', connection);
+    // console.log('[CLIENT] window.currentPrivozConnection:', window.currentPrivozConnection);
+    // console.log('[CLIENT] connection:', connection);
   }, []);
 
   useEffect(() => {
@@ -108,7 +108,7 @@ const GamePage = () => {
   const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
   const myTurn = gameState?.currentTurnUserId === myUserId;
 
-  const fallbackSectors = ['Fruits', 'Vegetables', 'Dairy', 'Fish', 'Meat', 'Household goods'];
+  const fallbackSectors = ['Fruits', 'Vegetables', 'Dairy', 'Meat', 'Fish', 'Household goods'];
   const sectors = gameState?.sectors || fallbackSectors;
 
   return (

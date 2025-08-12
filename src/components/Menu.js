@@ -1,8 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
 import { useTranslation } from 'react-i18next';
-import { endTurn, handleEndRound, getField } from '../logic/logic';
+import {
+  endTurn,
+  handleEndRound,
+  getField,
+  startEventChoicePhase,
+  applyPlayerEventChoice,
+  areAllEventChoicesIn,
+  finalizeEndRoundWithEvents,
+  makeEventChoiceMessage,
+  makeEventLogAckMessage,
+  clearEventLogForUser,
+} from '../logic/logic';
 import { connectionsRef } from '../globals';
 import { Link, useParams, useLocation } from 'react-router-dom';
+import { Modal, Button, Row, Col } from 'react-bootstrap';
+import CurrentPlayerInfo from './CurrentPlayerInfo';
+import OtherPlayersInfo from './OtherPlayersInfo';
 
 const Menu = ({
   myUserId: propMyUserId,
@@ -35,9 +50,6 @@ const Menu = ({
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
   const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
 
-  const user_color = currentUserData?.color || 'red';
-  const userBackgroundColorClass = currentUserData ? `bg-${user_color}` : '';
-
   // Для каких страниц показываем кнопку "Конец хода"
   const specialPages = ['/game', '/traders', '/wholesale', '/eventcards'];
   const isSpecialPage = specialPages.some(page => pathname.startsWith(page));
@@ -45,6 +57,133 @@ const Menu = ({
   const myTurn = gameState?.currentTurnUserId === myUserId;
   const isHost = !connection; // у хоста нет connection
   const [hadProducts, setHadProducts] = useState(false);
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [positiveChoices, setPositiveChoices] = useState({}); // { cardId: "keep" | "use" }
+
+  // вверху Menu:
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultsAcked, setResultsAcked] = useState(false);
+
+  // открываем модалку, если у текущего игрока появились строки лога
+  // Показываем модалку только когда есть логи И они ещё не подтверждены локально
+  useEffect(() => {
+    const hasMyLogs = !!gameState?.eventResultLog?.[myUserId]?.length;
+    if (hasMyLogs && !resultsAcked) setShowResultModal(true);
+    if (!hasMyLogs) {
+      // как только хост очистил логи и прислал стейт — сбрасываем локальный флаг
+      setResultsAcked(false);
+      setShowResultModal(false);
+    }
+  }, [gameState?.eventResultLog, myUserId, resultsAcked]);
+
+  // очищаем только мой лог (чтобы не трогать чужие)
+  const clearMyLogs = () => {
+    if (!setGameState) return;
+    setGameState(prev => {
+      const current = prev?.eventResultLog || {};
+      return {
+        ...prev,
+        eventResultLog: {
+          ...current,
+          [myUserId]: [],
+        },
+      };
+    });
+    setShowResultModal(false);
+  };
+
+  // const roundNum = gameState?.round || 1;
+
+  // при нажатии "Конец раунда" хост переводит игру в фазу выбора событий
+  const handleShowEventPhase = () => {
+    if (!isHost || !setGameState) return;
+    setGameState(prev => {
+      const updated = startEventChoicePhase(prev);
+      // разослать новое состояние
+      broadcastGameState && setTimeout(() => broadcastGameState(updated), 0);
+      return updated;
+    });
+  };
+
+  // 1) Хелпер: финализируем выборы с дефолтами
+  function finalizePositiveChoicesForSubmit(player, lang, rawChoices) {
+    const result = { ...(rawChoices || {}) };
+    const cards = Array.isArray(player?.eventCards) ? player.eventCards : [];
+    const coins = Number(player?.coins || 0);
+
+    cards.forEach((card, idx) => {
+      if (card?.fortune !== 'positive') return;
+      const key = card.id ?? idx;
+      if (result[key]) return; // уже выбран
+
+      const canKeep = coins >= 5;
+      // дефолт: если можем заплатить — 'keep', иначе — 'use'
+      result[key] = canKeep ? 'keep' : 'use';
+    });
+
+    return result;
+  }
+
+  // Клиент: «Готово» в модалке — отправляем свой выбор хосту (или применяем локально, если мы хост)
+  const handleSubmitEventChoices = () => {
+    setShowEventModal(false);
+    setRoundProcessing(true);
+
+    const filledChoices = finalizePositiveChoicesForSubmit(currentUserData, lang, positiveChoices);
+
+    const outgoing = makeEventChoiceMessage({
+      userId: myUserId,
+      positiveChoices: filledChoices,
+      effectTargets,
+    });
+
+    if (connection) {
+      // клиент -> хост
+      connection.send(outgoing);
+    } else {
+      // хост сам себе
+      setGameState(prev => applyPlayerEventChoice(prev, myUserId, outgoing));
+    }
+  };
+
+  useEffect(() => {
+    if (!showEventModal || !currentUserData) return;
+
+    setPositiveChoices(prev => {
+      const next = { ...prev };
+      const coins = Number(currentUserData.coins || 0);
+
+      (currentUserData.eventCards || []).forEach((card, idx) => {
+        if (card.fortune !== 'positive') return;
+        const key = card.id ?? idx;
+        if (next[key]) return;
+        next[key] = coins >= 5 ? 'keep' : 'use';
+      });
+
+      return next;
+    });
+  }, [showEventModal, currentUserData]);
+
+  // ---- Показ модалки, когда началась фаза и игрок ещё не подтвердил
+
+  useEffect(() => {
+    if (
+      gameState?.phase === 'eventChoice' &&
+      gameState?.eventCardPhase &&
+      !gameState?.eventCardPhase[myUserId]
+    ) {
+      setShowEventModal(true);
+    } else {
+      setShowEventModal(false);
+    }
+  }, [gameState?.phase, gameState?.eventCardPhase, myUserId]);
+
+  // const allEventChoicesDone =
+  //   gameState?.phase === 'eventChoice' &&
+  //   gameState.eventCardPhase &&
+  //   Object.values(gameState.eventCardPhase).every(Boolean);
+
   useEffect(() => {
     if (!currentUserData) return;
 
@@ -63,7 +202,7 @@ const Menu = ({
   }, [pathname]);
 
   const handleEndTurn = () => {
-    console.log('connection in menu', connection);
+    //console.log('connection in menu', connection);
     endTurn({
       connection,
       myTurn,
@@ -75,17 +214,6 @@ const Menu = ({
     });
   };
 
-  useEffect(() => {
-    if (isHost) {
-      console.log('[TraderList][HOST] connectionsRef.current:', connectionsRef.current);
-    }
-  }, [isHost, gameState]);
-
-  // Уникальные сектора, в которых есть твои трейдеры
-  const uniqueSectors = [
-    ...new Set(currentUserData?.traders?.map(trader => trader.location) || []),
-  ];
-
   // ...внутри компонента Menu:
   const [roundProcessing, setRoundProcessing] = useState(false);
 
@@ -93,6 +221,101 @@ const Menu = ({
     // Сбрасываем roundProcessing, если раунд обновился
     setRoundProcessing(false);
   }, [gameState?.round]); // или [gameState.round]
+
+  // Хост слушает клиентов и собирает выборы
+  useEffect(() => {
+    if (!isHost || !connectionsRef.current) return;
+
+    const unsubs = connectionsRef.current.map(conn => {
+      const onData = data => {
+        if (data?.type === 'eventCardChoiceDone') {
+          setGameState(prev => applyPlayerEventChoice(prev, data.userId, data));
+        }
+      };
+      conn.on('data', onData);
+      return () => conn.off('data', onData);
+    });
+
+    return () => unsubs.forEach(unsub => unsub && unsub());
+  }, [isHost, setGameState]);
+
+  // Когда все сдали — хост завершает раунд с учётом эффектов
+  useEffect(() => {
+    if (!isHost) return;
+    if (!gameState?.phase || gameState.phase !== 'eventChoice') return;
+    if (!areAllEventChoicesIn(gameState)) return;
+
+    // применить эффекты и завершить раунд
+    finalizeEndRoundWithEvents({
+      setGameState,
+      isHost,
+      broadcastGameState,
+      handleEndRoundFn: handleEndRound, // твоя текущая функция
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, gameState?.eventCardPhase, gameState?.phase]);
+
+  const [effectTargets, setEffectTargets] = useState({}); // {cardId: {playerId, sector, traderId}}
+
+  // 1) Открываем модал результатов, когда появились логи, и он ещё не ACK'нут
+  const [myLogs, setMyLogs] = useState([]);
+  const lastSeenLogSigRef = useRef(''); // сигнатура последней «увиденной» версии логов
+
+  // следим за логами в gameState
+  useEffect(() => {
+    const logs = gameState?.eventResultLog?.[myUserId] || [];
+    setMyLogs(logs);
+
+    const sig = logs.length ? JSON.stringify(logs) : '';
+
+    if (logs.length === 0) {
+      // логи очищены хостом — закрыть и сбросить «последнюю версию»
+      setShowResultModal(false);
+      lastSeenLogSigRef.current = '';
+      return;
+    }
+
+    // новая версия логов? показываем модалку
+    if (sig !== lastSeenLogSigRef.current) {
+      setShowResultModal(true);
+    }
+  }, [gameState?.eventResultLog, myUserId]);
+  useEffect(() => {
+    const shouldShow = myLogs.length > 0 && !resultsAcked;
+    // на всякий случай закроем модал выбора перед показом результатов
+    if (shouldShow) setShowEventModal(false);
+    setShowResultModal(shouldShow);
+  }, [myLogs.length, resultsAcked]);
+
+  // 2) Закрытие модала результатов + ACK -> хосту/очистка
+  const onResultsOk = () => {
+    console.log('click onResultsOk');
+    // зафиксировать текущую версию как «увиденную», чтобы не автопоказывать её снова
+    const sig = myLogs.length ? JSON.stringify(myLogs) : '';
+    lastSeenLogSigRef.current = sig;
+    setShowResultModal(false);
+    //  setResultsAcked(true);
+
+    if (connection) {
+      connection.send(makeEventLogAckMessage(myUserId));
+    } else if (setGameState) {
+      setGameState(prev => clearEventLogForUser(prev, myUserId));
+    }
+  };
+  // 3) Хост: принимаем ACK и чистим логи этого игрока (чтобы у него не всплыло снова)
+  useEffect(() => {
+    if (!isHost || !connectionsRef.current) return;
+    const unsubs = connectionsRef.current.map(conn => {
+      const onData = data => {
+        if (data?.type === 'ackEventResults') {
+          setGameState(prev => clearEventLogForUser(prev, data.userId));
+        }
+      };
+      conn.on('data', onData);
+      return () => conn.off('data', onData);
+    });
+    return () => unsubs.forEach(u => u && u());
+  }, [isHost, setGameState]);
 
   return (
     <div className="col">
@@ -102,15 +325,12 @@ const Menu = ({
         <button onClick={() => i18n.changeLanguage('es')}>Esp</button>
         <button onClick={() => i18n.changeLanguage('en')}>Eng</button>
       </div>
-
       <div className="rules">
         <Link to="/rules" className="btn btn-primary mb-2">
           {t('menu_rules')}
         </Link>
       </div>
-
       <h3>Menu</h3>
-
       {/* Навигация */}
       <nav className="d-flex justify-content-between flex-column mb-3">
         <Link to="/" className="mb-2">
@@ -129,7 +349,6 @@ const Menu = ({
         <Link to="/create">{t('menu_create')}</Link>
         <Link to="/JoinGamePage">{t('menu_join')}</Link>
       </nav>
-
       {/* Кнопка конец хода/инфо о ходе */}
       {isSpecialPage && myTurn ? (
         <button className="btn btn-warning mt-3" onClick={handleEndTurn}>
@@ -153,187 +372,251 @@ const Menu = ({
             <div className="alert alert-info mb-2">Раунд: {gameState?.round || 1}</div>
 
             {isHost && (
-              <button
-                className="btn btn-danger"
-                onClick={() => {
-                  setRoundProcessing(true);
-                  handleEndRound(setGameState, isHost, broadcastGameState);
-                }}
-                disabled={roundProcessing}
-              >
-                Конец раунда
-              </button>
+              <div>
+                <Button
+                  variant="danger"
+                  onClick={() => handleShowEventPhase(true)}
+                  disabled={roundProcessing}
+                >
+                  Конец раунда
+                </Button>
+              </div>
             )}
           </div>
         )}
-
+      {/* {isHost && allEventChoicesDone && (
+        <Button variant="success" onClick={handleSubmitEventChoices}>
+          Продолжить и завершить выбор
+        </Button>
+      )} */}
       {/* Информация о текущем игроке */}
-      {currentUserData && (
-        <div className={`user-info mt-5 ${userBackgroundColorClass}`}>
-          <p>Id: {currentUserData.user_id}</p>
-          <p>Name: {currentUserData.name}</p>
-          <p className={user_color}>Color: {currentUserData.color}</p>
-          <p>Coins: {currentUserData.coins}</p>
-          <p>Traders Count: {currentUserData.tradersCount}</p>
-          {/* Торговцы игрока */}
-          {currentUserData.traders && currentUserData.traders.length > 0 ? (
-            <>
-              <p>Ваши торговцы:</p>
-              <ul className="list-unstyled">
-                {currentUserData.traders.map((trader, traderIndex) => (
-                  <li key={traderIndex} className="mb-2 p-2 border rounded">
-                    <p>
-                      Торговец: {trader.traderName || getField(trader, 'name', lang) || 'Без имени'}
-                    </p>
+      <CurrentPlayerInfo player={currentUserData} lang={lang} />
+      {/* Информация о других игроках */}
+      <OtherPlayersInfo otherUsers={otherUsers} lang={lang} />
+      <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Карты событий перед концом раунда</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            {/* NEGATIVE */}
+            <Col md={6}>
+              <h6>Негативные карты</h6>
+              <ul>
+                {(currentUserData?.eventCards || [])
+                  .filter(card => card.fortune === 'negative')
+                  .map((card, idx) => (
+                    <li key={card.id || idx} className="mb-2 border p-2">
+                      <strong>{getField(card, 'title', lang)}</strong>
+                      <div>{getField(card, 'description', lang)}</div>
+                      <div>Fortune: {card.fortune}</div>
 
-                    <p>
-                      Избранный сектор: {getField(trader, 'sector_favorite', lang) || 'неизвестно'}
-                    </p>
+                      {/* Кнопка сброса эффекта */}
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        onClick={() =>
+                          setEffectTargets(prev => ({ ...prev, [card.id]: undefined }))
+                        }
+                      >
+                        Сбросить карту
+                      </Button>
 
-                    {trader.goods && trader.goods.length > 0 && (
-                      <div>
-                        <p>Товары:</p>
-                        <ul className="list-unstyled">
-                          {trader.goods.map((goods, productIndex) => (
-                            <li key={productIndex} className="mb-1">
-                              <p>Название: {getField(goods, 'productName', lang)}</p>
-                              {goods.sellingPrice && <p>Price:{goods.sellingPrice} </p>}
-                            </li>
+                      {/* Если карта нацелена на игрока */}
+                      {card.goal_action === 'player' && (
+                        <div>
+                          <p>Выберите игрока:</p>
+                          {gameState.players.map(user => (
+                            <Button
+                              key={user.user_id}
+                              variant={
+                                effectTargets[card.id]?.playerId === user.user_id
+                                  ? 'primary'
+                                  : 'outline-primary'
+                              }
+                              size="sm"
+                              className="m-1"
+                              onClick={() =>
+                                setEffectTargets(prev => ({
+                                  ...prev,
+                                  [card.id]: { ...prev[card.id], playerId: user.user_id },
+                                }))
+                              }
+                            >
+                              {user.name}
+                            </Button>
                           ))}
-                        </ul>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p>У вас пока нет торговцев</p>
-          )}
+                        </div>
+                      )}
 
-          {/* Уникальные сектора */}
-          <p>Sectors with Traders:</p>
-          <ul>
-            {uniqueSectors.map((sector, index) => (
-              <li key={index}>{sector}</li>
+                      {/* Если карта нацелена на сектор */}
+                      {card.goal_action === 'sector' && (
+                        <div>
+                          <p>Выберите сектор:</p>
+                          {[
+                            ...new Set(
+                              gameState.players
+                                .flatMap(p => (p.traders || []).map(t => t.location))
+                                .filter(Boolean)
+                            ),
+                          ].map(sector => (
+                            <Button
+                              key={sector}
+                              variant={
+                                effectTargets[card.id]?.sector === sector
+                                  ? 'primary'
+                                  : 'outline-primary'
+                              }
+                              size="sm"
+                              className="m-1"
+                              onClick={() =>
+                                setEffectTargets(prev => ({
+                                  ...prev,
+                                  [card.id]: { ...prev[card.id], sector },
+                                }))
+                              }
+                            >
+                              {sector}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Если карта нацелена на торговца */}
+                      {card.goal_action === 'trader' && (
+                        <div>
+                          <p>Выберите торговца:</p>
+                          {gameState.players
+                            .flatMap(p => p.traders || [])
+                            .map(trader => (
+                              <Button
+                                key={trader.traderId}
+                                variant={
+                                  effectTargets[card.id]?.traderId === trader.traderId
+                                    ? 'primary'
+                                    : 'outline-primary'
+                                }
+                                size="sm"
+                                className="m-1"
+                                onClick={() =>
+                                  setEffectTargets(prev => ({
+                                    ...prev,
+                                    [card.id]: { ...prev[card.id], traderId: trader.traderId },
+                                  }))
+                                }
+                              >
+                                {getField(trader, 'name', lang)} ({trader.traderId})
+                              </Button>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* Можно добавить отображение текущего выбора */}
+                      {effectTargets[card.id] && (
+                        <div className="mt-2 text-muted small">
+                          {effectTargets[card.id].playerId && (
+                            <>
+                              Цель: Игрок{' '}
+                              {
+                                gameState.players.find(
+                                  u => u.user_id === effectTargets[card.id].playerId
+                                )?.name
+                              }
+                            </>
+                          )}
+                          {effectTargets[card.id].sector && (
+                            <>Цель: Сектор {effectTargets[card.id].sector}</>
+                          )}
+                          {effectTargets[card.id].traderId && (
+                            <>Цель: Торговец {effectTargets[card.id].traderId}</>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </Col>
+            {/* POSITIVE */}
+            <Col md={6}>
+              <h6>Позитивные карты</h6>
+              <ul>
+                {(currentUserData?.eventCards || [])
+                  .filter(card => card.fortune === 'positive')
+                  .map((card, idx) => {
+                    const canKeep = (currentUserData.coins || 0) >= 5;
+                    const selected = positiveChoices[card.id || idx];
+                    return (
+                      <li key={card.id || idx} className="mb-2">
+                        <strong>{getField(card, 'title', lang)}</strong>
+                        <div>{getField(card, 'description', lang)}</div>
+                        <div>
+                          <label>
+                            <input
+                              type="radio"
+                              name={`pos_${card.id || idx}`}
+                              checked={selected !== 'use'}
+                              disabled={!canKeep}
+                              onChange={() =>
+                                setPositiveChoices(prev => ({
+                                  ...prev,
+                                  [card.id || idx]: 'keep',
+                                }))
+                              }
+                            />{' '}
+                            Оставить на руке стоимость 5 монет, у вас сейчас {currentUserData.coins}
+                            {!canKeep && (
+                              <span className="text-danger ms-2">Недостаточно монет (нужно 5)</span>
+                            )}
+                          </label>
+                          <label className="ms-3">
+                            <input
+                              type="radio"
+                              name={`pos_${card.id || idx}`}
+                              checked={selected === 'use'}
+                              onChange={() =>
+                                setPositiveChoices(prev => ({
+                                  ...prev,
+                                  [card.id || idx]: 'use',
+                                }))
+                              }
+                            />{' '}
+                            Применить сейчас
+                          </label>
+                        </div>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEventModal(false)}>
+            Отмена
+          </Button>
+          <Button variant="success" onClick={handleSubmitEventChoices}>
+            Продолжить и завершить раунд
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showResultModal} onHide={onResultsOk} size="lg" centered backdrop={false}>
+        <Modal.Header closeButton>
+          <Modal.Title>Результаты применения карт</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <ul className="mb-0">
+            {myLogs.map((line, i) => (
+              <li key={i}>{line}</li>
             ))}
           </ul>
-
-          {/* Товары игрока напрямую */}
-          {currentUserData.products && currentUserData.products.length > 0 && (
-            <div>
-              <p>Ваши товары:</p>
-              <ul className="list-unstyled">
-                {currentUserData.products.map((product, productIndex) => (
-                  <li key={productIndex} className="mb-1">
-                    <p>
-                      Название: {getField(product, 'productName', lang)}{' '}
-                      {product.quantity_player_card && (
-                        <span> X {product.quantity_player_card}</span>
-                      )}
-                    </p>
-                    {product.description && (
-                      <p>Описание: {getField(product, 'description', lang)} </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <p>
-            Event Cards Count: {currentUserData.eventCards ? currentUserData.eventCards.length : 0}
-          </p>
-          <p>Event Cards:</p>
-          {currentUserData.eventCards && currentUserData.eventCards.length > 0 ? (
-            <ul className="list-unstyled">
-              {currentUserData.eventCards.map((card, index) => (
-                <li
-                  key={index}
-                  className={`event-card ${
-                    card.fortune === 'negative' ? 'bg-danger' : 'bg-success'
-                  }`}
-                >
-                  <p>Title: {getField(card, 'title', lang)}</p>
-                  <p>Description: {getField(card, 'description', lang)}</p>
-                  <p>Fortune: {card.fortune}</p>
-                  <p>Quantity In Game: {card.quantity_ingame}</p>
-                  <p>Quantity Active: {card.quantity_active}</p>
-                  <p>Position In Game: {card.position_in_game}</p>
-                  <p>Goal Action: {card.goal_action}</p>
-                  <p>Goal Item: {card.goal_item}</p>
-                  {/* и т.д. */}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No Event Cards.</p>
-          )}
-        </div>
-      )}
-
-      {/* Информация о других игроках */}
-      {/* Информация о других игроках */}
-      <div className="other-users">
-        {otherUsers.length > 0 && (
-          <div className="user-info">
-            <p>Other Users in Game:</p>
-            <ul className="list-unstyled">
-              {otherUsers.map((user, userIndex) => {
-                const userBackgroundColorClass = user.color ? `bg-${user.color}` : '';
-                return (
-                  <li key={userIndex} className={`p-2 mb-2 rounded ${userBackgroundColorClass}`}>
-                    <p>
-                      <strong>{user.name}</strong> ({user.color})
-                    </p>
-                    <p>Coins: {user.coins}</p>
-
-                    {/* Товары игрока напрямую */}
-                    {user.products && user.products.length > 0 && (
-                      <div>
-                        <p>Продукты у игрока: {user.products.length}</p>
-                        <ul className="list-unstyled">
-                          {user.products.map((product, productIndex) => (
-                            <li key={productIndex} className="mb-1">
-                              <p>Название: {getField(product, 'productName', lang)}</p>
-                              {product.description && (
-                                <p>Описание: {getField(product, 'description', lang)}</p>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Торговцы игрока */}
-                    {user.traders && user.traders.length > 0 ? (
-                      <div>
-                        <p>Торговцы: {user.traders.length}</p>
-                        <ul className="list-unstyled">
-                          {user.traders.map((trader, traderIndex) => (
-                            <li key={traderIndex} className="ms-3">
-                              <p>
-                                Торговец:{' '}
-                                {trader.traderName || getField(trader, 'name', lang) || 'Без имени'}
-                              </p>
-
-                              {trader.products && trader.products.length > 0 && (
-                                <p>Продукты у этого торговца: {trader.products.length}</p>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <p>Нет торговцев</p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-      </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={onResultsOk}>
+            Ок
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

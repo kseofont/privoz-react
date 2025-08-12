@@ -33,6 +33,9 @@ const Trader = ({ user, trader, gameState }) => {
   console.log('completeTrader.traderImg', completeTrader.img);
   console.log('completeTrader', completeTrader);
 
+  // Получаем родителя продавца по ownerId
+  // const parentUser = gameState?.users?.find(u => u.id === completeTrader.ownerId) || {};
+
   return (
     <div className={`col border text-center pb-4 trader-block ${color}`}>
       <div className="userdata">{completeTrader.traderName}</div>
@@ -47,7 +50,9 @@ const Trader = ({ user, trader, gameState }) => {
         }}
       />
 
-      <p>{name}</p>
+      <p style={{ color: completeTrader.owner?.color }}>
+        {completeTrader.owner?.name || 'Неизвестный владелец'}
+      </p>
 
       <div className="container-fluid">
         <div>

@@ -11,10 +11,20 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, connection, s
   const player = players.find(p => p.user_id === myUserId);
   const myTraders = player?.traders || [];
 
+  // const sectorTraders = players
+  //   .flatMap(p => p.traders || [])
+  //   .filter(trader => trader.location === category)
+  //   // .map(trader => ({ ...trader, owner: { name: player.name, color: player.color } }));
+  //   .map(trader => ({ ...trader, name: player.name, owner: { color: player.color } }));
+
   const sectorTraders = players
-    .flatMap(p => p.traders || [])
-    .filter(trader => trader.location === category)
-    .map(trader => ({ ...trader, owner: { name: player.name, color: player.color } }));
+    .flatMap(player =>
+      (player.traders || []).map(trader => ({
+        ...trader,
+        owner: { name: player.name, color: player.color }, // тут owner сразу родитель!
+      }))
+    )
+    .filter(trader => trader.location === category);
 
   // Состояния для разных модалок
   const [showNoTradersModal, setShowNoTradersModal] = useState(false);

@@ -1,280 +1,5 @@
 [
   {
-    "id": "ev_card_fntr",
-    "title": {
-      "en": "Federal Police",
-      "ru": "Федеральная полиция",
-      "ua": "Федеральна поліція",
-      "es": "Policía Federal"
-    },
-    "description": {
-      "en": "Confiscate illegal goods plus a fine.",
-      "ru": "Конфискация нелегальных товаров и штраф.",
-      "ua": "Конфіскація нелегальних товарів і штраф.",
-      "es": "Confisca bienes ilegales y aplica una multa."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 5,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "trader",
-    "effect": [
-      {
-        "confiscation": true
-      },
-      {
-        "fine": [
-          5
-        ]
-      },
-      {
-        "trader_action": "hold"
-      }
-    ]
-  },
-  {
-    "id": "ev_card_mkt",
-    "title": {
-      "en": "Mafia ('brothers') Karabas and Stas",
-      "ru": "Мафия (братья) Карабас и Стас",
-      "ua": "Мафія (брати) Карабас і Стас",
-      "es": "Mafia ('hermanos') Karabas y Stas"
-    },
-    "description": {
-      "en": "2 coins of donations for each seller.",
-      "ru": "2 монеты сбора с каждого продавца.",
-      "ua": "2 монети збору з кожного продавця.",
-      "es": "2 monedas de donación por cada vendedor."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "trader",
-    "effect": [
-      {
-        "confiscation": false
-      },
-      {
-        "fine": [
-          2
-        ]
-      }
-    ]
-  },
-  {
-    "id": "ev_card_pstr",
-    "title": {
-      "en": "Prosecutor's Office",
-      "ru": "Прокуратура",
-      "ua": "Прокуратура",
-      "es": "Fiscalía"
-    },
-    "description": {
-      "en": "Confiscation of illegal goods plus a fine.",
-      "ru": "Конфискация нелегальных товаров и штраф.",
-      "ua": "Конфіскація нелегальних товарів і штраф.",
-      "es": "Confiscación de bienes ilegales y multa."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "trader",
-    "effect": [
-      {
-        "confiscation": true
-      },
-      {
-        "fine": [
-          2
-        ]
-      },
-      {
-        "trader_action": "hold"
-      }
-    ]
-  },
-  {
-    "id": "ev_card_ses",
-    "title": {
-      "en": "Sanitary Epidemiological Station",
-      "ru": "Санэпидемстанция",
-      "ua": "СЕС",
-      "es": "Estación Epidemiológica Sanitaria"
-    },
-    "description": {
-      "en": "2 coins of donations for each seller.",
-      "ru": "2 монеты сбора с каждого продавца.",
-      "ua": "2 монети збору з кожного продавця.",
-      "es": "2 monedas de donación por cada vendedor."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "trader",
-    "effect": [
-      {
-        "confiscation": false
-      },
-      {
-        "fine": [
-          2
-        ]
-      }
-    ]
-  },
-  {
-    "id": "ev_card_ff",
-    "title": {
-      "en": "Firefighters",
-      "ru": "Пожарные",
-      "ua": "Пожежники",
-      "es": "Bomberos"
-    },
-    "description": {
-      "en": "2 coins of donations for each seller.",
-      "ru": "2 монеты сбора с каждого продавца.",
-      "ua": "2 монети збору з кожного продавця.",
-      "es": "2 monedas de donación por cada vendedor."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "trader",
-    "effect": [
-      {
-        "confiscation": false
-      },
-      {
-        "fine": [
-          2
-        ]
-      }
-    ]
-  },
-  {
-    "id": "ev_card_lpo",
-    "title": {
-      "en": "Local Police Officer",
-      "ru": "Участковый",
-      "ua": "Дільничний поліцейський",
-      "es": "Policía local"
-    },
-    "description": {
-      "en": "2 coins of donations for each seller.",
-      "ru": "2 монеты сбора с каждого продавца.",
-      "ua": "2 монети збору з кожного продавця.",
-      "es": "2 monedas de donación por cada vendedor."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "trader",
-    "effect": [
-      {
-        "confiscation": true
-      },
-      {
-        "fine": [
-          2
-        ]
-      },
-      {
-        "trader_action": "hold"
-      }
-    ]
-  },
-  {
-    "id": "ev_card_bgg",
-    "title": {
-      "en": "Beggars",
-      "ru": "Нищие",
-      "ua": "Жебраки",
-      "es": "Mendigos"
-    },
-    "description": {
-      "en": "-1 to the selling price.",
-      "ru": "-1 к цене продажи.",
-      "ua": "-1 до ціни продажу.",
-      "es": "-1 al precio de venta."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "product",
-    "effect": [
-      {
-        "price_fine": 1
-      }
-    ]
-  },
-  {
-    "id": "ev_card_add",
-    "title": {
-      "en": "Addicts (Narcos)",
-      "ru": "Наркоманы",
-      "ua": "Наркомани",
-      "es": "Adictos"
-    },
-    "description": {
-      "en": "-1 to the selling price.",
-      "ru": "-1 к цене продажи.",
-      "ua": "-1 до ціни продажу.",
-      "es": "-1 al precio de venta."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "product",
-    "effect": [
-      {
-        "price_fine": 1
-      }
-    ]
-  },
-  {
-    "id": "ev_card_pst",
-    "title": {
-      "en": "Priests (Monks)",
-      "ru": "Священники (Монахи)",
-      "ua": "Священники (Монахи)",
-      "es": "Sacerdotes (Monjes)"
-    },
-    "description": {
-      "en": "2 coins of donations for each seller.",
-      "ru": "2 монеты сбора с каждого продавца.",
-      "ua": "2 монети збору з кожного продавця.",
-      "es": "2 monedas de donación por cada vendedor."
-    },
-    "fortune": "negative",
-    "quantity_ingame": 7,
-    "quantity_active": 7,
-    "position_in_game": "deck",
-    "goal_action": "sector",
-    "goal_item": "product",
-    "effect": [
-      {
-        "price_fine": [
-          2
-        ]
-      }
-    ]
-  },
-  {
     "id": "ev_card_up",
     "title": {
       "en": "Underworld Protection (Protection from Various Inspections)",
@@ -325,6 +50,7 @@
     "goal_item": "product",
     "effect": [
       {
+        "effect_goal": "product",
         "extra_price": [
           2
         ]
@@ -340,9 +66,9 @@
       "es": "Llegó el transporte con gente"
     },
     "description": {
-      "en": "Profit +1 from each seller.",
-      "ru": "Прибыль +1 с каждого продавца.",
-      "ua": "Прибуток +1 з кожного продавця.",
+      "en": "Profit +1 from each good of each seller.",
+      "ru": "Прибыль +1 с каждого товара продавца.",
+      "ua": "Прибуток +1 з кожного товара продавця.",
       "es": "Ganancia +1 de cada vendedor."
     },
     "fortune": "positive",
@@ -353,6 +79,7 @@
     "goal_item": "product",
     "effect": [
       {
+        "effect_goal": "trader",
         "extra_price": [
           1
         ]
