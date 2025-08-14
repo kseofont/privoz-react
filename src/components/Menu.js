@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+import CoinsLog from './CoinsLog';
+
 import { useTranslation } from 'react-i18next';
 import {
   endTurn,
@@ -45,6 +47,9 @@ const Menu = ({
     !!gameState &&
     Array.isArray(gameState.players) &&
     gameState.players.some(p => p.user_id === myUserId);
+
+  const gameId = gameState?.gameId || 'defaultGame';
+  const STORAGE_KEY = `coinsLog:${gameId}:${myUserId}`;
 
   // Текущий игрок и другие игроки
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
@@ -257,29 +262,44 @@ const Menu = ({
 
   const [effectTargets, setEffectTargets] = useState({}); // {cardId: {playerId, sector, traderId}}
 
+  // ключ для хранения "последняя показанная версия"
+  const seenKey = `eventResultsSeen:${myUserId}`;
+
+  // local ref, чтобы переживать ремоунты внутри одной вкладки
+  const lastSeenRef = React.useRef(Number(sessionStorage.getItem(seenKey) || 0));
+
   // 1) Открываем модал результатов, когда появились логи, и он ещё не ACK'нут
-  const [myLogs, setMyLogs] = useState([]);
+  //  const [myLogs, setMyLogs] = useState([]);
+  const myLogs = gameState?.eventResultLog?.[myUserId] || [];
+  const currentNonce = Number(gameState?.eventResultNonce || 0);
   const lastSeenLogSigRef = useRef(''); // сигнатура последней «увиденной» версии логов
 
   // следим за логами в gameState
+  // useEffect(() => {
+  //   const logs = gameState?.eventResultLog?.[myUserId] || [];
+  //   setMyLogs(logs);
+
+  //   const sig = logs.length ? JSON.stringify(logs) : '';
+
+  //   if (logs.length === 0) {
+  //     // логи очищены хостом — закрыть и сбросить «последнюю версию»
+  //     setShowResultModal(false);
+  //     lastSeenLogSigRef.current = '';
+  //     return;
+  //   }
+
+  //   // новая версия логов? показываем модалку
+  //   if (sig !== lastSeenLogSigRef.current) {
+  //     setShowResultModal(true);
+  //   }
+  // }, [gameState?.eventResultLog, myUserId]);
+  // показываем только если есть строки И nonce больше, чем уже видели
   useEffect(() => {
-    const logs = gameState?.eventResultLog?.[myUserId] || [];
-    setMyLogs(logs);
-
-    const sig = logs.length ? JSON.stringify(logs) : '';
-
-    if (logs.length === 0) {
-      // логи очищены хостом — закрыть и сбросить «последнюю версию»
-      setShowResultModal(false);
-      lastSeenLogSigRef.current = '';
-      return;
-    }
-
-    // новая версия логов? показываем модалку
-    if (sig !== lastSeenLogSigRef.current) {
+    if (myLogs.length > 0 && currentNonce > lastSeenRef.current) {
       setShowResultModal(true);
     }
-  }, [gameState?.eventResultLog, myUserId]);
+  }, [myLogs.length, currentNonce]);
+
   useEffect(() => {
     const shouldShow = myLogs.length > 0 && !resultsAcked;
     // на всякий случай закроем модал выбора перед показом результатов
@@ -288,20 +308,48 @@ const Menu = ({
   }, [myLogs.length, resultsAcked]);
 
   // 2) Закрытие модала результатов + ACK -> хосту/очистка
-  const onResultsOk = () => {
-    console.log('click onResultsOk');
-    // зафиксировать текущую версию как «увиденную», чтобы не автопоказывать её снова
-    const sig = myLogs.length ? JSON.stringify(myLogs) : '';
-    lastSeenLogSigRef.current = sig;
-    setShowResultModal(false);
-    //  setResultsAcked(true);
+  // const onResultsOk = () => {
+  //   console.log('click onResultsOk');
+  //   // зафиксировать текущую версию как «увиденную», чтобы не автопоказывать её снова
+  //   const sig = myLogs.length ? JSON.stringify(myLogs) : '';
+  //   lastSeenLogSigRef.current = sig;
+  //   setShowResultModal(false);
+  //   //  setResultsAcked(true);
 
+  //   if (connection) {
+  //     connection.send(makeEventLogAckMessage(myUserId));
+  //   } else if (setGameState) {
+  //     setGameState(prev => clearEventLogForUser(prev, myUserId));
+  //   }
+  // };
+  const onResultsOk = () => {
+    setShowResultModal(false);
+
+    // отмечаем, что эту версию уже видели
+    lastSeenRef.current = currentNonce;
+    sessionStorage.setItem(seenKey, String(currentNonce));
+
+    // отправляем ACK хосту или чистим локально (соло)
     if (connection) {
       connection.send(makeEventLogAckMessage(myUserId));
     } else if (setGameState) {
       setGameState(prev => clearEventLogForUser(prev, myUserId));
     }
   };
+  // на случай ухода со страницы до клика — шлём ACK/помечаем как увиденное
+  useEffect(() => {
+    return () => {
+      if (showResultModal) {
+        lastSeenRef.current = currentNonce;
+        sessionStorage.setItem(seenKey, String(currentNonce));
+        if (connection) {
+          connection.send(makeEventLogAckMessage(myUserId));
+        } else if (setGameState) {
+          setGameState(prev => clearEventLogForUser(prev, myUserId));
+        }
+      }
+    };
+  }, [showResultModal, currentNonce, connection, myUserId, setGameState]);
   // 3) Хост: принимаем ACK и чистим логи этого игрока (чтобы у него не всплыло снова)
   useEffect(() => {
     if (!isHost || !connectionsRef.current) return;
@@ -316,6 +364,120 @@ const Menu = ({
     });
     return () => unsubs.forEach(u => u && u());
   }, [isHost, setGameState]);
+
+  // log of coins
+  // Внутри Menu
+  const [coinsLog, setCoinsLog] = useState([]); // только локально у клиента
+  const prevCoinsRef = useRef(undefined);
+  useEffect(() => {
+    // читаем сохранённый лог
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
+      if (Array.isArray(saved) && saved.length) {
+        setCoinsLog(saved);
+        // примем последнюю известную сумму как "предыдущее"
+        prevCoinsRef.current = saved[0]?.after;
+      } else {
+        // если в storage пусто — создадим инициализацию от текущих монет
+        const now = Number(currentUserData?.coins ?? 0);
+        const init = {
+          id: (crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}_${Math.random()}`,
+          ts: Date.now(),
+          before: now,
+          delta: 0,
+          after: now,
+          reason: 'инициализация баланса',
+          source: 'system',
+          context: {},
+        };
+        setCoinsLog([init]);
+        prevCoinsRef.current = now;
+      }
+    } catch {
+      // в крайнем случае — просто инициализируйтесь от текущих монет
+      const now = Number(currentUserData?.coins ?? 0);
+      const init = {
+        id: (crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}_${Math.random()}`,
+        ts: Date.now(),
+        before: now,
+        delta: 0,
+        after: now,
+        reason: 'инициализация баланса',
+        source: 'system',
+        context: {},
+      };
+      setCoinsLog([init]);
+      prevCoinsRef.current = now;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [STORAGE_KEY]); // меняется при смене игрока/игры
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(coinsLog));
+    } catch {}
+  }, [coinsLog, STORAGE_KEY]);
+
+  useEffect(() => {
+    if (!currentUserData) return;
+
+    const now = Number(currentUserData.coins ?? 0);
+    const prev = prevCoinsRef.current;
+
+    const last = gameState?.lastAction || gameState?.lastEvent || {};
+    const mkId = () =>
+      (crypto?.randomUUID && crypto.randomUUID()) ||
+      `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    if (prev === undefined) {
+      // если пришёл новый игрок/ключ, но лог уже восстановлен из storage — prev должен быть уже задан
+      // если нет — создадим инициализацию на лету (на случай гонок)
+      prevCoinsRef.current = now;
+      if (!coinsLog.length) {
+        setCoinsLog(l =>
+          [
+            {
+              id: mkId(),
+              ts: Date.now(),
+              before: now,
+              delta: 0,
+              after: now,
+              reason: 'инициализация баланса',
+              source: 'system',
+              context: {},
+            },
+            ...l,
+          ].slice(0, 200)
+        );
+      }
+      return;
+    }
+
+    if (prev !== now) {
+      const delta = now - prev;
+      const entry = {
+        id: mkId(),
+        ts: Date.now(),
+        before: prev,
+        delta,
+        after: now,
+        reason: last.note || last.reason || last.type || 'изменение монет',
+        source: last.type,
+        cardId: last.cardId,
+        sectorId: last.sectorId,
+        context: last.context || {},
+      };
+      setCoinsLog(l => [entry, ...l].slice(0, 200));
+      prevCoinsRef.current = now;
+    }
+  }, [
+    currentUserData?.coins,
+    gameState?.lastAction,
+    gameState?.lastEvent,
+    currentUserData?.user_id,
+  ]);
+
+  // end log of coins
 
   return (
     <div className="col">
@@ -393,6 +555,7 @@ const Menu = ({
       <CurrentPlayerInfo player={currentUserData} lang={lang} />
       {/* Информация о других игроках */}
       <OtherPlayersInfo otherUsers={otherUsers} lang={lang} />
+      <CoinsLog gameState={gameState} myUserId={myUserId} limit={100} coinsLog={coinsLog} />
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>Карты событий перед концом раунда</Modal.Title>
@@ -600,7 +763,7 @@ const Menu = ({
         </Modal.Footer>
       </Modal>
 
-      <Modal show={showResultModal} onHide={onResultsOk} size="lg" centered backdrop={false}>
+      <Modal show={showResultModal} onHide={onResultsOk} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>Результаты применения карт</Modal.Title>
         </Modal.Header>

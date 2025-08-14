@@ -1,88 +1,35 @@
 [
   {
-    "id": "ev_card_up",
+    "id": "ev_card_fntr",
     "title": {
-      "en": "Underworld Protection (Protection from Various Inspections)",
-      "ru": "Крыша (Защита от проверок)",
-      "ua": "Криша (Захист від перевірок)",
-      "es": "Protección del inframundo (protección contra inspecciones)"
+      "en": "Federal Police",
+      "ru": "Федеральная полиция",
+      "ua": "Федеральна поліція",
+      "es": "Policía Federal"
     },
     "description": {
-      "en": "Protection.",
-      "ru": "Защита.",
-      "ua": "Захист.",
-      "es": "Protección."
+      "en": "Confiscate illegal goods plus a fine.",
+      "ru": "Конфискация нелегальных товаров и штраф.",
+      "ua": "Конфіскація нелегальних товарів і штраф.",
+      "es": "Confisca bienes ilegales y aplica una multa."
     },
-    "fortune": "positive",
-    "quantity_ingame": 21,
-    "quantity_active": 18,
+    "fortune": "negative",
+    "quantity_ingame": 7,
+    "quantity_active": 5,
     "position_in_game": "deck",
-    "goal_action": "trader",
+    "goal_action": "sector",
     "goal_item": "trader",
     "effect": [
       {
-        "Illigal_protection": true
+        "confiscation": true
       },
       {
-        "trader_action": "free"
-      }
-    ]
-  },
-  {
-    "id": "ev_card_rc",
-    "title": {
-      "en": "Regular Customer",
-      "ru": "Постоянный покупатель",
-      "ua": "Постійний покупець",
-      "es": "Cliente habitual"
-    },
-    "description": {
-      "en": "Profit +2 coins.",
-      "ru": "Прибыль +2 монеты.",
-      "ua": "Прибуток +2 монети.",
-      "es": "Ganancia +2 monedas."
-    },
-    "fortune": "positive",
-    "quantity_ingame": 14,
-    "quantity_active": 14,
-    "position_in_game": "deck",
-    "goal_action": "trader",
-    "goal_item": "product",
-    "effect": [
-      {
-        "effect_goal": "product",
-        "extra_price": [
-          2
+        "fine": [
+          5
         ]
-      }
-    ]
-  },
-  {
-    "id": "ev_card_tabp",
-    "title": {
-      "en": "Transport Arrived and Brought People",
-      "ru": "Приехал транспорт с людьми",
-      "ua": "Приїхав транспорт з людьми",
-      "es": "Llegó el transporte con gente"
-    },
-    "description": {
-      "en": "Profit +1 from each good of each seller.",
-      "ru": "Прибыль +1 с каждого товара продавца.",
-      "ua": "Прибуток +1 з кожного товара продавця.",
-      "es": "Ganancia +1 de cada vendedor."
-    },
-    "fortune": "positive",
-    "quantity_ingame": 14,
-    "quantity_active": 14,
-    "position_in_game": "deck",
-    "goal_action": "trader",
-    "goal_item": "product",
-    "effect": [
+      },
       {
-        "effect_goal": "trader",
-        "extra_price": [
-          1
-        ]
+        "trader_action": "hold"
       }
     ]
   },
