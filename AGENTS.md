@@ -112,6 +112,9 @@ When reviewing `useEffect`:
 - Do not claim one is wrong unless the expected API contract is known.
 - Handle HTTP errors separately from network/no-response errors when relevant.
 - Avoid changing API payloads without verifying the backend contract.
+- Error response shape does not prove request-body or query-parameter requirements.
+- HTTP method conventions are not an API contract.
+- Do not recommend changing Axios `params` to request `data`, or vice versa, without inspecting the API contract or backend implementation.
 
 ---
 
@@ -232,3 +235,30 @@ Do not hide failed tests or build errors.
 - Avoid generic tutorials unless requested.
 - Clearly state uncertainty.
 - Prefer evidence from actual project code over assumptions.
+
+## Incomplete Context
+
+- A symbol whose definition is not visible in the currently inspected fragment is unknown, not automatically undefined or broken.
+- Never report a missing function, variable, component, hook, or dependency as a bug unless its absence has been verified in the relevant project scope.
+- Do not invent behavior for helper functions whose implementation has not been inspected.
+- Do not turn hypothetical behavior of unseen code into a finding.
+- A valid finding must be demonstrable from the inspected code and known project facts.
+- "If another function does X" or "if the project later changes Y" is not evidence of a current bug.
+
+## Review Evidence Threshold
+
+- Review the code as it exists now, not hypothetical future rewrites.
+- Do not report a problem that only appears if requirements, data sources, component architecture, or helper implementations change in the future.
+- Static imports should be treated as static unless inspected code shows otherwise.
+- A large number of props is not by itself a performance problem.
+- Simple derived calculations inside render are allowed and do not require `useMemo`, a hook, or extraction unless there is a concrete measured or structural reason.
+
+## False Positive Avoidance
+
+- Do not report expected conditional rendering as an error.
+- A prop being `null` or `undefined` is not a runtime problem when the existing code explicitly handles that case.
+- Simple calculations from props, such as subtraction, formatting, or derived display values, may remain inside a component and are not business-logic violations by themselves.
+- Do not recommend extracting trivial calculations into utilities, hooks, or separate components without reuse or complexity.
+- An unused prop is a maintainability issue, not a bug.
+- Do not recommend removing an apparently unused prop until its callers and public component API have been inspected.
+- Prefer returning zero findings over weak, hypothetical, or stylistic findings.
