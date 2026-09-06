@@ -1,0 +1,64 @@
+[
+  {
+    "id": "ev_card_fntr",
+    "title": {
+      "en": "Federal Police",
+      "ru": "Федеральная полиция",
+      "ua": "Федеральна поліція",
+      "es": "Policía Federal"
+    },
+    "description": {
+      "en": "Confiscate illegal goods plus a fine.",
+      "ru": "Конфискация нелегальных товаров и штраф.",
+      "ua": "Конфіскація нелегальних товарів і штраф.",
+      "es": "Confisca bienes ilegales y aplica una multa."
+    },
+    "fortune": "negative",
+    "quantity_ingame": 7,
+    "quantity_active": 5,
+    "position_in_game": "deck",
+    "goal_action": "sector",
+    "goal_item": "trader",
+    "effect": [
+      {
+        "confiscation": true
+      },
+      {
+        "fine": [
+          5
+        ]
+      },
+      {
+        "trader_action": "hold"
+      }
+    ]
+  },
+  {
+    "id": "ev_card_prtrs",
+    "title": {
+      "en": "Porters",
+      "ru": "Грузчики",
+      "ua": "Вантажники",
+      "es": "Cargadores"
+    },
+    "description": {
+      "en": "Goods +1 from the market for free.",
+      "ru": "1 товар с рынка бесплатно.",
+      "ua": "1 товар з ринку безкоштовно.",
+      "es": "1 producto gratis del mercado."
+    },
+    "fortune": "positive",
+    "quantity_ingame": 14,
+    "quantity_active": 14,
+    "position_in_game": "deck",
+    "goal_action": "trader",
+    "goal_item": "product",
+    "effect": [
+      {
+        "extra_product": [
+          1
+        ]
+      }
+    ]
+  }
+]

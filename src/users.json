@@ -1,0 +1,229 @@
+[
+  {
+    "user_id": "001",
+    "name": "Olena",
+    "color": "yellow",
+    "className": "user1",
+    "coins": "10",
+    "traders": [
+      {
+                "traderId": 1,
+                "traderImg": "../img/aida-hottie.webp",
+                "traderName": "Trader1 Aida",
+        "traderOwnerId": "001",
+        "location": "Fruits",
+        "goods": [
+          {
+            "sector": "Fruits",
+            "productName": "apples",
+            "imageSrc": "../img/apples.svg",
+            "wholesalePrice": "2",
+            "retailPrice": "4",
+            "possibleIncome": "2",
+            "quantity_card": "16"
+          },
+          {
+            "sector": "Fruits",
+            "productName": "grapes",
+            "imageSrc": "../img/grapes.svg",
+            "wholesalePrice": "3",
+            "retailPrice": "6",
+            "possibleIncome": "3",
+            "quantity_card": "12"
+          },
+          {
+            "sector": "Fruits",
+            "productName": "strawberries",
+            "imageSrc": "../img/strawberries.svg",
+            "wholesalePrice": "5",
+            "retailPrice": "9",
+            "possibleIncome": "4",
+            "quantity_card": "10"
+          }
+      
+        ]
+      }
+   
+    ]
+  },
+  {
+    "user_id": "002",
+    "name": "Ivan",
+    "color": "blue",
+    "className": "user2",
+     "coins": "10",
+    "traders": [
+      {
+        "traderId": 2,
+        "traderImg": "../img/aza.webp",
+        "traderName": "Trader2 Aza",
+        "traderOwnerId": "002",
+        "location": "Fruits",
+        "goods": [
+          {
+            "sector": "Fruits",
+            "productName": "apples",
+            "imageSrc": "../img/apples.svg",
+            "wholesalePrice": "2",
+            "retailPrice": "4",
+            "possibleIncome": "2",
+            "quantity_card": "16"
+          },
+          {
+            "sector": "Fruits",
+            "productName": "grapes",
+            "imageSrc": "../img/grapes.svg",
+            "wholesalePrice": "3",
+            "retailPrice": "6",
+            "possibleIncome": "3",
+            "quantity_card": "12"
+          },
+          {
+            "sector": "Fruits",
+            "productName": "strawberries",
+            "imageSrc": "../img/strawberries.svg",
+            "wholesalePrice": "5",
+            "retailPrice": "9",
+            "possibleIncome": "4",
+            "quantity_card": "10"
+          }
+      
+        ]
+      },
+       {
+        "traderId": 5,
+        "traderImg": "../img/grigory-the-gardener.webp",
+        "traderName": "Trader2 Grigoriy",
+        "traderOwnerId": "002",
+        "location": "Vegetables",
+          "goods": [
+          {
+            "sector": "vegetables",
+            "productName": "Onion",
+            "imageSrc": "../img/onion.svg",
+            "wholesalePrice": "2",
+            "retailPrice": "4",
+            "possibleIncome": "2",
+            "quantity_card": "16"
+          },
+          {
+            "sector": "vegetables",
+            "productName": "Zucchini",
+            "imageSrc": "../img/zucchini.svg",
+            "wholesalePrice": "3",
+            "retailPrice": "6",
+            "possibleIncome": "3",
+            "quantity_card": "12"
+          },
+          {
+            "sector": "vegetables",
+            "productName": "Tomato",
+            "imageSrc": "../img/tomato.svg",
+            "wholesalePrice": "5",
+            "retailPrice": "9",
+            "possibleIncome": "4",
+            "quantity_card": "10"
+          }
+      
+        ]
+      }
+   
+    ]
+  },
+  {
+    "user_id": "003",
+    "name": "Alezandr",
+    "color": "purple",
+    "className": "user3",
+       "coins": "10",
+    "traders": [
+      {
+        "traderId": 3,
+        "traderImg": "../img/butcher.webp",
+        "traderName": "Trader3 Butcher",
+        "traderOwnerId": "003",
+        "location": "Fruits",
+        "goods": [
+          {
+            "sector": "Fruits",
+            "productName": "apples",
+            "imageSrc": "../img/apples.svg",
+            "wholesalePrice": "2",
+            "retailPrice": "4",
+            "possibleIncome": "2",
+            "quantity_card": "16"
+          },
+          {
+            "sector": "Fruits",
+            "productName": "grapes",
+            "imageSrc": "../img/grapes.svg",
+            "wholesalePrice": "3",
+            "retailPrice": "6",
+            "possibleIncome": "3",
+            "quantity_card": "12"
+          },
+          {
+            "sector": "Fruits",
+            "productName": "strawberries",
+            "imageSrc": "../img/strawberries.svg",
+            "wholesalePrice": "5",
+            "retailPrice": "9",
+            "possibleIncome": "4",
+            "quantity_card": "10"
+          }
+      
+        ]
+      }
+   
+    ]
+  },
+  {
+    "user_id": "004",
+    "current_user": "current",
+    "name": "Yaroslav",
+    "color": "red",
+    "className": "user3",
+       "coins": "50",
+    "traders": [
+      {
+        "traderId": 4,
+        "traderImg": "../img/solomon.webp",
+        "traderName": "Trader4 Solomon",
+        "traderOwnerId": "004",
+        "location": "Vegetables",
+        "goods": [
+          {
+            "sector": "vegetables",
+            "productName": "Onion",
+            "imageSrc": "../img/onion.svg",
+            "wholesalePrice": "2",
+            "retailPrice": "4",
+            "possibleIncome": "2",
+            "quantity_card": "16"
+          },
+          {
+            "sector": "vegetables",
+            "productName": "Zucchini",
+            "imageSrc": "../img/zucchini.svg",
+            "wholesalePrice": "3",
+            "retailPrice": "6",
+            "possibleIncome": "3",
+            "quantity_card": "12"
+          },
+          {
+            "sector": "vegetables",
+            "productName": "Tomato",
+            "imageSrc": "../img/tomato.svg",
+            "wholesalePrice": "5",
+            "retailPrice": "9",
+            "possibleIncome": "4",
+            "quantity_card": "10"
+          }
+      
+        ]
+      }
+   
+    ]
+  }
+
+]
