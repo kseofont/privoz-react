@@ -1,5 +1,5 @@
 // logic.js
-
+import { PHASES } from '../game/phases';
 export function endTurn({ connection, myTurn, myUserId, gameState, setGameState, connectionsRef }) {
   console.log(' endTurn + gameState ', gameState);
   // console.log(' connection ', connection);
@@ -83,42 +83,6 @@ export function handleHostEndTurn({ connectionsRef, setGameState }) {
   };
 }
 
-export function handleSelectTrader({ gameState, myUserId, trader }) {
-  if (!gameState || !myUserId) return gameState; // Возвращаем без изменений если некорректно
-
-  const players = gameState.players.map(player => {
-    if (player.user_id !== myUserId) return player;
-
-    if (player.traders?.some(t => t.traderId === trader.traderId)) return player;
-
-    const tradersLen = player.traders?.length || 0;
-    const currPrice = tradersLen * 15;
-    if ((player.coins || 0) < currPrice) return player;
-
-    const traderToAdd = {
-      ...trader,
-      card_in_game: `${myUserId}_hand`,
-      taken: true,
-      traderOwnerId: myUserId,
-    };
-
-    return {
-      ...player,
-      traders: [...(player.traders || []), traderToAdd],
-      tradersCount: (player.tradersCount || 0) + 1,
-      coins: player.coins - currPrice,
-    };
-  });
-
-  const traderList = gameState.traderList
-    ? gameState.traderList.map(t =>
-        t.traderId === trader.traderId ? { ...t, taken: true, card_in_game: `${myUserId}_hand` } : t
-      )
-    : gameState.traderList;
-
-  return { ...gameState, players, traderList };
-}
-
 // Конец раунда
 // Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {
@@ -179,7 +143,7 @@ export function handleEndRound(setGameState, isHost, broadcastGameState) {
       round: nextRound,
       players: updatedPlayers,
       __roundProcessing: true, // временно блокируем повтор
-      phase: undefined,
+      phase: PHASES.TRADER_SELECTION,
       eventCardPhase: undefined,
       playerEventChoices: undefined, // или сохранять в историю
     };
@@ -206,74 +170,115 @@ export const getField = (obj, field, lang = 'en') => {
 };
 
 export function player_add_event(gameState, playerId) {
-  // 1. Собрать все eventcards в колоде, у которых quantity_active > 0
-  const deckCards = (gameState.eventcards || []).filter(
-    c => c.position_in_game === 'deck' && c.quantity_active > 0
+  // Всегда возвращаем:
+  // [gameState, card | null]
+
+  if (!gameState || !playerId) {
+    return [gameState, null];
+  }
+
+  const eventCards = Array.isArray(gameState.eventcards) ? gameState.eventcards : [];
+
+  const players = Array.isArray(gameState.players) ? gameState.players : [];
+
+  // Сначала убеждаемся, что игрок существует.
+  // Так мы не уменьшим колоду, если карту некому выдавать.
+  const playerIdx = players.findIndex(player => player.user_id === playerId);
+
+  if (playerIdx === -1) {
+    return [gameState, null];
+  }
+
+  // Все доступные карты в колоде.
+  const deckCards = eventCards.filter(
+    card => card.position_in_game === 'deck' && Number(card.quantity_active) > 0
   );
 
-  if (!deckCards.length) return gameState; // Нет доступных карт
+  if (!deckCards.length) {
+    return [gameState, null];
+  }
 
-  // 2. Выбрать случайную карту из этого массива (с учётом количества)
-  const expanded = [];
+  // Создаём weighted deck с учётом quantity_active.
+  const expandedDeck = [];
+
   deckCards.forEach(card => {
-    for (let i = 0; i < card.quantity_active; i++) expanded.push(card);
+    const quantity = Math.max(0, Number(card.quantity_active) || 0);
+
+    for (let i = 0; i < quantity; i += 1) {
+      expandedDeck.push(card);
+    }
   });
-  const randomIdx = Math.floor(Math.random() * expanded.length);
-  const chosenCard = expanded[randomIdx];
-  if (!chosenCard) return gameState;
 
-  // 3. Найти её в eventcards по id для изменения quantity_active
-  const evIdx = gameState.eventcards.findIndex(c => c.id === chosenCard.id);
-  if (evIdx === -1) return gameState;
+  if (!expandedDeck.length) {
+    return [gameState, null];
+  }
 
-  // 4. Уменьшаем quantity_active на 1 в общей колоде
-  const updatedEventCards = [...gameState.eventcards];
-  updatedEventCards[evIdx] = {
-    ...updatedEventCards[evIdx],
-    quantity_active: Math.max(0, updatedEventCards[evIdx].quantity_active - 1),
+  // Выбираем случайную карту.
+  const randomIndex = Math.floor(Math.random() * expandedDeck.length);
+
+  const chosenCard = expandedDeck[randomIndex];
+
+  if (!chosenCard) {
+    return [gameState, null];
+  }
+
+  // Находим оригинальную карту в общей колоде.
+  const eventCardIndex = eventCards.findIndex(card => card.id === chosenCard.id);
+
+  if (eventCardIndex === -1) {
+    return [gameState, null];
+  }
+
+  // Уменьшаем quantity_active в общей колоде.
+  const updatedEventCards = [...eventCards];
+
+  updatedEventCards[eventCardIndex] = {
+    ...updatedEventCards[eventCardIndex],
+
+    quantity_active: Math.max(0, Number(updatedEventCards[eventCardIndex].quantity_active) - 1),
   };
 
-  // 5. Копируем свойства карты для игрока
+  // Копия карты для руки игрока.
   const cardForPlayer = {
     ...chosenCard,
+
     position_in_game: `hand_${playerId}`,
     quantity_active: 1,
   };
 
-  // 6. Добавляем игроку эту карту (или увеличиваем количество, если такая уже есть)
-  const playerIdx = gameState.players.findIndex(p => p.user_id === playerId);
-  if (playerIdx === -1) return { ...gameState, eventcards: updatedEventCards };
+  const player = players[playerIdx];
 
-  const player = gameState.players[playerIdx];
-  let playerEventCards = Array.isArray(player.eventCards) ? [...player.eventCards] : [];
+  const playerEventCards = Array.isArray(player.eventCards) ? [...player.eventCards] : [];
 
-  const playerCardIdx = playerEventCards.findIndex(c => c.id === chosenCard.id);
-  if (playerCardIdx !== -1) {
-    // Уже есть такая карта у игрока — увеличиваем количество
-    playerEventCards[playerCardIdx] = {
-      ...playerEventCards[playerCardIdx],
-      quantity_active: (playerEventCards[playerCardIdx].quantity_active || 0) + 1,
+  const existingCardIndex = playerEventCards.findIndex(card => card.id === chosenCard.id);
+
+  if (existingCardIndex !== -1) {
+    playerEventCards[existingCardIndex] = {
+      ...playerEventCards[existingCardIndex],
+
+      quantity_active: Number(playerEventCards[existingCardIndex].quantity_active) + 1,
     };
   } else {
-    // Новая карта
     playerEventCards.push(cardForPlayer);
   }
 
-  // 7. Обновить игрока в массиве
-  const updatedPlayer = { ...player, eventCards: playerEventCards };
-  const updatedPlayers = [...gameState.players];
+  const updatedPlayer = {
+    ...player,
+    eventCards: playerEventCards,
+  };
+
+  const updatedPlayers = [...players];
+
   updatedPlayers[playerIdx] = updatedPlayer;
 
-  // 8. Вернуть обновлённый gamestate
-  return [
-    // <--- вот тут меняется!
-    {
-      ...gameState,
-      eventcards: updatedEventCards,
-      players: updatedPlayers,
-    },
-    cardForPlayer, // <-- эта карта, которую выдали игроку
-  ];
+  const updatedGameState = {
+    ...gameState,
+
+    eventcards: updatedEventCards,
+    players: updatedPlayers,
+  };
+
+  return [updatedGameState, cardForPlayer];
 }
 // end round from menu
 // logic/logic.js
@@ -290,7 +295,7 @@ export function startEventChoicePhase(prevGameState) {
   const eventCardPhase = Object.fromEntries(prevGameState.players.map(p => [p.user_id, false]));
   return {
     ...prevGameState,
-    phase: 'eventChoice',
+    phase: PHASES.PERSONAL_EVENTS,
     eventCardPhase,
     playerEventChoices: {}, // сбрасываем, чтобы начать заново
   };
@@ -1124,7 +1129,8 @@ export function finalizeEndRoundWithEvents({
         ? (applied.eventResultNonce || 0) + 1
         : applied.eventResultNonce || 0,
       // фазу чистим, но ЛОГИ ОСТАВЛЯЕМ – они нужны клиентам
-      phase: undefined,
+      phase: PHASES.ROUND_END,
+
       eventCardPhase: undefined,
       playerEventChoices: undefined,
     };

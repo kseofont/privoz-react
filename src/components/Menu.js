@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-
+import { PHASES } from '../game/phases';
 import CoinsLog from './CoinsLog';
 
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,7 @@ import {
   clearEventLogForUser,
 } from '../logic/logic';
 import { connectionsRef } from '../globals';
+import { handleHostGameAction } from '../game/hostActionHandler';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import CurrentPlayerInfo from './CurrentPlayerInfo';
@@ -174,7 +175,7 @@ const Menu = ({
 
   useEffect(() => {
     if (
-      gameState?.phase === 'eventChoice' &&
+      gameState?.phase === PHASES.PERSONAL_EVENTS &&
       gameState?.eventCardPhase &&
       !gameState?.eventCardPhase[myUserId]
     ) {
@@ -227,27 +228,72 @@ const Menu = ({
     setRoundProcessing(false);
   }, [gameState?.round]); // или [gameState.round]
 
-  // Хост слушает клиентов и собирает выборы
+  // Общий host-network listener.
+  //
+  // ВАЖНО:
+  // Этот listener живёт в Menu, а не в TraderList/Wholesale/GamePage.
+  // Menu присутствует на всех игровых страницах, поэтому host продолжает
+  // принимать gameAction даже после перехода между страницами.
+  //
+  // Здесь пока обрабатываем:
+  // - gameAction (новый host-authoritative flow)
+  // - eventCardChoiceDone (legacy event flow)
+  // - ackEventResults (legacy event-result ACK)
   useEffect(() => {
-    if (!isHost || !connectionsRef.current) return;
+    if (
+      !isHost ||
+      typeof setGameState !== 'function' ||
+      !Array.isArray(connectionsRef.current)
+    ) {
+      return undefined;
+    }
 
-    const unsubs = connectionsRef.current.map(conn => {
-      const onData = data => {
-        if (data?.type === 'eventCardChoiceDone') {
-          setGameState(prev => applyPlayerEventChoice(prev, data.userId, data));
-        }
-      };
-      conn.on('data', onData);
-      return () => conn.off('data', onData);
+    const gameActionHandler = handleHostGameAction({
+      connectionsRef,
+      setGameState,
     });
 
-    return () => unsubs.forEach(unsub => unsub && unsub());
+    const subscriptions = connectionsRef.current.map(conn => {
+      const onData = data => {
+        gameActionHandler(data, conn);
+
+        if (data?.type === 'eventCardChoiceDone') {
+          const authoritativeUserId = conn.peer;
+
+          setGameState(prev =>
+            applyPlayerEventChoice(prev, authoritativeUserId, {
+              ...data,
+              userId: authoritativeUserId,
+            })
+          );
+
+          return;
+        }
+
+        if (data?.type === 'ackEventResults') {
+          setGameState(prev => clearEventLogForUser(prev, conn.peer));
+        }
+      };
+
+      conn.on('data', onData);
+
+      return {
+        conn,
+        onData,
+      };
+    });
+
+    return () => {
+      subscriptions.forEach(({ conn, onData }) => {
+        conn.off('data', onData);
+      });
+    };
   }, [isHost, setGameState]);
 
   // Когда все сдали — хост завершает раунд с учётом эффектов
   useEffect(() => {
     if (!isHost) return;
-    if (!gameState?.phase || gameState.phase !== 'eventChoice') return;
+    if (!gameState?.phase || gameState.phase !== PHASES.PERSONAL_EVENTS) return;
     if (!areAllEventChoicesIn(gameState)) return;
 
     // применить эффекты и завершить раунд
@@ -350,20 +396,6 @@ const Menu = ({
       }
     };
   }, [showResultModal, currentNonce, connection, myUserId, setGameState]);
-  // 3) Хост: принимаем ACK и чистим логи этого игрока (чтобы у него не всплыло снова)
-  useEffect(() => {
-    if (!isHost || !connectionsRef.current) return;
-    const unsubs = connectionsRef.current.map(conn => {
-      const onData = data => {
-        if (data?.type === 'ackEventResults') {
-          setGameState(prev => clearEventLogForUser(prev, data.userId));
-        }
-      };
-      conn.on('data', onData);
-      return () => conn.off('data', onData);
-    });
-    return () => unsubs.forEach(u => u && u());
-  }, [isHost, setGameState]);
 
   // log of coins
   // Внутри Menu
