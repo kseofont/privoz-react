@@ -10,6 +10,7 @@ import { connectionsRef } from '../globals';
 import traderList from '../data/TradersList.json';
 import products from '../data/products.json';
 import eventcards from '../data/eventcards.json';
+import { PHASES } from '../game/phases';
 
 /**
  * Add a PeerJS connection only once.
@@ -186,6 +187,7 @@ const CreateServerPage = () => {
             players: [hostPlayer],
             currentTurnUserId: id,
             round: 1,
+            phase: PHASES.LOBBY,
             traderList,
             products,
             eventcards,
@@ -365,15 +367,20 @@ const CreateServerPage = () => {
       alert('The game server is still starting. Please try again.');
       return;
     }
+    const startedGameState = {
+      ...gameState,
+      phase: PHASES.TRADER_SELECTION,
+    };
 
     setGameStarted(true);
+    setGameState(startedGameState);
 
     addLog(
       'Game started with players: ' +
-        (gameState.players?.map(player => player.name).join(', ') || '')
+        (startedGameState.players?.map(player => player.name).join(', ') || '')
     );
 
-    window.gameState = gameState;
+    window.gameState = startedGameState;
     window.myUserId = peerId;
     window.peerId = peerId;
     window.currentPrivozConnection = null;
@@ -381,16 +388,16 @@ const CreateServerPage = () => {
     connectionsRef.current.forEach(conn => {
       sendToConnection(conn, {
         type: 'startGame',
-        gameState,
+        gameState: startedGameState,
         myUserId: conn.peer,
         redirect: '/traders',
       });
     });
 
-    const currentUserData = gameState.players?.find(player => player.user_id === hostId) || null;
+    const currentUserData =
+      startedGameState.players?.find(player => player.user_id === hostId) || null;
 
-    const otherUsers = gameState.players?.filter(player => player.user_id !== hostId) || [];
-
+    const otherUsers = startedGameState.players?.filter(player => player.user_id !== hostId) || [];
     /**
      * TEMPORARY COMPATIBILITY.
      *
@@ -401,7 +408,7 @@ const CreateServerPage = () => {
 
     navigate(`/traders/${peerId}`, {
       state: {
-        gameState,
+        gameState: startedGameState,
         myUserId: peerId,
         currentUserData,
         otherUsers,

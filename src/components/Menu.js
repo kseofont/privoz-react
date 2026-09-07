@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-
+import { PHASES } from '../game/phases';
 import CoinsLog from './CoinsLog';
 
 import { useTranslation } from 'react-i18next';
@@ -174,7 +174,7 @@ const Menu = ({
 
   useEffect(() => {
     if (
-      gameState?.phase === 'eventChoice' &&
+      gameState?.phase === PHASES.PERSONAL_EVENTS &&
       gameState?.eventCardPhase &&
       !gameState?.eventCardPhase[myUserId]
     ) {
@@ -247,7 +247,7 @@ const Menu = ({
   // Когда все сдали — хост завершает раунд с учётом эффектов
   useEffect(() => {
     if (!isHost) return;
-    if (!gameState?.phase || gameState.phase !== 'eventChoice') return;
+    if (!gameState?.phase || gameState.phase !== PHASES.PERSONAL_EVENTS) return;
     if (!areAllEventChoicesIn(gameState)) return;
 
     // применить эффекты и завершить раунд

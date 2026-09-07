@@ -1,5 +1,5 @@
 // logic.js
-
+import { PHASES } from '../game/phases';
 export function endTurn({ connection, myTurn, myUserId, gameState, setGameState, connectionsRef }) {
   console.log(' endTurn + gameState ', gameState);
   // console.log(' connection ', connection);
@@ -179,7 +179,7 @@ export function handleEndRound(setGameState, isHost, broadcastGameState) {
       round: nextRound,
       players: updatedPlayers,
       __roundProcessing: true, // временно блокируем повтор
-      phase: undefined,
+      phase: PHASES.TRADER_SELECTION,
       eventCardPhase: undefined,
       playerEventChoices: undefined, // или сохранять в историю
     };
@@ -331,7 +331,7 @@ export function startEventChoicePhase(prevGameState) {
   const eventCardPhase = Object.fromEntries(prevGameState.players.map(p => [p.user_id, false]));
   return {
     ...prevGameState,
-    phase: 'eventChoice',
+    phase: PHASES.PERSONAL_EVENTS,
     eventCardPhase,
     playerEventChoices: {}, // сбрасываем, чтобы начать заново
   };
@@ -1165,7 +1165,8 @@ export function finalizeEndRoundWithEvents({
         ? (applied.eventResultNonce || 0) + 1
         : applied.eventResultNonce || 0,
       // фазу чистим, но ЛОГИ ОСТАВЛЯЕМ – они нужны клиентам
-      phase: undefined,
+      phase: PHASES.ROUND_END,
+
       eventCardPhase: undefined,
       playerEventChoices: undefined,
     };
