@@ -17,6 +17,7 @@ import { selectTraderAction } from '../game/actions';
 
 import { gameReducer } from '../game/reducer';
 
+
 const TraderList = () => {
   const { t, i18n } = useTranslation();
 
@@ -43,6 +44,12 @@ const TraderList = () => {
 
   const [showModal, setShowModal] = useState(false);
 
+  /*
+   * When a client sends SELECT_TRADER, it does not navigate immediately.
+   *
+   * We remember which trader it requested and wait until the
+   * authoritative gameState from the host confirms ownership.
+   */
   const [selectedTraderIdForRedirect, setSelectedTraderIdForRedirect] = useState(null);
 
   const isAuthorized =
@@ -51,16 +58,26 @@ const TraderList = () => {
     Array.isArray(gameState.players) &&
     gameState.players.some(player => player.user_id === myUserId);
 
+  /*
+   * Host has no DataConnection to himself.
+   */
   const isHost = !connection;
 
   const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
 
+  /*
+   * Local fallback data.
+   */
   const defaultTraders = Array.isArray(localTradersData)
     ? localTradersData
     : Array.isArray(localTradersData.traders)
       ? localTradersData.traders
       : [];
 
+  /*
+   * Players inside an active game always use the synchronized
+   * traderList from gameState.
+   */
   const safeTraders = isAuthorized
     ? Array.isArray(gameState?.traderList)
       ? gameState.traderList
@@ -71,6 +88,8 @@ const TraderList = () => {
 
   /*
    * Temporary navigation compatibility.
+   *
+   * This will disappear later when game session state is centralized.
    */
   useEffect(() => {
     if (gameState) {
@@ -85,8 +104,7 @@ const TraderList = () => {
   }, [gameState, myUserId, connection]);
 
   /*
-   * Fallback list for visitors who are not
-   * connected to an active game.
+   * Fallback trader list for non-connected visitors.
    */
   useEffect(() => {
     if (isAuthorized) {
@@ -110,7 +128,9 @@ const TraderList = () => {
   }, [isAuthorized]);
 
   /*
-   * Host broadcast.
+   * HOST BROADCAST
+   *
+   * Host sends only authoritative gameState to clients.
    */
   const broadcastGameState = state => {
     const stateToSend = state || gameState;
@@ -136,21 +156,26 @@ const TraderList = () => {
   };
 
   /*
-   * Host data listeners.
+   * HOST LEGACY endTurn LISTENER
+   *
+   * gameAction is intentionally NOT handled here anymore.
+   * It is handled by Menu, which remains mounted on all game pages.
+   *
+   * This page keeps only the legacy endTurn handler for now.
    */
   useEffect(() => {
     if (!isHost) {
       return undefined;
     }
 
-    const handler = handleHostEndTurn({
+    const endTurnHandler = handleHostEndTurn({
       connectionsRef,
       setGameState,
     });
 
     const subscriptions = connectionsRef.current.map(conn => {
       const onData = data => {
-        handler(data, conn);
+        endTurnHandler(data, conn);
       };
 
       conn.on('data', onData);
@@ -169,7 +194,10 @@ const TraderList = () => {
   }, [isHost]);
 
   /*
-   * Client state synchronization.
+   * CLIENT NETWORK LISTENER
+   *
+   * Client never decides whether SELECT_TRADER succeeded.
+   * It waits for authoritative gameState from the host.
    */
   useEffect(() => {
     if (!connection) {
@@ -194,42 +222,98 @@ const TraderList = () => {
   /*
    * SELECT_TRADER
    *
-   * This is the first gameplay operation migrated
-   * from legacy logic into the game reducer.
+   * HOST:
+   * applies its own action locally because the host is authoritative,
+   * then broadcasts the resulting state.
+   *
+   * CLIENT:
+   * sends only its intent. It does NOT mutate gameState locally.
    */
   const handleSelectTrader = trader => {
-    if (!gameState || !myUserId || !trader?.traderId) {
+    if (!gameState || !myUserId || !trader?.traderId || !myTurn) {
       return;
     }
 
     const action = selectTraderAction({
       playerId: myUserId,
-
       traderId: trader.traderId,
     });
 
-    setGameState(prev => {
-      const nextState = gameReducer(prev, action);
+    /*
+     * HOST ACTION
+     */
+    if (isHost) {
+      const nextState = gameReducer(gameState, action);
 
       /*
-       * If reducer rejected the action,
-       * don't redirect.
+       * Reducer rejected the action.
        */
-      if (nextState === prev) {
-        return prev;
+      if (nextState === gameState) {
+        console.warn('[TraderList] Host SELECT_TRADER rejected:', action);
+
+        return;
       }
+
+      /*
+       * Remember expected trader before updating state.
+       */
+      setSelectedTraderIdForRedirect(trader.traderId);
 
       setShowModal(false);
 
-      setSelectedTraderIdForRedirect(trader.traderId);
+      /*
+       * Host owns authoritative state.
+       */
+      setGameState(nextState);
 
-      return nextState;
-    });
+      /*
+       * Host must immediately synchronize clients too.
+       */
+      broadcastGameState(nextState);
+
+      return;
+    }
+
+    /*
+     * CLIENT ACTION
+     *
+     * No local gameReducer().
+     */
+    if (!connection?.open) {
+      console.error('[TraderList] Cannot send SELECT_TRADER: connection is not open.');
+
+      return;
+    }
+
+    /*
+     * Set this BEFORE sending.
+     * When authoritative state comes back from host,
+     * redirect effect below will verify that the trader
+     * really belongs to this player.
+     */
+    setSelectedTraderIdForRedirect(trader.traderId);
+
+    setShowModal(false);
+
+    try {
+      connection.send({
+        type: 'gameAction',
+        action,
+      });
+    } catch (error) {
+      console.error('[TraderList] Failed to send SELECT_TRADER:', error);
+
+      setSelectedTraderIdForRedirect(null);
+    }
   };
 
   /*
-   * Navigate only after reducer actually added
-   * the trader to the player's state.
+   * AUTHORITATIVE REDIRECT
+   *
+   * Clicking the button is not sufficient.
+   *
+   * We navigate only when current gameState actually confirms
+   * that this player owns the requested trader.
    */
   useEffect(() => {
     if (!selectedTraderIdForRedirect) {
@@ -242,9 +326,11 @@ const TraderList = () => {
       trader => trader.traderId === selectedTraderIdForRedirect
     );
 
-    if (hasTrader) {
-      navigate(`/wholesale/${params.peerId}`);
+    if (!hasTrader) {
+      return;
     }
+
+    navigate(`/wholesale/${params.peerId}`);
   }, [gameState, myUserId, selectedTraderIdForRedirect, params.peerId, navigate]);
 
   const player = Array.isArray(gameState?.players)
@@ -252,8 +338,12 @@ const TraderList = () => {
     : {};
 
   /*
-   * Display price stays consistent with
-   * reducer rules.
+   * Display price mirrors reducer pricing.
+   *
+   * Current prototype:
+   * 1st trader = 0
+   * 2nd trader = 15
+   * 3rd trader = 30
    */
   const price = (player.traders?.length || 0) * 15;
 
@@ -320,10 +410,10 @@ const TraderList = () => {
                         style={{
                           position: 'absolute',
 
-                          top: '0',
-                          left: '0',
-                          right: '0',
-                          bottom: '0',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
 
                           background: 'rgba(128,128,128,0.6)',
 
