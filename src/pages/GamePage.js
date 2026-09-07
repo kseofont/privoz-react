@@ -1,18 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
+
 import PrivozSector from '../components/PrivozSector';
 import Menu from '../components/Menu';
+
 import { connectionsRef } from '../globals';
 import { handleHostEndTurn } from '../logic/logic';
-
-// ! Если ты ХОСТ — connectionsRef нужен!
-//const connectionsRef = window.connectionsRef || { current: [] }; // для примера, можно прокинуть иначе
 
 const GamePage = () => {
   const location = useLocation();
   const params = useParams();
 
-  // --- Универсальная инициализация ---
+  /*
+   * Legacy initialization.
+   *
+   * location.state is preferred, window.* remains as a temporary fallback
+   * while the current application still navigates between pages this way.
+   *
+   * Later this will be replaced by the shared GameSession/game engine.
+   */
   const initialGameState = location.state?.gameState || window.gameState || null;
 
   const initialMyUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
@@ -20,95 +26,161 @@ const GamePage = () => {
   const initialConnection = location.state?.connection || window.currentPrivozConnection || null;
 
   const [gameState, setGameState] = useState(initialGameState);
-  const [connection, setConnection] = useState(initialConnection);
-  const [myUserId, setMyUserId] = useState(initialMyUserId);
 
-  const isAuthorized = !!myUserId && !!gameState && Array.isArray(gameState.players);
+  /*
+   * These don't change while GamePage is mounted.
+   *
+   * Previously they were state values with unused setters.
+   */
+  const connection = initialConnection;
+  const myUserId = initialMyUserId;
 
-  useEffect(() => {
-    if (gameState) window.gameState = gameState;
-    if (myUserId) window.myUserId = myUserId;
-    if (connection) window.currentPrivozConnection = connection;
-  }, [gameState, myUserId, connection]);
+  /*
+   * Make sure the current user really exists in the game.
+   */
+  const isAuthorized =
+    !!myUserId &&
+    !!gameState &&
+    Array.isArray(gameState.players) &&
+    gameState.players.some(player => player.user_id === myUserId);
 
-  // --- isHost логика (нет connection)
+  /*
+   * Host has no PeerJS DataConnection to himself.
+   */
   const isHost = !connection;
 
-  // --- Хост: объяви broadcastGameState (можно скопировать из CreateServerPage)
-  function broadcastGameState(state = gameState) {
-    // connectionsRef должен содержать все conn для PeerJS!
-    // connectionsRef.current = [conn1, conn2, ...]
-    if (!connectionsRef.current) return;
-    connectionsRef.current.forEach(conn => {
-      try {
-        conn.send({ type: 'gameState', gameState: state });
-      } catch (e) {
-        // Отлов ошибок — чтобы не падало при недоступном клиенте
-        // Можно залогировать
-        console.log('[CLIENT] Получено сообщение gameState:', conn.state);
-      }
-    });
-  }
+  /*
+   * Keep temporary global navigation state synchronized.
+   *
+   * connectionsRef is NOT reconstructed here.
+   * It remains the single shared object imported from globals.js.
+   */
   useEffect(() => {
-    console.log('GameState изменился!', gameState);
-  }, [gameState]);
-  // --- Клиент: подписка на data
-  useEffect(() => {
-    if (!connection) {
-      console.warn('[CLIENT] Нет connection — подписка не работает');
+    if (gameState) {
+      window.gameState = gameState;
+    }
+
+    if (myUserId) {
+      window.myUserId = myUserId;
+    }
+
+    window.currentPrivozConnection = connection || null;
+  }, [gameState, myUserId, connection]);
+
+  /*
+   * Host broadcasts the authoritative state to active clients.
+   */
+  const broadcastGameState = state => {
+    const stateToSend = state || gameState;
+
+    if (!stateToSend) {
       return;
     }
-    //   console.log('[CLIENT] Подписка на события DATA');
-    const handleData = data => {
-      // console.log('[CLIENT] Получено сообщение:', data);
-      if (data.type === 'gameState') {
+
+    connectionsRef.current.forEach(conn => {
+      if (!conn?.open) {
+        return;
+      }
+
+      try {
+        conn.send({
+          type: 'gameState',
+          gameState: stateToSend,
+        });
+      } catch (error) {
+        console.error(`[GamePage] Failed to send gameState to ${conn.peer}:`, error);
+      }
+    });
+  };
+
+  /*
+   * CLIENT DATA LISTENER
+   *
+   * Client receives state updates from the host.
+   *
+   * This listener is explicitly removed when GamePage unmounts.
+   */
+  useEffect(() => {
+    if (!connection) {
+      return undefined;
+    }
+
+    const onData = data => {
+      console.log('[GamePage] Received data:', data);
+
+      if (data.type === 'gameState' && data.gameState) {
         setGameState(data.gameState);
-        //  console.log('GameState изменился2!', data.gameState);
       }
     };
-    connection.on('data', handleData);
+
+    connection.on('data', onData);
+
     return () => {
-      connection.off('data', handleData);
+      connection.off('data', onData);
     };
   }, [connection]);
 
+  /*
+   * HOST DATA LISTENERS
+   *
+   * Before this stabilization pass GamePage added a new anonymous
+   * `data` listener every time the page was mounted:
+   *
+   * conn.on('data', data => handler(data, conn))
+   *
+   * and never removed it.
+   *
+   * After several rounds one PeerJS connection could therefore execute
+   * the same host action several times.
+   *
+   * Now we retain the exact listener function and remove it on unmount.
+   */
   useEffect(() => {
-    console.log('[CLIENT] GameState обновился:', gameState);
-    console.log('[CLIENT] Мой userId:', myUserId);
-    if (gameState) {
-      const curr = (gameState?.players || []).find(p => p.user_id === myUserId);
-      console.log('[CLIENT] Текущий игрок:', curr);
-      console.log('[CLIENT] Все игроки:', gameState.players);
-      console.log('[CLIENT] Сейчас ходит:', gameState.currentTurnUserId);
+    if (!isHost) {
+      return undefined;
     }
-  }, [gameState, myUserId]);
 
-  useEffect(() => {
-    // console.log('[CLIENT] window.currentPrivozConnection:', window.currentPrivozConnection);
-    // console.log('[CLIENT] connection:', connection);
-  }, []);
-
-  useEffect(() => {
-    if (!isHost) return; // только для хоста
-
-    // Навешиваем обработчик на все новые подключения (или на имеющиеся)
-    connectionsRef.current.forEach(conn => {
-      // обязательно сделать removeListener, если переустанавливаешь обработчик
-      const handler = handleHostEndTurn({ connectionsRef, setGameState });
-      conn.on('data', data => handler(data, conn));
+    const handler = handleHostEndTurn({
+      connectionsRef,
+      setGameState,
     });
 
-    // Чистка при размонтировании, если потребуется
-    // return () => { ... }
-  }, [isHost, setGameState]);
+    const subscriptions = connectionsRef.current.map(conn => {
+      const onData = data => {
+        handler(data, conn);
+      };
 
-  // --- Вычисляем пользователей
+      conn.on('data', onData);
 
-  const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
-  const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
-  const myTurn = gameState?.currentTurnUserId === myUserId;
+      return {
+        conn,
+        onData,
+      };
+    });
 
+    return () => {
+      subscriptions.forEach(({ conn, onData }) => {
+        conn.off('data', onData);
+      });
+    };
+  }, [isHost]);
+
+  /*
+   * Current turn.
+   */
+  const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
+
+  /*
+   * Other players are currently used to determine sector capacity.
+   * Existing gameplay is intentionally preserved.
+   */
+  const otherUsers = gameState?.players?.filter(player => player.user_id !== myUserId) || [];
+
+  /*
+   * Existing sector fallback.
+   */
   const fallbackSectors = ['Fruits', 'Vegetables', 'Dairy', 'Meat', 'Fish', 'Household goods'];
+
   const sectors = gameState?.sectors || fallbackSectors;
 
   return (
@@ -116,60 +188,12 @@ const GamePage = () => {
       <div className="row">
         <h2>Privoz Bazar Game Session</h2>
 
-        {/* Текущий игрок
-        {currentUserData && (
-          <div className="user-info mt-3">
-            <h4>Current User Data:</h4>
-            <p>
-              <strong>Name:</strong> {currentUserData.name}
-            </p>
-            <p>
-              <strong>Color:</strong>{' '}
-              <span style={{ color: currentUserData.color }}>{currentUserData.color}</span>
-            </p>
-            <p>
-              <strong>Coins:</strong> {currentUserData.coins}
-            </p>
-            <p>
-              <strong>Traders Count:</strong> {currentUserData.tradersCount}
-            </p>
-            <p>
-              <strong>Event Cards Count:</strong> {currentUserData.eventCards?.length || 0}
-            </p>
-          </div>
-        )} */}
-
-        {/* Остальные игроки */}
-        {/* {otherUsers?.length > 0 && (
-          <div className="other-users-info mt-3">
-            <h4>Other Users in Game:</h4>
-            <ul className="list-unstyled">
-              {otherUsers.map((user, index) => (
-                <li key={index}>
-                  <p>
-                    <strong>Name:</strong> {user.name}
-                  </p>
-                  <p>
-                    <strong>Color:</strong> <span style={{ color: user.color }}>{user.color}</span>
-                  </p>
-                  <p>
-                    <strong>Coins:</strong> {user.coins}
-                  </p>
-                  <p>
-                    <strong>Traders Count:</strong> {user.traders?.length || 0}
-                  </p>
-                  <hr />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )} */}
         <div className="row flex-column flex-sm-row">
-          {/* Игровые сектора */}
+          {/* Game sectors */}
           <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column align-items-center text-center">
             <div className="row yarr1">
-              {sectors.map((sector, index) => (
-                <div className="col-6 yarr1" key={index}>
+              {sectors.map(sector => (
+                <div className="col-6 yarr1" key={sector}>
                   <PrivozSector
                     category={sector}
                     maxTraders={otherUsers.length + 1}
@@ -185,7 +209,7 @@ const GamePage = () => {
             </div>
           </div>
 
-          {/* Меню справа */}
+          {/* Right menu */}
           <div className="col-12 col-sm-3 order-1 order-sm-2 border-start">
             <Menu
               gameState={gameState}
@@ -193,7 +217,7 @@ const GamePage = () => {
               connection={connection}
               setGameState={isHost ? setGameState : undefined}
               broadcastGameState={isHost ? broadcastGameState : undefined}
-              connectionsRef
+              connectionsRef={connectionsRef}
             />
           </div>
         </div>
