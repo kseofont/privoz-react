@@ -83,42 +83,6 @@ export function handleHostEndTurn({ connectionsRef, setGameState }) {
   };
 }
 
-export function handleSelectTrader({ gameState, myUserId, trader }) {
-  if (!gameState || !myUserId) return gameState; // Возвращаем без изменений если некорректно
-
-  const players = gameState.players.map(player => {
-    if (player.user_id !== myUserId) return player;
-
-    if (player.traders?.some(t => t.traderId === trader.traderId)) return player;
-
-    const tradersLen = player.traders?.length || 0;
-    const currPrice = tradersLen * 15;
-    if ((player.coins || 0) < currPrice) return player;
-
-    const traderToAdd = {
-      ...trader,
-      card_in_game: `${myUserId}_hand`,
-      taken: true,
-      traderOwnerId: myUserId,
-    };
-
-    return {
-      ...player,
-      traders: [...(player.traders || []), traderToAdd],
-      tradersCount: (player.tradersCount || 0) + 1,
-      coins: player.coins - currPrice,
-    };
-  });
-
-  const traderList = gameState.traderList
-    ? gameState.traderList.map(t =>
-        t.traderId === trader.traderId ? { ...t, taken: true, card_in_game: `${myUserId}_hand` } : t
-      )
-    : gameState.traderList;
-
-  return { ...gameState, players, traderList };
-}
-
 // Конец раунда
 // Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {

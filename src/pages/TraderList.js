@@ -2,41 +2,30 @@ import React, { useEffect, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+
 import { Modal, Button } from 'react-bootstrap';
-
-import { connectionsRef } from '../globals';
-
-import localTradersData from '../data/TradersList.json';
 
 import Menu from '../components/Menu';
 
-import {
-  handleHostEndTurn,
-  handleSelectTrader as logicHandleSelectTrader,
-  getField,
-} from '../logic/logic';
+import localTradersData from '../data/TradersList.json';
+
+import { connectionsRef } from '../globals';
+
+import { handleHostEndTurn, getField } from '../logic/logic';
+
+import { selectTraderAction } from '../game/actions';
+
+import { gameReducer } from '../game/reducer';
 
 const TraderList = () => {
-  const [allTraders, setAllTraders] = useState([]);
-  const [selectedTrader, setSelectedTrader] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedTraderIdForRedirect, setSelectedTraderIdForRedirect] = useState(null);
+  const { t, i18n } = useTranslation();
 
-  const { t } = useTranslation();
+  const lang = i18n.language || 'en';
 
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
 
-  /*
-   * Current legacy initialization.
-   *
-   * We keep window.* fallback for now because the rest of the game still
-   * relies on it while navigating between pages.
-   *
-   * What we intentionally DO NOT restore here anymore is connectionsRef.
-   * connectionsRef is already a shared object imported from globals.js.
-   */
   const initialGameState = location.state?.gameState || window.gameState || null;
 
   const initialMyUserId = location.state?.myUserId || window.myUserId || params.peerId || null;
@@ -45,25 +34,32 @@ const TraderList = () => {
 
   const [gameState, setGameState] = useState(initialGameState);
 
-  /*
-   * connection and myUserId don't change on this page.
-   *
-   * Previously they were useState values with unused setters.
-   */
   const connection = initialConnection;
   const myUserId = initialMyUserId;
 
-  const defaultTraders = Array.isArray(localTradersData)
-    ? localTradersData
-    : Array.isArray(localTradersData.traders)
-      ? localTradersData.traders
-      : [];
+  const [allTraders, setAllTraders] = useState([]);
+
+  const [selectedTrader, setSelectedTrader] = useState(null);
+
+  const [showModal, setShowModal] = useState(false);
+
+  const [selectedTraderIdForRedirect, setSelectedTraderIdForRedirect] = useState(null);
 
   const isAuthorized =
     !!myUserId &&
     !!gameState &&
     Array.isArray(gameState.players) &&
     gameState.players.some(player => player.user_id === myUserId);
+
+  const isHost = !connection;
+
+  const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
+
+  const defaultTraders = Array.isArray(localTradersData)
+    ? localTradersData
+    : Array.isArray(localTradersData.traders)
+      ? localTradersData.traders
+      : [];
 
   const safeTraders = isAuthorized
     ? Array.isArray(gameState?.traderList)
@@ -74,17 +70,7 @@ const TraderList = () => {
       : defaultTraders;
 
   /*
-   * Host has no DataConnection to himself.
-   */
-  const isHost = !connection;
-
-  const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
-
-  /*
-   * Keep the legacy global navigation state synchronized.
-   *
-   * IMPORTANT:
-   * connectionsRef is NOT rewritten here anymore.
+   * Temporary navigation compatibility.
    */
   useEffect(() => {
     if (gameState) {
@@ -99,8 +85,8 @@ const TraderList = () => {
   }, [gameState, myUserId, connection]);
 
   /*
-   * Fallback trader list for users who opened this page without joining
-   * a game.
+   * Fallback list for visitors who are not
+   * connected to an active game.
    */
   useEffect(() => {
     if (isAuthorized) {
@@ -124,9 +110,7 @@ const TraderList = () => {
   }, [isAuthorized]);
 
   /*
-   * Host broadcasts the current state to all connected clients.
-   *
-   * Closed connections are ignored instead of throwing.
+   * Host broadcast.
    */
   const broadcastGameState = state => {
     const stateToSend = state || gameState;
@@ -152,18 +136,7 @@ const TraderList = () => {
   };
 
   /*
-   * HOST DATA LISTENERS
-   *
-   * Before:
-   *
-   * conn.on('data', data => handler(data, conn))
-   *
-   * was added every time TraderList mounted but was never removed.
-   *
-   * After several rounds the same connection could therefore have several
-   * TraderList handlers.
-   *
-   * Now every exact listener is remembered and removed on unmount.
+   * Host data listeners.
    */
   useEffect(() => {
     if (!isHost) {
@@ -196,9 +169,7 @@ const TraderList = () => {
   }, [isHost]);
 
   /*
-   * CLIENT DATA LISTENER
-   *
-   * This part was already conceptually correct. We keep the cleanup.
+   * Client state synchronization.
    */
   useEffect(() => {
     if (!connection) {
@@ -221,22 +192,32 @@ const TraderList = () => {
   }, [connection]);
 
   /*
-   * Select trader.
+   * SELECT_TRADER
    *
-   * Gameplay behavior intentionally remains unchanged during this
-   * stabilization pass.
+   * This is the first gameplay operation migrated
+   * from legacy logic into the game reducer.
    */
   const handleSelectTrader = trader => {
-    if (!gameState || !myUserId) {
+    if (!gameState || !myUserId || !trader?.traderId) {
       return;
     }
 
+    const action = selectTraderAction({
+      playerId: myUserId,
+
+      traderId: trader.traderId,
+    });
+
     setGameState(prev => {
-      const nextState = logicHandleSelectTrader({
-        gameState: prev,
-        myUserId,
-        trader,
-      });
+      const nextState = gameReducer(prev, action);
+
+      /*
+       * If reducer rejected the action,
+       * don't redirect.
+       */
+      if (nextState === prev) {
+        return prev;
+      }
 
       setShowModal(false);
 
@@ -247,7 +228,8 @@ const TraderList = () => {
   };
 
   /*
-   * Redirect after the selected trader is present in the player's state.
+   * Navigate only after reducer actually added
+   * the trader to the player's state.
    */
   useEffect(() => {
     if (!selectedTraderIdForRedirect) {
@@ -265,17 +247,17 @@ const TraderList = () => {
     }
   }, [gameState, myUserId, selectedTraderIdForRedirect, params.peerId, navigate]);
 
-  const player =
-    gameState && Array.isArray(gameState.players)
-      ? gameState.players.find(currentPlayer => currentPlayer.user_id === myUserId) || {}
-      : {};
+  const player = Array.isArray(gameState?.players)
+    ? gameState.players.find(currentPlayer => currentPlayer.user_id === myUserId) || {}
+    : {};
 
   /*
-   * Keep the existing game economy unchanged.
+   * Display price stays consistent with
+   * reducer rules.
    */
   const price = (player.traders?.length || 0) * 15;
 
-  const enoughCoins = (player.coins || 0) >= price;
+  const enoughCoins = Number(player.coins || 0) >= price;
 
   return (
     <div className="container-fluid">
@@ -303,11 +285,13 @@ const TraderList = () => {
                       ? undefined
                       : () => {
                           setSelectedTrader(trader);
+
                           setShowModal(true);
                         }
                   }
                   style={{
                     cursor: isTaken || !myTurn ? 'not-allowed' : 'pointer',
+
                     position: 'relative',
                   }}
                 >
@@ -316,83 +300,53 @@ const TraderList = () => {
                       <img
                         src={trader.img}
                         className="card-img-top"
-                        alt={getField(trader, 'name')}
+                        alt={getField(trader, 'name', lang)}
                         style={{
                           maxHeight: '200px',
+
                           objectFit: 'cover',
                         }}
                       />
                     )}
 
                     <div className="card-body">
-                      <h5 className="card-title">{getField(trader, 'name')}</h5>
+                      <h5 className="card-title">{getField(trader, 'name', lang)}</h5>
 
-                      <p className="card-text">
-                        <strong>Bio:</strong> {getField(trader, 'bio')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Special:</strong> {getField(trader, 'special')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Trader Benefit:</strong> {getField(trader, 'trader_benefit')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Special Power:</strong> {getField(trader, 'special_power')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Sector Favorite:</strong> {getField(trader, 'sector_favorite')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Best Sector:</strong> {getField(trader, 'best_sector')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Extra Abilities:</strong> {getField(trader, 'extra_abilities')}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Event Card Favorite ID:</strong> {trader.eventcards_favorite_id}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Taken:</strong> {trader.taken ? 'Да' : 'Нет'}
-                      </p>
-
-                      <p className="card-text">
-                        <strong>Goods:</strong>{' '}
-                        {trader.goods && trader.goods.length > 0
-                          ? trader.goods.join(', ')
-                          : 'Нет товаров'}
-                      </p>
-
-                      {isTaken && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '0',
-                            left: '0',
-                            right: '0',
-                            bottom: '0',
-                            background: 'rgba(128,128,128,0.6)',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '2rem',
-                            borderRadius: '0.5rem',
-                            zIndex: 5,
-                          }}
-                        >
-                          Занят
-                        </div>
-                      )}
+                      <p className="card-text">{getField(trader, 'bio', lang)}</p>
                     </div>
+
+                    {isTaken && (
+                      <div
+                        style={{
+                          position: 'absolute',
+
+                          top: '0',
+                          left: '0',
+                          right: '0',
+                          bottom: '0',
+
+                          background: 'rgba(128,128,128,0.6)',
+
+                          color: 'white',
+
+                          fontWeight: 'bold',
+
+                          display: 'flex',
+
+                          alignItems: 'center',
+
+                          justifyContent: 'center',
+
+                          fontSize: '2rem',
+
+                          borderRadius: '0.5rem',
+
+                          zIndex: 5,
+                        }}
+                      >
+                        Занят
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -414,7 +368,7 @@ const TraderList = () => {
 
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{selectedTrader ? getField(selectedTrader, 'name') : ''}</Modal.Title>
+          <Modal.Title>{selectedTrader ? getField(selectedTrader, 'name', lang) : ''}</Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
@@ -432,12 +386,13 @@ const TraderList = () => {
                 </div>
 
                 <div>
-                  <b>Биография:</b> {selectedTrader ? getField(selectedTrader, 'bio') : ''}
+                  <b>Биография:</b> {selectedTrader ? getField(selectedTrader, 'bio', lang) : ''}
                 </div>
               </>
             ) : (
               <div className="text-danger">
-                Недостаточно монет для покупки! Не хватает {price - (player.coins || 0)} монет.
+                Недостаточно монет для покупки! Не хватает {price - Number(player.coins || 0)}{' '}
+                монет.
               </div>
             )
           ) : (
@@ -453,7 +408,11 @@ const TraderList = () => {
           <Button
             variant="primary"
             disabled={!enoughCoins || !isAuthorized || !myTurn}
-            onClick={() => selectedTrader && handleSelectTrader(selectedTrader)}
+            onClick={() => {
+              if (selectedTrader) {
+                handleSelectTrader(selectedTrader);
+              }
+            }}
           >
             {isAuthorized ? (enoughCoins ? 'Выбрать торговца' : 'Не хватает монет') : 'Недоступно'}
           </Button>
