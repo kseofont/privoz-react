@@ -241,11 +241,7 @@ const Menu = ({
   // - eventCardChoiceDone (legacy event flow)
   // - ackEventResults (legacy event-result ACK)
   useEffect(() => {
-    if (
-      !isHost ||
-      typeof setGameState !== 'function' ||
-      !Array.isArray(connectionsRef.current)
-    ) {
+    if (!isHost || typeof setGameState !== 'function' || !Array.isArray(connectionsRef.current)) {
       return undefined;
     }
 
@@ -532,6 +528,22 @@ const Menu = ({
           connection={connection}
           connectionsRef={connectionsRef}
         />
+
+        <div>
+          <a
+            href="https://privoz.kotucheniy.com.ua/api/feedback-admin.php"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-outline-secondary mb-2"
+          >
+            {{
+              ua: 'Переглянути звіти',
+              ru: 'Посмотреть отчёты',
+              es: 'Ver informes',
+              en: 'View reports',
+            }[lang] || 'View reports'}
+          </a>
+        </div>
       </div>
       <h3>Menu</h3>
       {/* Навигация */}
