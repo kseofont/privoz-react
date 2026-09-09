@@ -86,6 +86,40 @@ const CreateServerPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // Используем текущий origin:
+  // localhost -> localhost
+  // production -> production
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+  // Обычное приглашение для реального игрока.
+  // Имя и цвет игрок выбирает самостоятельно.
+  const joinGameUrl =
+    peerId && appOrigin
+      ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(peerId)}`
+      : '';
+
+  // Для виртуального игрока автоматически выбираем первый свободный цвет
+  // и уникальное тестовое имя.
+  const usedColors = new Set(
+    (gameState?.players || []).map(player => player.color).filter(Boolean)
+  );
+
+  const nextVirtualColor =
+    ['red', 'green', 'blue', 'orange', 'purple', 'brown'].find(
+      color => !usedColors.has(color)
+    ) || '';
+
+  const nextVirtualPlayerNumber = (gameState?.players?.length || 0) + 1;
+
+  const virtualPlayerUrl =
+    peerId && appOrigin && nextVirtualColor
+      ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(
+          peerId
+        )}&name=${encodeURIComponent(
+          `virtual-${nextVirtualPlayerNumber}`
+        )}&color=${encodeURIComponent(nextVirtualColor)}`
+      : '';
+
   const addLog = message => {
     setLogs(prevLogs => [...prevLogs, message]);
     console.log(message);
@@ -458,7 +492,7 @@ const CreateServerPage = () => {
                 .filter(color => !(gameState?.players || []).some(player => player.color === color))
                 .map(color => (
                   <option key={color} value={color}>
-                    {color}
+                    {t(`color_${color}`)}
                   </option>
                 ))}
             </select>
@@ -499,47 +533,61 @@ const CreateServerPage = () => {
             </button>
           )}
 
-          <div className="connectlink d-flex flex-column">
-            <p>Link to auto connection:</p>
-
-            <a
-              href={`http://localhost:3000/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
-              target="_blank"
-              rel="noreferrer"
-              className="mb-5"
-            >
-              {`http://localhost:3000/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
-            </a>
-
-            <a
-              href={`https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {`https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green`}
-            </a>
-
-            <div className="telegram-invite">
-              <p>Скопируй это приглашение и отправь в Telegram:</p>
-
-              <pre
-                style={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  background: '#f4f4f4',
-                  padding: 8,
-                  borderRadius: 8,
-                }}
+          {serverStarted && peerId && (
+            <div className="connectlink d-flex flex-column align-items-center mt-3">
+              <button
+                type="button"
+                className="btn btn-outline-primary mb-3"
+                disabled={
+                  !virtualPlayerUrl ||
+                  (gameState?.players?.length || 0) >= numberOfPlayers
+                }
+                onClick={() =>
+                  window.open(
+                    virtualPlayerUrl,
+                    '_blank',
+                    'noopener,noreferrer'
+                  )
+                }
               >
-                {`🎲 Присоединяйся к игре «Привоз»!
+                {t('add_virtual_player')}
+              </button>
+
+              <p className="mb-1">
+                <strong>{t('join_game')}:</strong>
+              </p>
+
+              <a
+                href={joinGameUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mb-4 text-break"
+              >
+                {joinGameUrl}
+              </a>
+
+              <div className="telegram-invite">
+                <p>Скопируй это приглашение и отправь в Telegram:</p>
+
+                <pre
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    background: '#f4f4f4',
+                    padding: 8,
+                    borderRadius: 8,
+                  }}
+                >
+                  {`🎲 Присоединяйся к игре «Привоз»!
 
 Твой код: \`${peerId}\`
 
-[🔗 Подключиться к игре](https://privoz.kotucheniy.com.ua/JoinGamePage?peer_id=${peerId}&name=hlamidnik&color=green)
+[🔗 Подключиться к игре](${joinGameUrl})
 `}
-              </pre>
+                </pre>
+              </div>
             </div>
-          </div>
+          )}
 
           {serverStarted && peerId && (
             <div className="mt-3">
