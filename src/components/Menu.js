@@ -21,6 +21,7 @@ import { Link, useParams, useLocation } from 'react-router-dom';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import CurrentPlayerInfo from './CurrentPlayerInfo';
 import OtherPlayersInfo from './OtherPlayersInfo';
+import FeedbackButton from './FeedbackButton';
 
 const Menu = ({
   myUserId: propMyUserId,
@@ -523,6 +524,14 @@ const Menu = ({
         <Link to="/rules" className="btn btn-primary mb-2">
           {t('menu_rules')}
         </Link>
+      </div>
+      <div className="feedback">
+        <FeedbackButton
+          gameState={gameState}
+          myUserId={myUserId}
+          connection={connection}
+          connectionsRef={connectionsRef}
+        />
       </div>
       <h3>Menu</h3>
       {/* Навигация */}

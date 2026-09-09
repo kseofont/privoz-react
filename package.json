@@ -28,7 +28,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "node scripts/build.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "deploy": "npm run build && lftp -u kotuchen_ftp,57M9yn3FoY -e 'mirror -R build /kotucheniy.com.ua/privoz; quit' ftp://kotuchen.ftp.tools"
