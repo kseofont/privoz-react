@@ -40,3 +40,4 @@ benchmark-responses.txt
 
 # Local SFTP credentials
 .vscode/sftp.json
+/api/feedback-admin-config.php
