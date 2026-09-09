@@ -17,24 +17,36 @@ The main architectural direction is gradual migration from legacy client-side ga
 Target flow:
 
 UI
+
 → ACTION
+
 → HOST
+
 → validation / game rules
+
 → REDUCER
+
 → authoritative gameState
+
 → broadcast
+
 → clients
 
 Do not mix unrelated gameplay refactors into one change.
+
 Preferred workflow:
 
 small vertical slice
-→ test
-→ npm run build
-→ git diff --check
-→ commit
-→ next slice
 
+→ test
+
+→ npm run build
+
+→ git diff --check
+
+→ commit
+
+→ next slice
 
 # Current Git state
 
@@ -48,7 +60,6 @@ The next development branch should be:
 
 bot-player
 
-
 # Networking / game-core architecture
 
 PeerJS lifecycle has been stabilized.
@@ -56,8 +67,11 @@ PeerJS lifecycle has been stabilized.
 Important architecture files:
 
 src/game/actions.js
+
 src/game/reducer.js
+
 src/game/hostActionHandler.js
+
 src/game/phases.js
 
 Explicit game phases exist.
@@ -65,11 +79,17 @@ Explicit game phases exist.
 SELECT_TRADER has already been converted to the host-authoritative flow:
 
 client UI
+
 → gameAction
+
 → host
+
 → handleHostGameAction()
+
 → reducer
+
 → authoritative state
+
 → broadcast
 
 The shared host gameplay listener currently lives in:
@@ -86,7 +106,6 @@ BUY_PRODUCT and other gameplay actions must be inspected individually before ass
 
 Do not refactor END_TURN or unrelated game rules accidentally while implementing the bot.
 
-
 # Feedback / Debug Reporting
 
 A complete feedback/debug-reporting vertical slice has been implemented and deployed.
@@ -94,11 +113,15 @@ A complete feedback/debug-reporting vertical slice has been implemented and depl
 Main frontend files:
 
 src/components/FeedbackButton.js
+
 src/components/FeedbackModal.js
 
 src/feedback/buildFeedbackReport.js
+
 src/feedback/copyFeedbackReport.js
+
 src/feedback/sendFeedback.js
+
 src/feedback/appVersion.js
 
 Feedback is available from Menu.
@@ -106,8 +129,11 @@ Feedback is available from Menu.
 The user can:
 
 1. open Feedback;
+
 2. describe a bug or suggestion;
+
 3. send a diagnostic report;
+
 4. copy the technical report as a fallback.
 
 The diagnostic snapshot is intentionally compact and whitelist-based.
@@ -117,37 +143,59 @@ It does NOT serialize PeerJS Peer/DataConnection objects or blindly dump browser
 Useful diagnostic information includes:
 
 - feedback ID;
+
 - timestamp;
+
 - player/user ID;
+
 - host/client role;
+
 - round;
+
 - phase;
+
 - currentTurnUserId;
+
 - players;
+
 - balances;
+
 - products;
+
 - traders;
+
 - trader locations;
+
 - relevant event-card state;
+
 - eventResultLog / eventResultNonce;
+
 - lastAction / lastEvent when available;
+
 - limited coins log;
+
 - network summary;
+
 - browser/runtime information;
+
 - app version;
+
 - Git commit;
+
 - state keys;
+
 - state fingerprint.
 
 The snapshot is captured when the feedback modal is opened so later game-state changes do not silently replace the state associated with the reported bug.
-
 
 # Feedback backend
 
 Backend files:
 
 api/feedback.php
+
 api/feedback-lib.php
+
 api/feedback-admin.php
 
 Local admin secret config:
@@ -163,9 +211,13 @@ api/feedback-admin-config.example.php
 Production feedback flow:
 
 React
+
 → POST /api/feedback.php
+
 → PHP
+
 → persistent JSON storage
+
 → admin viewer
 
 Reports are kept as individual JSON files.
@@ -190,12 +242,12 @@ The admin viewer and JSON reports can be inspected directly in the browser.
 
 Email notification has NOT been implemented yet.
 
-
 # Feedback local development
 
 Local feedback API runs separately from React:
 
 PRIVOZ_FEEDBACK_DIR=/tmp/privoz-feedback \
+
 php -S localhost:8082 -t .
 
 React local environment uses:
@@ -215,19 +267,22 @@ Never build/deploy production while .env.local is active, otherwise CRA can embe
 Safe production procedure:
 
 remove .env.local
+
 unset REACT_APP_FEEDBACK_API_URL
+
 npm run build
 
 Then verify:
 
 grep -R "localhost:8082" build/static/js \
-  && echo "ERROR: localhost found" \
-  || echo "OK: production build clean"
+
+&& echo "ERROR: localhost found" \
+
+|| echo "OK: production build clean"
 
 Production must use:
 
 /api/feedback.php
-
 
 # Build/version information
 
@@ -241,7 +296,6 @@ npm run build currently succeeds.
 
 There are existing ESLint warnings in legacy files. They are not part of the feedback implementation unless a new change introduces additional warnings.
 
-
 # Deployment
 
 React is still deployed as a CRA static build using:
@@ -252,7 +306,7 @@ The existing deploy command uploads build/ via FTP.
 
 Important:
 
-api/*.php is NOT part of CRA build/.
+api/\*.php is NOT part of CRA build/.
 
 PHP feedback backend files therefore need to be uploaded separately when they change.
 
@@ -264,19 +318,22 @@ Production admin:
 
 https://privoz.kotucheniy.com.ua/api/feedback-admin.php
 
-
 # Multiplayer testing flow
 
 The start screen contains localized buttons for:
 
 Create Game
+
 Join Game
 
 Languages currently supported:
 
 en
+
 ua
+
 ru
+
 es
 
 CreateServerPage now uses:
@@ -306,7 +363,9 @@ Virtual players are opened in separate browser windows.
 The virtual-player URL automatically contains:
 
 peer_id
+
 unique virtual player name
+
 available color
 
 This allows one developer/tester to simulate a multiplayer session on one computer.
@@ -314,21 +373,32 @@ This allows one developer/tester to simulate a multiplayer session on one comput
 Typical manual test flow:
 
 Start page
+
 → Create Game
+
 → enter host name/color/player count
+
 → start host
+
 → Add virtual player
+
 → Add virtual player...
+
 → start gameplay
+
 → choose trader for each player
+
 → Wholesale: buy products
+
 → Traders: place traders
+
 → Event Cards
+
 → Privoz
+
 → end turn / continue round
 
 Some navigation is still manual because the game is a prototype.
-
 
 # Rules page
 
@@ -341,8 +411,11 @@ The page now contains a practical multiplayer-testing guide.
 The primary current rules/testing content supports:
 
 Russian
+
 Ukrainian
+
 English
+
 Spanish
 
 Navigation inside the guide uses application-relative React routes rather than hardcoded production URLs.
@@ -351,25 +424,29 @@ Older versions of the rules are hidden by default and can be revealed with the "
 
 The feedback instructions are also included in the testing guide.
 
-
 # Important security/privacy decisions
 
-Do not put SMTP passwords, admin passwords, tokens, PeerJS internals or other secrets into React REACT_APP_* variables.
+Do not put SMTP passwords, admin passwords, tokens, PeerJS internals or other secrets into React REACT**APP**\* variables.
 
-REACT_APP_* values become public inside the frontend bundle.
+REACT**APP**\* values become public inside the frontend bundle.
 
 Do not collect:
 
 - cookies;
+
 - arbitrary localStorage;
+
 - arbitrary sessionStorage;
+
 - passwords;
+
 - auth tokens;
+
 - .env contents;
+
 - PeerJS internal objects.
 
 Only explicitly useful Privoz diagnostic data should be included.
-
 
 # Next major stage - Bot Player
 
@@ -388,10 +465,15 @@ It should not receive a special shortcut that directly mutates authoritative gam
 Preferred conceptual flow:
 
 Bot decision
+
 → same player ACTION used by UI
+
 → host
+
 → validation / game rules
+
 → reducer / authoritative mutation
+
 → broadcast
 
 The bot should therefore exercise the same networking and game-rule paths as a human wherever possible.
@@ -407,9 +489,13 @@ Start with a very small deterministic vertical slice.
 Recommended first bot slice:
 
 bot identity / lifecycle
+
 → connect as normal player
+
 → inspect authoritative/current state
+
 → decide when it may act
+
 → perform one already-stable action
 
 SELECT_TRADER is a strong candidate for the first automated action because it already uses the host-authoritative action flow.
@@ -417,26 +503,35 @@ SELECT_TRADER is a strong candidate for the first automated action because it al
 After that:
 
 test
+
 → build
+
 → commit
 
 Then expand the bot action-by-action.
 
 Do not simultaneously refactor END_TURN, BUY_PRODUCT and all remaining gameplay actions while creating the initial bot infrastructure.
 
-
 # Bot design questions for next session
 
 Before implementation, inspect the current code and decide:
 
 - where the bot controller should live;
+
 - whether it should run in the virtual player's browser window or as another client/controller;
+
 - how it identifies that it is a bot;
+
 - how it observes gameState changes;
+
 - how it determines whether it is allowed to act;
+
 - how it avoids sending duplicate actions;
+
 - how it uses normal gameAction/network messages;
+
 - how deterministic choices can be made for testing;
+
 - how bot actions can later be included in debug/feedback logs.
 
 The first implementation should be deterministic and simple.
@@ -444,11 +539,12 @@ The first implementation should be deterministic and simple.
 Examples:
 
 choose the first legal trader;
+
 choose a valid product based on available coins;
+
 choose the first legal sector;
 
 Randomness or strategy can be introduced later.
-
 
 # Future game-core work
 
@@ -460,17 +556,32 @@ and conversion of remaining legacy gameplay mutations/actions.
 
 These tasks remain important, but they should not be mixed accidentally into the first bot infrastructure slice.
 
-
 # Starting a new development session
 
 At the beginning of the next ChatGPT session:
 
 1. provide the current project ZIP or relevant files;
+
 2. tell ChatGPT to read this file first:
 
 docs/GAME_STATE.md
 
 3. inspect the actual current source before making changes;
+
 4. work from branch bot-player;
+
 5. preserve the working prototype;
+
 6. implement only one small bot vertical slice at a time.
+
+Every accepted player decision should eventually produce a compact,
+
+privacy-safe learning sample.
+
+Learning data must represent only information available to the acting
+
+player, legal actions available at that moment, the selected action,
+
+and the eventual game outcome.
+
+Human and bot decisions use the same learning format.
