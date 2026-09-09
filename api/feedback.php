@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-const MAX_REPORT_BYTES = 131072; // 128 KiB
-const RETENTION_SECONDS = 259200; // 3 days
+require_once __DIR__ . '/feedback-lib.php';
 
 function respond(int $status, array $payload): void
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -31,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
-if ($contentLength > MAX_REPORT_BYTES) {
+if ($contentLength > PRIVOZ_FEEDBACK_MAX_REPORT_BYTES) {
     respond(413, ['saved' => false, 'error' => 'Report is too large']);
 }
 
@@ -40,7 +40,7 @@ if ($raw === false || $raw === '') {
     respond(400, ['saved' => false, 'error' => 'Empty request body']);
 }
 
-if (strlen($raw) > MAX_REPORT_BYTES) {
+if (strlen($raw) > PRIVOZ_FEEDBACK_MAX_REPORT_BYTES) {
     respond(413, ['saved' => false, 'error' => 'Report is too large']);
 }
 
@@ -55,25 +55,15 @@ if (!is_array($report)) {
 }
 
 $feedbackId = $report['feedbackId'] ?? '';
-if (!is_string($feedbackId) || !preg_match('/^FB-[0-9]{8}-[A-Z0-9]{6,16}$/', $feedbackId)) {
+if (!is_string($feedbackId) || !feedback_valid_id($feedbackId)) {
     respond(400, ['saved' => false, 'error' => 'Invalid feedback ID']);
 }
 
-// Local default: /tmp/privoz-feedback.
-// On production set PRIVOZ_FEEDBACK_DIR to a private writable directory outside the public web root.
-$storageDir = getenv('PRIVOZ_FEEDBACK_DIR') ?: sys_get_temp_dir() . '/privoz-feedback';
-
-if (!is_dir($storageDir) && !mkdir($storageDir, 0700, true) && !is_dir($storageDir)) {
-    respond(500, ['saved' => false, 'error' => 'Could not create feedback storage']);
-}
-
-// Opportunistic cleanup: every new report removes JSON files older than 72 hours.
-$cutoff = time() - RETENTION_SECONDS;
-foreach (glob($storageDir . '/FB-*.json') ?: [] as $oldFile) {
-    $modifiedAt = @filemtime($oldFile);
-    if ($modifiedAt !== false && $modifiedAt < $cutoff) {
-        @unlink($oldFile);
-    }
+try {
+    $storageDir = feedback_ensure_storage();
+    feedback_cleanup($storageDir);
+} catch (Throwable $error) {
+    respond(500, ['saved' => false, 'error' => 'Could not prepare feedback storage']);
 }
 
 $report['serverReceivedAt'] = gmdate('c');
@@ -82,7 +72,12 @@ if ($encoded === false) {
     respond(500, ['saved' => false, 'error' => 'Could not encode report']);
 }
 
-$filePath = $storageDir . '/' . $feedbackId . '.json';
+try {
+    $filePath = feedback_file_path($storageDir, $feedbackId);
+} catch (InvalidArgumentException $error) {
+    respond(400, ['saved' => false, 'error' => 'Invalid feedback ID']);
+}
+
 $result = file_put_contents($filePath, $encoded, LOCK_EX);
 if ($result === false) {
     respond(500, ['saved' => false, 'error' => 'Could not save report']);
