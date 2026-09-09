@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-const PRIVOZ_FEEDBACK_RETENTION_SECONDS = 259200; // 72 hours
 const PRIVOZ_FEEDBACK_MAX_REPORT_BYTES = 131072; // 128 KiB
 
 function feedback_storage_dir(): string
@@ -27,21 +26,6 @@ function feedback_ensure_storage(): string
 
     @chmod($storageDir, 0700);
     return $storageDir;
-}
-
-function feedback_cleanup(string $storageDir): int
-{
-    $deleted = 0;
-    $cutoff = time() - PRIVOZ_FEEDBACK_RETENTION_SECONDS;
-
-    foreach (glob($storageDir . DIRECTORY_SEPARATOR . 'FB-*.json') ?: [] as $file) {
-        $modifiedAt = @filemtime($file);
-        if ($modifiedAt !== false && $modifiedAt < $cutoff && @unlink($file)) {
-            $deleted++;
-        }
-    }
-
-    return $deleted;
 }
 
 function feedback_valid_id(string $feedbackId): bool

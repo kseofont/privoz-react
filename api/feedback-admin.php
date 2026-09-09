@@ -99,7 +99,6 @@ if (!admin_is_authenticated()) {
 
 try {
     $storageDir = feedback_ensure_storage();
-    feedback_cleanup($storageDir);
 } catch (Throwable $error) {
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
@@ -173,12 +172,12 @@ $reports = feedback_list_reports($storageDir);
 </head>
 <body><main>
     <div class="top">
-        <div><h1>Feedback reports</h1><div>Хранятся 72 часа · всего <?= count($reports) ?></div></div>
+        <div><h1>Feedback reports</h1><div>Все сохранённые отчёты · от новых к старым · всего <?= count($reports) ?></div></div>
         <a href="?logout=1">Выйти</a>
     </div>
 
     <?php if ($reports === []): ?>
-        <div class="empty">За последние 3 дня отчётов нет.</div>
+        <div class="empty">Сохранённых отчётов пока нет.</div>
     <?php else: ?>
         <?php foreach ($reports as $item): ?>
             <article class="report">

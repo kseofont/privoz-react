@@ -61,7 +61,6 @@ if (!is_string($feedbackId) || !feedback_valid_id($feedbackId)) {
 
 try {
     $storageDir = feedback_ensure_storage();
-    feedback_cleanup($storageDir);
 } catch (Throwable $error) {
     respond(500, ['saved' => false, 'error' => 'Could not prepare feedback storage']);
 }
