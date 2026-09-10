@@ -90,6 +90,7 @@ export function buildPlayerObservation(gameState, playerId) {
           quantity: Number(good?.quantity_player_card || 1),
         })),
         protectedFromIllegalInspection: !!(trader?.Illigal_protection || trader?.illegal_protection),
+        traderAction: trader?.trader_action || null,
       })),
       eventCards: (player.eventCards || []).map(card => ({
         cardId: card?.id || null,

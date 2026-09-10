@@ -9,6 +9,7 @@ import { prepareAuthoritativeGameAction } from '../../game/hostActionPreparation
 import { gameReducer } from '../../game/reducer';
 import { buildLearningDecision } from '../../learning/buildLearningDecision';
 import { applyEventChoicesToGameState } from '../../logic/logic';
+import eventDeck from '../../data/eventcards.json';
 
 function makeState(overrides = {}) {
   return {
@@ -94,7 +95,7 @@ function makeState(overrides = {}) {
           },
         ],
         isBot: true,
-        botPolicyVersion: 'policy-v007',
+        botPolicyVersion: 'policy-v008',
         botBehaviorProfile: 'balanced',
       },
       {
@@ -132,7 +133,7 @@ function makeState(overrides = {}) {
         products: [],
         eventCards: [],
         isBot: true,
-        botPolicyVersion: 'policy-v007',
+        botPolicyVersion: 'policy-v008',
         botBehaviorProfile: 'smuggler',
       },
     ],
@@ -162,7 +163,7 @@ test('balanced bot uses Porters now and targets illegal vodka in Dairy with Fede
       ev_card_prtrs: { traderId: 't-bot' },
     },
     behaviorProfile: 'balanced',
-    policyVersion: 'policy-v007',
+    policyVersion: 'policy-v008',
   });
   expect(action).toEqual(
     submitEventChoicesAction({
@@ -174,6 +175,257 @@ test('balanced bot uses Porters now and targets illegal vodka in Dairy with Fede
       },
     })
   );
+});
+
+
+function cloneEventCard(cardId) {
+  const card = eventDeck.find(item => item.id === cardId);
+  return card ? JSON.parse(JSON.stringify(card)) : null;
+}
+
+test('policy-v008 chooses effect-aware targets for every card in the active 13-card deck', async () => {
+  const state = makeState();
+
+  state.players[0] = {
+    ...state.players[0],
+    traders: [
+      {
+        traderId: 't-human-dairy',
+        location: 'Dairy',
+        goods: [
+          {
+            productId: 22,
+            sector: 'other',
+            legality: 'illegal',
+            sellingPrice: 19,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+      {
+        traderId: 't-human-veg-a',
+        location: 'Vegetables',
+        goods: [
+          {
+            productId: 2,
+            sector: 'vegetables',
+            legality: 'legal',
+            sellingPrice: 5,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+      {
+        traderId: 't-human-veg-b',
+        location: 'Vegetables',
+        goods: [
+          {
+            productId: 3,
+            sector: 'vegetables',
+            legality: 'legal',
+            sellingPrice: 5,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+      {
+        traderId: 't-human-household',
+        location: 'Household',
+        goods: [
+          {
+            productId: 18,
+            sector: 'household',
+            legality: 'legal',
+            sellingPrice: 10,
+            quantity_player_card: 1,
+          },
+          {
+            productId: 18,
+            sector: 'household',
+            legality: 'legal',
+            sellingPrice: 10,
+            quantity_player_card: 1,
+          },
+          {
+            productId: 18,
+            sector: 'household',
+            legality: 'legal',
+            sellingPrice: 10,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+    ],
+  };
+
+  state.players[1] = {
+    ...state.players[1],
+    coins: 50,
+    traders: [
+      {
+        traderId: 't-bot-risk',
+        location: 'Meat',
+        goods: [
+          {
+            productId: 22,
+            sector: 'other',
+            legality: 'illegal',
+            sellingPrice: 18,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+      {
+        traderId: 't-bot-rich',
+        location: 'Fish',
+        goods: [
+          {
+            productId: 11,
+            sector: 'fish',
+            legality: 'legal',
+            sellingPrice: 8,
+            quantity_player_card: 1,
+          },
+          {
+            productId: 11,
+            sector: 'fish',
+            legality: 'legal',
+            sellingPrice: 8,
+            quantity_player_card: 1,
+          },
+          {
+            productId: 11,
+            sector: 'fish',
+            legality: 'legal',
+            sellingPrice: 8,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+    ],
+    eventCards: eventDeck.map(card => JSON.parse(JSON.stringify(card))),
+  };
+
+  // Actor #2 has a huge Dairy position. The authoritative engine would still
+  // hit actor #0 first in Dairy, so the bot must not aggregate actor #2 into
+  // the target score for that sector.
+  state.players[2] = {
+    ...state.players[2],
+    traders: [
+      {
+        traderId: 't-other-dairy',
+        location: 'Dairy',
+        goods: Array.from({ length: 6 }, (_, index) => ({
+          productId: 100 + index,
+          sector: 'dairy',
+          legality: 'legal',
+          sellingPrice: 50,
+          quantity_player_card: 1,
+        })),
+      },
+    ],
+  };
+
+  const observation = buildPlayerObservation(state, 'peer-bot');
+  const decision = await decideWithPolicy(observation, {
+    stage: 'personal_events',
+    behaviorProfile: 'balanced',
+  });
+
+  expect(eventDeck).toHaveLength(13);
+  expect(decision.policyVersion).toBe('policy-v008');
+
+  ['ev_card_fntr', 'ev_card_pstr', 'ev_card_lpo'].forEach(cardId => {
+    expect(decision.effectTargets[cardId]).toEqual({ sector: 'Household' });
+  });
+
+  ['ev_card_mkt', 'ev_card_ses', 'ev_card_ff'].forEach(cardId => {
+    expect(decision.effectTargets[cardId]).toEqual({ sector: 'Vegetables' });
+  });
+
+  ['ev_card_bgg', 'ev_card_add', 'ev_card_pst'].forEach(cardId => {
+    expect(decision.effectTargets[cardId]).toEqual({ sector: 'Household' });
+  });
+
+  expect(decision.positiveChoices).toEqual({
+    ev_card_up: 'use',
+    ev_card_rc: 'use',
+    ev_card_tabp: 'use',
+    ev_card_prtrs: 'use',
+  });
+  expect(decision.effectTargets.ev_card_up).toEqual({ traderId: 't-bot-risk' });
+  expect(decision.effectTargets.ev_card_rc).toEqual({ traderId: 't-bot-rich' });
+  expect(decision.effectTargets.ev_card_tabp).toEqual({ traderId: 't-bot-rich' });
+  expect(decision.effectTargets.ev_card_prtrs).toEqual({ traderId: 't-bot-rich' });
+});
+
+test('smuggler keeps protection without illegal exposure but still uses useful economic cards', async () => {
+  const state = makeState();
+  state.players[1] = {
+    ...state.players[1],
+    coins: 10,
+    traders: [
+      {
+        traderId: 't-bot-legal',
+        location: 'Meat',
+        goods: [
+          {
+            productId: 13,
+            sector: 'meat',
+            legality: 'legal',
+            sellingPrice: 9,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+    ],
+    eventCards: [cloneEventCard('ev_card_up'), cloneEventCard('ev_card_rc')],
+  };
+
+  const observation = buildPlayerObservation(state, 'peer-bot');
+  const decision = await decideWithPolicy(observation, {
+    stage: 'personal_events',
+    behaviorProfile: 'smuggler',
+  });
+
+  expect(decision.positiveChoices).toEqual({
+    ev_card_up: 'keep',
+    ev_card_rc: 'use',
+  });
+  expect(decision.effectTargets.ev_card_up).toBeUndefined();
+  expect(decision.effectTargets.ev_card_rc).toEqual({ traderId: 't-bot-legal' });
+});
+
+test('smuggler uses protection immediately when an illegal trader is exposed', async () => {
+  const state = makeState();
+  state.players[1] = {
+    ...state.players[1],
+    traders: [
+      {
+        traderId: 't-bot-illegal',
+        location: 'Meat',
+        goods: [
+          {
+            productId: 22,
+            sector: 'other',
+            legality: 'illegal',
+            sellingPrice: 19,
+            quantity_player_card: 1,
+          },
+        ],
+      },
+    ],
+    eventCards: [cloneEventCard('ev_card_up')],
+  };
+
+  const observation = buildPlayerObservation(state, 'peer-bot');
+  const decision = await decideWithPolicy(observation, {
+    stage: 'personal_events',
+    behaviorProfile: 'smuggler',
+  });
+
+  expect(decision.positiveChoices.ev_card_up).toBe('use');
+  expect(decision.effectTargets.ev_card_up).toEqual({ traderId: 't-bot-illegal' });
 });
 
 test('host preparation overwrites event-choice identity and removes invalid targets', () => {
@@ -242,7 +494,7 @@ test('event-choice learning sample is compact, strategic and identity-free', () 
   });
 
   expect(sample.schemaVersion).toBe(4);
-  expect(sample.policyVersion).toBe('policy-v007');
+  expect(sample.policyVersion).toBe('policy-v008');
   expect(sample.behaviorProfile).toBe('balanced');
   expect(sample.selectedAction).toEqual({
     type: 'SUBMIT_EVENT_CHOICES',

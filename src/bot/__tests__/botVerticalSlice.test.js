@@ -69,7 +69,7 @@ function makeState(overrides = {}) {
         traders: [],
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v007',
+        botPolicyVersion: 'policy-v008',
         botBehaviorProfile: 'balanced',
       },
     ],
@@ -92,7 +92,7 @@ test('bot uses normal SELECT_TRADER action and reducer flow', async () => {
   expect(decision).toEqual({
     type: 'select_trader',
     traderId: 't1',
-    policyVersion: 'policy-v007',
+    policyVersion: 'policy-v008',
   });
   expect(action.type).toBe('SELECT_TRADER');
   expect(nextState).not.toBe(state);
@@ -122,7 +122,7 @@ test('learning sample contains gameplay data but no player identity', () => {
 
   expect(sample.eventId).toBe('LE-TRADER-1-1-0-t1');
   expect(sample.actorType).toBe('bot');
-  expect(sample.policyVersion).toBe('policy-v007');
+  expect(sample.policyVersion).toBe('policy-v008');
   expect(sample.behaviorProfile).toBe('balanced');
   expect(sample.legalActions).toHaveLength(2);
 
@@ -153,7 +153,7 @@ test('bot may hire a trader when it can afford the acquisition price because pla
         tradersCount: 1,
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v007',
+        botPolicyVersion: 'policy-v008',
         botBehaviorProfile: 'balanced',
       },
     ],
@@ -170,7 +170,7 @@ test('bot may hire a trader when it can afford the acquisition price because pla
   expect(decision).toEqual({
     type: 'select_trader',
     traderId: 't2',
-    policyVersion: 'policy-v007',
+    policyVersion: 'policy-v008',
   });
 });
 
@@ -198,7 +198,7 @@ test('SELECT_TRADER reducer enforces the three-trader player limit', () => {
         tradersCount: 3,
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v007',
+        botPolicyVersion: 'policy-v008',
         botBehaviorProfile: 'balanced',
       },
     ],

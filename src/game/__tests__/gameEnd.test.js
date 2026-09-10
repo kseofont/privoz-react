@@ -3,7 +3,7 @@ import { settleRound } from '../roundEnd';
 import { buildGameOutcome } from '../gameOutcome';
 import { buildLearningOutcome } from '../../learning/buildLearningOutcome';
 
-function makeState(round = 14, overrides = {}) {
+function makeState(round = 7, overrides = {}) {
   return {
     gameId: 'GAME-20260910-OUTCOME01',
     phase: PHASES.ROUND_END,
@@ -59,18 +59,18 @@ function makeState(round = 14, overrides = {}) {
   };
 }
 
-test('round 13 settlement advances to round 14 instead of ending the game', () => {
-  const nextState = settleRound(makeState(13));
+test('round 6 settlement advances to round 7 instead of ending the game', () => {
+  const nextState = settleRound(makeState(6));
 
-  expect(nextState.round).toBe(14);
+  expect(nextState.round).toBe(7);
   expect(nextState.phase).toBe(PHASES.TRADER_SELECTION);
   expect(nextState.gameOutcome).toBeUndefined();
 });
 
-test('round 14 settlement sells goods first and then ends with highest-coins winner', () => {
-  const nextState = settleRound(makeState(14));
+test('round 7 settlement sells goods first and then ends with highest-coins winner', () => {
+  const nextState = settleRound(makeState(7));
 
-  expect(nextState.round).toBe(14);
+  expect(nextState.round).toBe(7);
   expect(nextState.phase).toBe(PHASES.GAME_END);
   expect(nextState.currentTurnUserId).toBeNull();
   expect(nextState.players[0].coins).toBe(15);
@@ -111,7 +111,7 @@ test('equal highest balances produce co-winners without inventing a tie-break ru
 });
 
 test('learning outcome contains final strategy metadata but no player identity', () => {
-  const finalState = settleRound(makeState(14));
+  const finalState = settleRound(makeState(7));
   const record = buildLearningOutcome(finalState, {
     version: 'test',
     gitCommit: 'abc123',
@@ -119,8 +119,8 @@ test('learning outcome contains final strategy metadata but no player identity',
   const serialized = JSON.stringify(record);
 
   expect(record.recordType).toBe('outcome');
-  expect(record.eventId).toBe('LE-OUTCOME-14');
-  expect(record.outcome.completedRound).toBe(14);
+  expect(record.eventId).toBe('LE-OUTCOME-7');
+  expect(record.outcome.completedRound).toBe(7);
   expect(record.outcome.ranking[1]).toMatchObject({
     actorIndex: 1,
     actorType: 'bot',
