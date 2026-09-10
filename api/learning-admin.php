@@ -195,6 +195,52 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $actionError = $error->getMessage();
                 }
             }
+        } elseif ($action === 'prepare_cleanup') {
+            $minUseCount = filter_var(
+                $_POST['cleanup_min_use_count'] ?? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT,
+                FILTER_VALIDATE_INT
+            );
+            $minAgeDays = filter_var(
+                $_POST['cleanup_min_age_days'] ?? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS,
+                FILTER_VALIDATE_INT
+            );
+            $maxGames = filter_var(
+                $_POST['cleanup_max_games'] ?? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MAX_GAMES,
+                FILTER_VALIDATE_INT
+            );
+            $minUseCount = $minUseCount === false
+                ? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT
+                : max(1, min(1000, $minUseCount));
+            $minAgeDays = $minAgeDays === false
+                ? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS
+                : max(0, min(3650, $minAgeDays));
+            $maxGames = $maxGames === false
+                ? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MAX_GAMES
+                : max(1, min(500, $maxGames));
+
+            try {
+                $cleanup = learning_prepare_cleanup_preview($storageDir, $minUseCount, $minAgeDays, $maxGames);
+                header('Location: learning-admin.php?cleanup=' . rawurlencode($cleanup['cleanupId']) . '&preview=1');
+                exit;
+            } catch (Throwable $error) {
+                $actionError = $error->getMessage();
+            }
+        } elseif ($action === 'execute_cleanup') {
+            $cleanupId = $_POST['cleanup_id'] ?? '';
+            $confirmation = $_POST['delete_confirmation'] ?? '';
+            if (!is_string($cleanupId) || !learning_valid_cleanup_id($cleanupId)) {
+                $actionError = 'Invalid cleanup ID.';
+            } elseif (!is_string($confirmation) || $confirmation !== 'DELETE') {
+                $actionError = 'Введите DELETE для подтверждения удаления.';
+            } else {
+                try {
+                    learning_execute_cleanup($storageDir, $cleanupId);
+                    header('Location: learning-admin.php?cleanup=' . rawurlencode($cleanupId) . '&deleted=1');
+                    exit;
+                } catch (Throwable $error) {
+                    $actionError = $error->getMessage();
+                }
+            }
         }
     }
 }
@@ -299,6 +345,31 @@ if (is_string($requestedBatchId) && $requestedBatchId !== '') {
     }
 }
 
+$requestedCleanupId = $_GET['cleanup'] ?? '';
+$requestedCleanup = null;
+if (is_string($requestedCleanupId) && $requestedCleanupId !== '') {
+    if (!learning_valid_cleanup_id($requestedCleanupId)) {
+        http_response_code(400);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "Invalid cleanup ID.\n";
+        exit;
+    }
+
+    $requestedCleanup = learning_load_cleanup_plan($storageDir, $requestedCleanupId);
+    if ($requestedCleanup === null) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "Cleanup preview not found.\n";
+        exit;
+    }
+
+    if (($_GET['format'] ?? '') === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($requestedCleanup, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
 $inventory = learning_inventory($storageDir);
 $summary = $inventory['summary'];
 $games = $inventory['games'];
@@ -307,6 +378,9 @@ $invalidFiles = $inventory['invalidFiles'];
 $batchInventory = learning_training_batch_inventory($storageDir);
 $batchSummary = $batchInventory['summary'];
 $batches = $batchInventory['batches'];
+$cleanupInventory = learning_cleanup_inventory($storageDir);
+$cleanupSummary = $cleanupInventory['summary'];
+$cleanupPlans = $cleanupInventory['plans'];
 ?><!doctype html>
 <html lang="ru">
 <head>
@@ -325,24 +399,27 @@ $batches = $batchInventory['batches'];
         .badge-unused{background:#fff3cd}.badge-used{background:#d1e7dd}.badge-eligible_for_deletion{background:#f8d7da}.badge-prepared{background:#cfe2ff}.badge-confirmed{background:#d1e7dd}.warning{color:#8a1c1c}
         .empty{background:#fff;padding:20px;border-radius:10px}.note{font-size:.9rem;color:#666;margin-top:20px}.success{background:#d1e7dd}.error{background:#f8d7da;color:#842029}
         .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end}.form-grid label{display:block;font-size:.9rem;color:#555;margin-bottom:5px}
-        input[type=number]{box-sizing:border-box;width:100%;padding:9px;border:1px solid #bbb;border-radius:7px}button,.button{display:inline-block;padding:9px 13px;border:0;border-radius:7px;background:#222;color:#fff;text-decoration:none;cursor:pointer;font:inherit}.button-secondary{background:#555}
+        input[type=number],input[type=text]{box-sizing:border-box;width:100%;padding:9px;border:1px solid #bbb;border-radius:7px}button,.button{display:inline-block;padding:9px 13px;border:0;border-radius:7px;background:#222;color:#fff;text-decoration:none;cursor:pointer;font:inherit}.button-secondary{background:#555}.button-danger{background:#a61b1b}
         form.inline{display:inline}.batch-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.small{font-size:.86rem;color:#666}
     </style>
 </head>
 <body><main>
     <div class="top">
-        <div><h1>Learning Data</h1><div class="subtitle">Inventory · training batch export · explicit use tracking · no game-log cleanup yet</div></div>
+        <div><h1>Learning Data</h1><div class="subtitle">Inventory · training batch export · explicit use tracking · preview-first controlled cleanup</div></div>
         <div><a href="feedback-admin.php">Feedback Admin</a> · <a href="?logout=1">Выйти</a></div>
     </div>
 
     <?php if ($actionError !== ''): ?><section class="panel error"><?= learning_admin_h($actionError) ?></section><?php endif; ?>
     <?php if (isset($_GET['prepared'])): ?><section class="panel success">Training package подготовлен. Сначала скачайте его, затем подтвердите использование batch.</section><?php endif; ?>
     <?php if (isset($_GET['confirmed'])): ?><section class="panel success">Training batch подтверждён: useCount обновлён, временный archive удалён с сервера.</section><?php endif; ?>
+    <?php if (isset($_GET['preview'])): ?><section class="panel success">Cleanup preview подготовлен. Пока ничего не удалено. Проверьте список кандидатов ниже.</section><?php endif; ?>
+    <?php if (isset($_GET['deleted'])): ?><section class="panel success">Cleanup выполнен. Перед удалением каждый game log был повторно проверен; изменившиеся после preview файлы пропускаются.</section><?php endif; ?>
 
     <section class="stats">
         <div class="stat"><span>Всего партий</span><strong><?= (int)$summary['totalGames'] ?></strong></div>
         <div class="stat"><span>Unused / pending</span><strong><?= (int)$summary['unusedGames'] ?></strong></div>
         <div class="stat"><span>Used</span><strong><?= (int)$summary['usedGames'] ?></strong></div>
+        <div class="stat"><span>Cleanup eligible*</span><strong><?= (int)$summary['eligibleForDeletionGames'] ?></strong></div>
         <div class="stat"><span>Decisions</span><strong><?= (int)$summary['totalDecisions'] ?></strong></div>
         <div class="stat"><span>Human decisions</span><strong><?= (int)$summary['humanDecisions'] ?></strong></div>
         <div class="stat"><span>Bot decisions</span><strong><?= (int)$summary['botDecisions'] ?></strong></div>
@@ -350,7 +427,10 @@ $batches = $batchInventory['batches'];
         <div class="stat"><span>Draft packages</span><strong><?= (int)$batchSummary['preparedBatches'] ?></strong></div>
         <div class="stat"><span>Package storage</span><strong><?= learning_admin_h(learning_admin_format_bytes((int)$batchSummary['packageBytes'])) ?></strong></div>
         <div class="stat"><span>With outcome</span><strong><?= (int)$summary['gamesWithOutcome'] ?></strong></div>
+        <div class="stat"><span>Deleted history</span><strong><?= (int)$cleanupSummary['deletedGames'] ?></strong></div>
+        <div class="stat"><span>Freed by cleanup</span><strong><?= learning_admin_h(learning_admin_format_bytes((int)$cleanupSummary['freedBytes'])) ?></strong></div>
     </section>
+    <p class="small">* Cleanup eligible использует безопасные defaults: useCount ≥ <?= PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT ?>, подтверждённых training uses ≥ <?= PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT ?> и игровых данных старше <?= PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS ?> дней. Preview ниже позволяет изменить критерии.</p>
 
     <section class="panel">
         <h2>Prepare training batch</h2>
@@ -429,6 +509,103 @@ $batches = $batchInventory['batches'];
     </section>
 
     <section class="panel">
+        <h2>Cleanup preview</h2>
+        <p>Cleanup никогда не выбирает <code>unused / pending</code> партии. Кандидат должен быть использован в подтверждённых training batches нужное число раз и не получать новых игровых данных заданное количество дней.</p>
+        <form method="post">
+            <input type="hidden" name="csrf" value="<?= learning_admin_h($csrfToken) ?>">
+            <input type="hidden" name="action" value="prepare_cleanup">
+            <div class="form-grid">
+                <div><label for="cleanup_min_use_count">Minimum useCount</label><input id="cleanup_min_use_count" name="cleanup_min_use_count" type="number" min="1" max="1000" value="<?= PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT ?>"></div>
+                <div><label for="cleanup_min_age_days">Minimum age, days</label><input id="cleanup_min_age_days" name="cleanup_min_age_days" type="number" min="0" max="3650" value="<?= PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS ?>"></div>
+                <div><label for="cleanup_max_games">Maximum games</label><input id="cleanup_max_games" name="cleanup_max_games" type="number" min="1" max="500" value="<?= PRIVOZ_LEARNING_CLEANUP_DEFAULT_MAX_GAMES ?>"></div>
+                <div><button type="submit">Preview cleanup</button></div>
+            </div>
+        </form>
+        <p class="small">Для локального теста можно временно поставить useCount = 1 и age = 0. На production defaults намеренно консервативные: 3 использования и 30 дней.</p>
+    </section>
+
+    <?php if (is_array($requestedCleanup)): ?>
+        <?php
+            $cleanupCriteria = is_array($requestedCleanup['criteria'] ?? null) ? $requestedCleanup['criteria'] : [];
+            $cleanupPlanSummary = is_array($requestedCleanup['summary'] ?? null) ? $requestedCleanup['summary'] : [];
+            $cleanupGames = is_array($requestedCleanup['games'] ?? null) ? $requestedCleanup['games'] : [];
+            $cleanupResult = is_array($requestedCleanup['deleteResult'] ?? null) ? $requestedCleanup['deleteResult'] : [];
+        ?>
+        <section class="panel">
+            <div class="game-head">
+                <div><h2 style="margin:0"><?= learning_admin_h($requestedCleanup['cleanupId'] ?? '') ?></h2></div>
+                <span class="badge <?= ($requestedCleanup['status'] ?? null) === 'completed' ? 'badge-confirmed' : 'badge-unused' ?>"><?= learning_admin_h($requestedCleanup['status'] ?? 'preview') ?></span>
+            </div>
+            <div class="meta">
+                <span>candidates: <?= (int)($cleanupPlanSummary['candidateGames'] ?? 0) ?></span>
+                <span>size: <?= learning_admin_h(learning_admin_format_bytes((int)($cleanupPlanSummary['candidateBytes'] ?? 0))) ?></span>
+                <span>min uses: <?= (int)($cleanupCriteria['minUseCount'] ?? 0) ?></span>
+                <span>min age: <?= (int)($cleanupCriteria['minAgeDays'] ?? 0) ?> days</span>
+            </div>
+            <div class="batch-actions"><a class="button button-secondary" href="?cleanup=<?= learning_admin_h($requestedCleanup['cleanupId']) ?>&amp;format=json">Cleanup manifest</a></div>
+
+            <?php if (($requestedCleanup['status'] ?? null) === 'preview'): ?>
+                <p><strong>Ничего ещё не удалено.</strong> При выполнении cleanup каждый файл будет заново проверен. Если после preview в партию добавился ход, изменился useCount/status или она перестала соответствовать критериям, файл будет пропущен.</p>
+                <form method="post" class="panel" style="background:#fff7f7;border:1px solid #e7b4b4">
+                    <input type="hidden" name="csrf" value="<?= learning_admin_h($csrfToken) ?>">
+                    <input type="hidden" name="action" value="execute_cleanup">
+                    <input type="hidden" name="cleanup_id" value="<?= learning_admin_h($requestedCleanup['cleanupId']) ?>">
+                    <div class="form-grid">
+                        <div><label for="delete_confirmation">Введите DELETE</label><input id="delete_confirmation" name="delete_confirmation" type="text" autocomplete="off" pattern="DELETE" required placeholder="DELETE"></div>
+                        <div><button class="button-danger" type="submit">Delete previewed logs</button></div>
+                    </div>
+                </form>
+            <?php else: ?>
+                <p class="note">Deleted: <?= (int)($cleanupResult['deletedGames'] ?? 0) ?> · freed: <?= learning_admin_h(learning_admin_format_bytes((int)($cleanupResult['freedBytes'] ?? 0))) ?> · skipped changed: <?= (int)($cleanupResult['skippedChangedGames'] ?? 0) ?> · missing: <?= (int)($cleanupResult['missingGames'] ?? 0) ?> · failed: <?= (int)($cleanupResult['failedGames'] ?? 0) ?></p>
+            <?php endif; ?>
+
+            <?php if ($cleanupGames !== []): ?>
+                <table>
+                    <thead><tr><th>Game</th><th>useCount</th><th>Confirmed uses</th><th>Decisions</th><th>Size</th><th>Updated</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($cleanupGames as $cleanupGame): ?>
+                        <?php $cd = is_array($cleanupGame['decisions'] ?? null) ? $cleanupGame['decisions'] : []; ?>
+                        <tr>
+                            <td><?= learning_admin_h($cleanupGame['gameId'] ?? '') ?></td>
+                            <td><?= (int)($cleanupGame['sourceUseCount'] ?? 0) ?></td>
+                            <td><?= (int)($cleanupGame['confirmedTrainingUses'] ?? 0) ?></td>
+                            <td><?= (int)($cd['total'] ?? 0) ?></td>
+                            <td><?= learning_admin_h(learning_admin_format_bytes((int)($cleanupGame['bytes'] ?? 0))) ?></td>
+                            <td><?= learning_admin_h($cleanupGame['sourceUpdatedAt'] ?? '') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
+
+    <section class="panel">
+        <h2>Cleanup history</h2>
+        <?php if ($cleanupPlans === []): ?>
+            <p>Cleanup preview/history пока нет.</p>
+        <?php else: ?>
+            <table>
+                <thead><tr><th>Cleanup</th><th>Status</th><th>Candidates</th><th>Deleted</th><th>Freed</th><th>Created</th></tr></thead>
+                <tbody>
+                <?php foreach (array_slice($cleanupPlans, 0, 30) as $cleanupItem): ?>
+                    <?php $cis = is_array($cleanupItem['summary'] ?? null) ? $cleanupItem['summary'] : []; $cir = is_array($cleanupItem['deleteResult'] ?? null) ? $cleanupItem['deleteResult'] : []; ?>
+                    <tr>
+                        <td><a href="?cleanup=<?= learning_admin_h($cleanupItem['cleanupId']) ?>"><?= learning_admin_h($cleanupItem['cleanupId']) ?></a></td>
+                        <td><?= learning_admin_h($cleanupItem['status']) ?></td>
+                        <td><?= (int)($cis['candidateGames'] ?? 0) ?></td>
+                        <td><?= (int)($cir['deletedGames'] ?? 0) ?></td>
+                        <td><?= learning_admin_h(learning_admin_format_bytes((int)($cir['freedBytes'] ?? 0))) ?></td>
+                        <td><?= learning_admin_h($cleanupItem['createdAt'] ?? '') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+        <p class="small">Completed cleanup manifest остаётся как компактная история удалённых партий: gameId, useCount, decision/player counts, policy versions и размер - без полного gameplay log.</p>
+    </section>
+
+    <section class="panel">
         <h2>Policy versions</h2>
         <?php if ($policyStats === []): ?>
             <p>Bot policy data пока нет.</p>
@@ -443,10 +620,6 @@ $batches = $batchInventory['batches'];
             </table>
         <?php endif; ?>
     </section>
-
-    <?php if ($summary['eligibleForDeletionGames'] > 0): ?>
-        <section class="panel"><strong>Eligible for deletion:</strong> <?= (int)$summary['eligibleForDeletionGames'] ?>. Удаление игровых логов на этом этапе намеренно не реализовано.</section>
-    <?php endif; ?>
 
     <?php if ($invalidFiles !== []): ?>
         <section class="panel warning"><strong>Некорректные learning-файлы: <?= count($invalidFiles) ?></strong><br><?= learning_admin_h(implode(', ', $invalidFiles)) ?></section>
@@ -479,5 +652,5 @@ $batches = $batchInventory['batches'];
     <?php endif; ?>
 
     <p class="note"><strong>unused / pending</strong> означает, что в логе есть данные, ещё не включённые в последний подтверждённый training snapshot. Если использованная партия получает новые решения, она автоматически становится pending снова, не теряя useCount.</p>
-    <p class="note">Cleanup игровых логов остаётся отдельным следующим этапом. Confirm used удаляет только временный export archive; исходные game logs не удаляются.</p>
+    <p class="note">Training Confirm used по-прежнему удаляет только временный export archive. Game logs удаляются только через отдельный Cleanup Preview + явное подтверждение DELETE.</p>
 </main></body></html>

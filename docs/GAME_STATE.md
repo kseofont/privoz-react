@@ -999,7 +999,7 @@ Deletion should initially be an explicit/admin-controlled operation until the pr
 
 ## Current learning inventory/admin status
 
-The Learning Data Admin inventory and training-batch export slices are implemented.
+The Learning Data Admin inventory, training-batch export and preview-first controlled cleanup slices are implemented.
 
 Backend page:
 
@@ -1021,7 +1021,12 @@ Current Learning Data Admin capabilities:
 - prepare a versioned training snapshot from configurable pending and replay counts;
 - download a TAR/TAR.GZ package containing manifest.json, games.jsonl and summary.json;
 - explicitly confirm a downloaded batch before useCount/status metadata is changed;
-- retain a small batch manifest after confirmation while deleting the temporary duplicate archive.
+- retain a small batch manifest after confirmation while deleting the temporary duplicate archive;
+- preview cleanup candidates using configurable minimum useCount, minimum age and maximum files;
+- require confirmed training-batch history before a game can be considered cleanup-eligible;
+- explicitly execute a previously reviewed cleanup preview only after typing DELETE;
+- revalidate each game under a file lock immediately before deletion and skip games changed after preview;
+- retain a compact cleanup manifest/history after detailed game logs are deleted.
 
 State-changing admin actions use a CSRF token.
 
@@ -1041,7 +1046,53 @@ prepare batch
 
 If a game receives additional accepted decisions after a training snapshot was prepared, confirmation still records that snapshot use, but the game remains unused / pending so the newly appended data can be exported again later. A previously used game that receives a new accepted decision is also automatically marked pending again without losing its existing useCount/history.
 
-Game-log deletion is still NOT implemented. Cleanup remains a separate follow-up slice.
+## Current learning retention / cleanup status
+
+Cleanup is intentionally conservative and admin-controlled.
+
+Default eligibility criteria are currently:
+
+- game status must be used, never unused / pending;
+- stored useCount must be at least 3;
+- the game must appear in at least 3 confirmed training batch manifests;
+- the last gameplay data (updatedAt) must be at least 30 days old;
+- at most 100 logs are selected by the default preview.
+
+These are UI/configuration defaults rather than permanent game-design assumptions. The Learning Admin preview can use different values when needed.
+
+Cleanup flow:
+
+used learning logs
+
+→ Preview cleanup
+
+→ create a versioned CLEANUP-* manifest containing candidate IDs and compact summaries
+
+→ no deletion yet
+
+→ administrator reviews candidate list / size
+
+→ administrator types DELETE and confirms
+
+→ each source game is reopened and locked
+
+→ source updatedAt / decision count / useCount / status / confirmed training history are revalidated
+
+→ changed or newly pending games are skipped
+
+→ unchanged eligible logs are removed
+
+→ compact deleted-game summaries remain in the cleanup manifest as history
+
+There is NO scheduled or automatic cleanup.
+
+Cleanup history intentionally keeps only compact aggregate metadata such as game ID, useCount, training-use count, player/decision counts, policy versions, outcome presence and deleted byte size. Full gameplay decisions are removed with the game log.
+
+The cleanup implementation uses confirmed training manifests as an independent safety check rather than trusting useCount alone. This prevents a manually corrupted status/useCount field from being sufficient to delete a game.
+
+For local testing, cleanup preview may temporarily use min useCount = 1 and age = 0 days. Production defaults should remain conservative unless there is a deliberate reason to change them.
+
+Game-log deletion is implemented only through the explicit preview-first Learning Admin flow. There is no automatic/background cleanup.
 
 ## Admin / export workflow
 

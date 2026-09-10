@@ -5,6 +5,9 @@ declare(strict_types=1);
 const PRIVOZ_LEARNING_MAX_EVENT_BYTES = 32768; // 32 KiB
 const PRIVOZ_LEARNING_MAX_GAME_BYTES = 1048576; // 1 MiB
 const PRIVOZ_LEARNING_MAX_DECISIONS = 2000;
+const PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT = 3;
+const PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS = 30;
+const PRIVOZ_LEARNING_CLEANUP_DEFAULT_MAX_GAMES = 100;
 
 function learning_storage_dir(): string
 {
@@ -186,9 +189,10 @@ function learning_inventory(string $storageDir): array
 
         if ($item['status'] === 'unused') {
             $summary['unusedGames']++;
-        } elseif ($item['status'] === 'eligible_for_deletion') {
-            $summary['eligibleForDeletionGames']++;
         } else {
+            // eligible_for_deletion is still a used log; eligibility is an
+            // additional cleanup property rather than a mutually exclusive
+            // inventory bucket.
             $summary['usedGames']++;
         }
 
@@ -218,6 +222,26 @@ function learning_inventory(string $storageDir): array
     }
 
     $summary['invalidGames'] = count($invalidFiles);
+
+    // Cleanup eligibility is derived from confirmed training history rather
+    // than trusted from a mutable status string in the game file. This keeps
+    // deletion conservative and makes the admin preview reproducible.
+    $confirmedUsage = learning_confirmed_training_usage($storageDir);
+    $summary['eligibleForDeletionGames'] = 0;
+    foreach ($games as &$gameItem) {
+        $usage = $confirmedUsage[$gameItem['gameId']] ?? ['count' => 0, 'batches' => []];
+        $gameItem['confirmedTrainingUses'] = (int)($usage['count'] ?? 0);
+        $gameItem['cleanupEligibleDefault'] = learning_cleanup_summary_is_eligible(
+            $gameItem,
+            $gameItem['confirmedTrainingUses'],
+            PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT,
+            PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS
+        );
+        if ($gameItem['cleanupEligibleDefault']) {
+            $summary['eligibleForDeletionGames']++;
+        }
+    }
+    unset($gameItem);
 
     usort($games, static fn(array $a, array $b): int => $b['modifiedAt'] <=> $a['modifiedAt']);
     ksort($policyStats, SORT_NATURAL);
@@ -734,4 +758,455 @@ function learning_training_batch_inventory(string $storageDir): array
     });
 
     return ['summary' => $summary, 'batches' => $batches];
+}
+
+function learning_confirmed_training_usage(string $storageDir): array
+{
+    $usage = [];
+    $batchDir = learning_training_storage_dir($storageDir);
+
+    foreach (glob($batchDir . DIRECTORY_SEPARATOR . 'TRAINING-*.json') ?: [] as $manifestPath) {
+        $batchId = pathinfo($manifestPath, PATHINFO_FILENAME);
+        if (!learning_valid_training_batch_id($batchId)) {
+            continue;
+        }
+
+        $batch = learning_load_training_batch($storageDir, $batchId);
+        if ($batch === null || ($batch['status'] ?? null) !== 'confirmed') {
+            continue;
+        }
+
+        $games = is_array($batch['games'] ?? null) ? $batch['games'] : [];
+        foreach ($games as $snapshot) {
+            if (!is_array($snapshot)) {
+                continue;
+            }
+
+            $gameId = $snapshot['gameId'] ?? '';
+            if (!is_string($gameId) || !learning_valid_game_id($gameId)) {
+                continue;
+            }
+
+            if (!isset($usage[$gameId])) {
+                $usage[$gameId] = ['count' => 0, 'batches' => []];
+            }
+
+            $usage[$gameId]['count']++;
+            $usage[$gameId]['batches'][] = $batchId;
+        }
+    }
+
+    return $usage;
+}
+
+function learning_cleanup_reference_timestamp(array $summary): int
+{
+    foreach (['updatedAt', 'createdAt'] as $key) {
+        $value = $summary[$key] ?? null;
+        if (is_string($value) && $value !== '') {
+            $timestamp = strtotime($value);
+            if ($timestamp !== false) {
+                return $timestamp;
+            }
+        }
+    }
+
+    return max(0, (int)($summary['modifiedAt'] ?? 0));
+}
+
+function learning_cleanup_summary_is_eligible(
+    array $summary,
+    int $confirmedTrainingUses,
+    int $minUseCount,
+    int $minAgeDays,
+    ?int $now = null
+): bool {
+    $status = (string)($summary['status'] ?? '');
+    if ($status !== 'used' && $status !== 'eligible_for_deletion') {
+        return false;
+    }
+
+    $minUseCount = max(1, $minUseCount);
+    $minAgeDays = max(0, $minAgeDays);
+    if ((int)($summary['useCount'] ?? 0) < $minUseCount || $confirmedTrainingUses < $minUseCount) {
+        return false;
+    }
+
+    if ((int)($summary['decisionsTotal'] ?? 0) <= 0) {
+        return false;
+    }
+
+    $referenceTimestamp = learning_cleanup_reference_timestamp($summary);
+    if ($referenceTimestamp <= 0) {
+        return false;
+    }
+
+    $now = $now ?? time();
+    $ageSeconds = max(0, $now - $referenceTimestamp);
+    return $ageSeconds >= ($minAgeDays * 86400);
+}
+
+function learning_cleanup_storage_dir(string $storageDir): string
+{
+    $dir = $storageDir . DIRECTORY_SEPARATOR . 'cleanup-plans';
+    if (!is_dir($dir) && !mkdir($dir, 0700, true) && !is_dir($dir)) {
+        throw new RuntimeException('Could not create cleanup plan storage');
+    }
+
+    @chmod($dir, 0700);
+    return $dir;
+}
+
+function learning_valid_cleanup_id(string $cleanupId): bool
+{
+    return (bool)preg_match('/^CLEANUP-[0-9]{8}-[0-9]{6}-[A-F0-9]{6}$/', $cleanupId);
+}
+
+function learning_generate_cleanup_id(): string
+{
+    return 'CLEANUP-' . gmdate('Ymd-His') . '-' . strtoupper(bin2hex(random_bytes(3)));
+}
+
+function learning_cleanup_manifest_path(string $storageDir, string $cleanupId): string
+{
+    if (!learning_valid_cleanup_id($cleanupId)) {
+        throw new InvalidArgumentException('Invalid cleanup ID');
+    }
+
+    return learning_cleanup_storage_dir($storageDir) . DIRECTORY_SEPARATOR . $cleanupId . '.json';
+}
+
+function learning_load_cleanup_plan(string $storageDir, string $cleanupId): ?array
+{
+    $path = learning_cleanup_manifest_path($storageDir, $cleanupId);
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $raw = @file_get_contents($path);
+    if ($raw === false || trim($raw) === '') {
+        return null;
+    }
+
+    try {
+        $plan = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $error) {
+        return null;
+    }
+
+    return is_array($plan) ? $plan : null;
+}
+
+function learning_cleanup_candidates(
+    string $storageDir,
+    int $minUseCount,
+    int $minAgeDays,
+    int $maxGames
+): array {
+    $minUseCount = max(1, min(1000, $minUseCount));
+    $minAgeDays = max(0, min(3650, $minAgeDays));
+    $maxGames = max(1, min(500, $maxGames));
+    $confirmedUsage = learning_confirmed_training_usage($storageDir);
+    $candidates = [];
+
+    foreach (glob($storageDir . DIRECTORY_SEPARATOR . 'GAME-*.json') ?: [] as $filePath) {
+        $gameId = pathinfo($filePath, PATHINFO_FILENAME);
+        if (!learning_valid_game_id($gameId)) {
+            continue;
+        }
+
+        $game = learning_load_game($storageDir, $gameId);
+        if ($game === null) {
+            continue;
+        }
+
+        $summary = learning_summarize_game($filePath, $game);
+        $usage = $confirmedUsage[$gameId] ?? ['count' => 0, 'batches' => []];
+        $confirmedUses = max(0, (int)($usage['count'] ?? 0));
+        if (!learning_cleanup_summary_is_eligible($summary, $confirmedUses, $minUseCount, $minAgeDays)) {
+            continue;
+        }
+
+        $candidates[] = [
+            'gameId' => $gameId,
+            'sourceUpdatedAt' => $summary['updatedAt'],
+            'sourceDecisionCount' => $summary['decisionsTotal'],
+            'sourceUseCount' => $summary['useCount'],
+            'confirmedTrainingUses' => $confirmedUses,
+            'confirmedTrainingBatches' => is_array($usage['batches'] ?? null) ? $usage['batches'] : [],
+            'lastTrainingBatch' => $summary['lastTrainingBatch'],
+            'bytes' => $summary['bytes'],
+            'players' => [
+                'total' => $summary['playersTotal'],
+                'human' => $summary['playersHuman'],
+                'bot' => $summary['playersBot'],
+            ],
+            'decisions' => [
+                'total' => $summary['decisionsTotal'],
+                'human' => $summary['humanDecisions'],
+                'bot' => $summary['botDecisions'],
+                'other' => $summary['otherDecisions'],
+            ],
+            'policyVersions' => $summary['policyVersions'],
+            'hasOutcome' => $summary['hasOutcome'],
+            'referenceTimestamp' => learning_cleanup_reference_timestamp($summary),
+        ];
+    }
+
+    usort($candidates, static function (array $a, array $b): int {
+        $timeCompare = (int)$a['referenceTimestamp'] <=> (int)$b['referenceTimestamp'];
+        if ($timeCompare !== 0) {
+            return $timeCompare;
+        }
+
+        return strcmp((string)$a['gameId'], (string)$b['gameId']);
+    });
+
+    return array_slice($candidates, 0, $maxGames);
+}
+
+function learning_prepare_cleanup_preview(
+    string $storageDir,
+    int $minUseCount,
+    int $minAgeDays,
+    int $maxGames
+): array {
+    $minUseCount = max(1, min(1000, $minUseCount));
+    $minAgeDays = max(0, min(3650, $minAgeDays));
+    $maxGames = max(1, min(500, $maxGames));
+    $candidates = learning_cleanup_candidates($storageDir, $minUseCount, $minAgeDays, $maxGames);
+    if ($candidates === []) {
+        throw new RuntimeException('No learning game logs match these cleanup criteria');
+    }
+
+    $cleanupId = learning_generate_cleanup_id();
+    $bytes = 0;
+    foreach ($candidates as $candidate) {
+        $bytes += max(0, (int)($candidate['bytes'] ?? 0));
+    }
+
+    $plan = [
+        'schemaVersion' => 1,
+        'cleanupId' => $cleanupId,
+        'createdAt' => gmdate('c'),
+        'status' => 'preview',
+        'deletedAt' => null,
+        'criteria' => [
+            'minUseCount' => $minUseCount,
+            'minAgeDays' => $minAgeDays,
+            'maxGames' => $maxGames,
+            'requiresStatus' => 'used',
+            'requiresConfirmedTrainingHistory' => true,
+            'ordering' => 'oldest-gameplay-data-first',
+        ],
+        'summary' => [
+            'candidateGames' => count($candidates),
+            'candidateBytes' => $bytes,
+        ],
+        'games' => $candidates,
+        'deleteResult' => null,
+        'deletedGames' => [],
+    ];
+
+    learning_write_json_file(learning_cleanup_manifest_path($storageDir, $cleanupId), $plan);
+    return $plan;
+}
+
+function learning_execute_cleanup(string $storageDir, string $cleanupId): array
+{
+    $manifestPath = learning_cleanup_manifest_path($storageDir, $cleanupId);
+    $plan = learning_load_cleanup_plan($storageDir, $cleanupId);
+    if ($plan === null) {
+        throw new RuntimeException('Cleanup preview not found');
+    }
+
+    if (($plan['status'] ?? null) === 'completed') {
+        return $plan;
+    }
+
+    if (($plan['status'] ?? null) !== 'preview') {
+        throw new RuntimeException('Cleanup plan cannot be executed');
+    }
+
+    $criteria = is_array($plan['criteria'] ?? null) ? $plan['criteria'] : [];
+    $minUseCount = max(1, (int)($criteria['minUseCount'] ?? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_USE_COUNT));
+    $minAgeDays = max(0, (int)($criteria['minAgeDays'] ?? PRIVOZ_LEARNING_CLEANUP_DEFAULT_MIN_AGE_DAYS));
+    $confirmedUsage = learning_confirmed_training_usage($storageDir);
+    $result = [
+        'deletedGames' => 0,
+        'freedBytes' => 0,
+        'skippedChangedGames' => 0,
+        'missingGames' => 0,
+        'failedGames' => 0,
+    ];
+    $deletedGames = [];
+
+    $snapshots = is_array($plan['games'] ?? null) ? $plan['games'] : [];
+    foreach ($snapshots as $snapshot) {
+        if (!is_array($snapshot)) {
+            $result['failedGames']++;
+            continue;
+        }
+
+        $gameId = $snapshot['gameId'] ?? '';
+        if (!is_string($gameId) || !learning_valid_game_id($gameId)) {
+            $result['failedGames']++;
+            continue;
+        }
+
+        $filePath = learning_game_file_path($storageDir, $gameId);
+        if (!is_file($filePath)) {
+            $result['missingGames']++;
+            continue;
+        }
+
+        $handle = @fopen($filePath, 'r+');
+        if ($handle === false) {
+            $result['failedGames']++;
+            continue;
+        }
+
+        $renamedPath = null;
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                throw new RuntimeException('Could not lock learning game for cleanup');
+            }
+
+            rewind($handle);
+            $raw = stream_get_contents($handle);
+            $game = json_decode((string)$raw, true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($game)) {
+                throw new RuntimeException('Invalid learning game during cleanup');
+            }
+
+            $currentSummary = learning_summarize_game($filePath, $game);
+            $usage = $confirmedUsage[$gameId] ?? ['count' => 0, 'batches' => []];
+            $currentConfirmedUses = max(0, (int)($usage['count'] ?? 0));
+            $sameSnapshot = $currentSummary['updatedAt'] === ($snapshot['sourceUpdatedAt'] ?? null)
+                && $currentSummary['decisionsTotal'] === (int)($snapshot['sourceDecisionCount'] ?? -1)
+                && $currentSummary['useCount'] === (int)($snapshot['sourceUseCount'] ?? -1);
+            $stillEligible = learning_cleanup_summary_is_eligible(
+                $currentSummary,
+                $currentConfirmedUses,
+                $minUseCount,
+                $minAgeDays
+            );
+
+            if (!$sameSnapshot || !$stillEligible) {
+                flock($handle, LOCK_UN);
+                fclose($handle);
+                $result['skippedChangedGames']++;
+                continue;
+            }
+
+            $retainedSummary = [
+                'gameId' => $gameId,
+                'updatedAt' => $currentSummary['updatedAt'],
+                'useCount' => $currentSummary['useCount'],
+                'confirmedTrainingUses' => $currentConfirmedUses,
+                'firstTrainingBatch' => $currentSummary['firstTrainingBatch'],
+                'lastTrainingBatch' => $currentSummary['lastTrainingBatch'],
+                'players' => [
+                    'total' => $currentSummary['playersTotal'],
+                    'human' => $currentSummary['playersHuman'],
+                    'bot' => $currentSummary['playersBot'],
+                ],
+                'decisions' => [
+                    'total' => $currentSummary['decisionsTotal'],
+                    'human' => $currentSummary['humanDecisions'],
+                    'bot' => $currentSummary['botDecisions'],
+                    'other' => $currentSummary['otherDecisions'],
+                ],
+                'policyVersions' => $currentSummary['policyVersions'],
+                'hasOutcome' => $currentSummary['hasOutcome'],
+                'bytes' => $currentSummary['bytes'],
+            ];
+
+            $renamedPath = $filePath . '.cleanup-' . $cleanupId;
+            @unlink($renamedPath);
+            if (!@rename($filePath, $renamedPath)) {
+                throw new RuntimeException('Could not quarantine learning game for cleanup');
+            }
+
+            flock($handle, LOCK_UN);
+            fclose($handle);
+
+            if (!@unlink($renamedPath)) {
+                if (!is_file($filePath)) {
+                    @rename($renamedPath, $filePath);
+                }
+                $result['failedGames']++;
+                continue;
+            }
+
+            $result['deletedGames']++;
+            $result['freedBytes'] += max(0, (int)$currentSummary['bytes']);
+            $deletedGames[] = $retainedSummary;
+        } catch (Throwable $error) {
+            @flock($handle, LOCK_UN);
+            @fclose($handle);
+            if (is_string($renamedPath) && is_file($renamedPath) && !is_file($filePath)) {
+                @rename($renamedPath, $filePath);
+            }
+            $result['failedGames']++;
+        }
+    }
+
+    $plan['status'] = 'completed';
+    $plan['deletedAt'] = gmdate('c');
+    $plan['deleteResult'] = $result;
+    $plan['deletedGames'] = $deletedGames;
+    learning_write_json_file($manifestPath, $plan);
+
+    return $plan;
+}
+
+function learning_cleanup_inventory(string $storageDir): array
+{
+    $dir = learning_cleanup_storage_dir($storageDir);
+    $plans = [];
+    $summary = [
+        'previewPlans' => 0,
+        'completedPlans' => 0,
+        'deletedGames' => 0,
+        'freedBytes' => 0,
+    ];
+
+    foreach (glob($dir . DIRECTORY_SEPARATOR . 'CLEANUP-*.json') ?: [] as $manifestPath) {
+        $cleanupId = pathinfo($manifestPath, PATHINFO_FILENAME);
+        if (!learning_valid_cleanup_id($cleanupId)) {
+            continue;
+        }
+
+        $plan = learning_load_cleanup_plan($storageDir, $cleanupId);
+        if ($plan === null) {
+            continue;
+        }
+
+        $status = ($plan['status'] ?? null) === 'completed' ? 'completed' : 'preview';
+        $deleteResult = is_array($plan['deleteResult'] ?? null) ? $plan['deleteResult'] : [];
+        if ($status === 'completed') {
+            $summary['completedPlans']++;
+            $summary['deletedGames'] += max(0, (int)($deleteResult['deletedGames'] ?? 0));
+            $summary['freedBytes'] += max(0, (int)($deleteResult['freedBytes'] ?? 0));
+        } else {
+            $summary['previewPlans']++;
+        }
+
+        $plans[] = [
+            'cleanupId' => $cleanupId,
+            'createdAt' => is_string($plan['createdAt'] ?? null) ? $plan['createdAt'] : null,
+            'deletedAt' => is_string($plan['deletedAt'] ?? null) ? $plan['deletedAt'] : null,
+            'status' => $status,
+            'criteria' => is_array($plan['criteria'] ?? null) ? $plan['criteria'] : [],
+            'summary' => is_array($plan['summary'] ?? null) ? $plan['summary'] : [],
+            'deleteResult' => $deleteResult,
+        ];
+    }
+
+    usort($plans, static function (array $a, array $b): int {
+        return strcmp((string)$b['createdAt'], (string)$a['createdAt']);
+    });
+
+    return ['summary' => $summary, 'plans' => $plans];
 }
