@@ -8,7 +8,7 @@ import { ACTION_TYPES } from './actions';
  * Host decides whether that intent is valid,
  * applies the reducer and broadcasts authoritative state.
  */
-export function handleHostGameAction({ connectionsRef, setGameState }) {
+export function handleHostGameAction({ connectionsRef, setGameState, onAcceptedAction = null }) {
   return function onHostGameAction(data, conn) {
     if (data?.type !== 'gameAction' || !data.action) {
       return;
@@ -51,6 +51,19 @@ export function handleHostGameAction({ connectionsRef, setGameState }) {
         console.warn('[HOST] gameAction rejected:', authoritativeAction);
 
         return prev;
+      }
+
+      if (typeof onAcceptedAction === 'function') {
+        try {
+          onAcceptedAction({
+            beforeState: prev,
+            afterState: nextState,
+            action: authoritativeAction,
+            actorId: conn.peer,
+          });
+        } catch (error) {
+          console.warn('[HOST] Accepted-action observer failed:', error);
+        }
       }
 
       /*

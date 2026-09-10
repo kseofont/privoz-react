@@ -11,6 +11,7 @@ import traderList from '../data/TradersList.json';
 import products from '../data/products.json';
 import eventcards from '../data/eventcards.json';
 import { PHASES } from '../game/phases';
+import { createGameId } from '../game/gameId';
 
 /**
  * Add a PeerJS connection only once.
@@ -120,6 +121,15 @@ const CreateServerPage = () => {
         )}&color=${encodeURIComponent(nextVirtualColor)}`
       : '';
 
+  const botPlayerUrl =
+    peerId && appOrigin && nextVirtualColor
+      ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(
+          peerId
+        )}&name=${encodeURIComponent(`bot-${nextVirtualPlayerNumber}`)}&color=${encodeURIComponent(
+          nextVirtualColor
+        )}&bot=1`
+      : '';
+
   const addLog = message => {
     setLogs(prevLogs => [...prevLogs, message]);
     console.log(message);
@@ -218,6 +228,7 @@ const CreateServerPage = () => {
           };
 
           const initialGameState = {
+            gameId: createGameId(),
             players: [hostPlayer],
             currentTurnUserId: id,
             round: 1,
@@ -325,6 +336,11 @@ const CreateServerPage = () => {
                 sectorsWithTraders: [],
                 position_in_game: 'hand',
                 eventCards: [],
+                isBot: data.isBot === true,
+                botPolicyVersion:
+                  data.isBot === true && typeof data.botPolicyVersion === 'string'
+                    ? data.botPolicyVersion
+                    : null,
               };
 
               return {
@@ -553,6 +569,20 @@ const CreateServerPage = () => {
                 {t('add_virtual_player')}
               </button>
 
+              <button
+                type="button"
+                className="btn btn-outline-success mb-3"
+                disabled={
+                  !botPlayerUrl ||
+                  (gameState?.players?.length || 0) >= numberOfPlayers
+                }
+                onClick={() =>
+                  window.open(botPlayerUrl, '_blank', 'noopener,noreferrer')
+                }
+              >
+                {t('add_bot_player')}
+              </button>
+
               <p className="mb-1">
                 <strong>{t('join_game')}:</strong>
               </p>
@@ -606,7 +636,7 @@ const CreateServerPage = () => {
                   <li key={player.user_id} className="list-group-item">
                     {player.isHost
                       ? `${player.name} (Host - Game for ${numberOfPlayers} players)`
-                      : player.name}{' '}
+                      : `${player.name}${player.isBot ? ' (Bot)' : ''}`}{' '}
                     - <span style={{ color: player.color }}>{player.color}</span>{' '}
                     {player.disconnected ? '(Temporarily Disconnected)' : ''}
                   </li>

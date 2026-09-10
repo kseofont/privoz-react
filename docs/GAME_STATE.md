@@ -1,14 +1,14 @@
-# Privoz - Current Project State
+**# Privoz - Current Project State**
 
-Updated: 2026-09-09
+Updated: 2026-09-10
 
-## Project
+**## Project**
 
 "Привоз" is a multiplayer board-game prototype built with React + PeerJS.
 
 Production:
 
-https://privoz.kotucheniy.com.ua/
+https\://privoz.kotucheniy.com.ua/
 
 The project is currently playable and deployed.
 
@@ -48,7 +48,7 @@ small vertical slice
 
 → next slice
 
-# Current Git state
+**# Current Git state**
 
 The current large development branch being closed is:
 
@@ -60,7 +60,7 @@ The next development branch should be:
 
 bot-player
 
-# Networking / game-core architecture
+**# Networking / game-core architecture**
 
 PeerJS lifecycle has been stabilized.
 
@@ -76,7 +76,7 @@ src/game/phases.js
 
 Explicit game phases exist.
 
-SELECT_TRADER has already been converted to the host-authoritative flow:
+SELECT\_TRADER has already been converted to the host-authoritative flow:
 
 client UI
 
@@ -100,13 +100,13 @@ This is intentional for now because Menu exists across the gameplay pages and ke
 
 Some gameplay flows are still legacy.
 
-In particular END_TURN has NOT yet been fully converted to host-authoritative architecture.
+In particular END\_TURN has NOT yet been fully converted to host-authoritative architecture.
 
-BUY_PRODUCT and other gameplay actions must be inspected individually before assuming they are host-authoritative.
+BUY\_PRODUCT and other gameplay actions must be inspected individually before assuming they are host-authoritative.
 
-Do not refactor END_TURN or unrelated game rules accidentally while implementing the bot.
+Do not refactor END\_TURN or unrelated game rules accidentally while implementing the bot.
 
-# Feedback / Debug Reporting
+**# Feedback / Debug Reporting**
 
 A complete feedback/debug-reporting vertical slice has been implemented and deployed.
 
@@ -128,13 +128,13 @@ Feedback is available from Menu.
 
 The user can:
 
-1. open Feedback;
+1\. open Feedback;
 
-2. describe a bug or suggestion;
+2\. describe a bug or suggestion;
 
-3. send a diagnostic report;
+3\. send a diagnostic report;
 
-4. copy the technical report as a fallback.
+4\. copy the technical report as a fallback.
 
 The diagnostic snapshot is intentionally compact and whitelist-based.
 
@@ -142,53 +142,53 @@ It does NOT serialize PeerJS Peer/DataConnection objects or blindly dump browser
 
 Useful diagnostic information includes:
 
-- feedback ID;
+\- feedback ID;
 
-- timestamp;
+\- timestamp;
 
-- player/user ID;
+\- player/user ID;
 
-- host/client role;
+\- host/client role;
 
-- round;
+\- round;
 
-- phase;
+\- phase;
 
-- currentTurnUserId;
+\- currentTurnUserId;
 
-- players;
+\- players;
 
-- balances;
+\- balances;
 
-- products;
+\- products;
 
-- traders;
+\- traders;
 
-- trader locations;
+\- trader locations;
 
-- relevant event-card state;
+\- relevant event-card state;
 
-- eventResultLog / eventResultNonce;
+\- eventResultLog / eventResultNonce;
 
-- lastAction / lastEvent when available;
+\- lastAction / lastEvent when available;
 
-- limited coins log;
+\- limited coins log;
 
-- network summary;
+\- network summary;
 
-- browser/runtime information;
+\- browser/runtime information;
 
-- app version;
+\- app version;
 
-- Git commit;
+\- Git commit;
 
-- state keys;
+\- state keys;
 
-- state fingerprint.
+\- state fingerprint.
 
 The snapshot is captured when the feedback modal is opened so later game-state changes do not silently replace the state associated with the reported bug.
 
-# Feedback backend
+**# Feedback backend**
 
 Backend files:
 
@@ -232,7 +232,7 @@ The admin page lists reports from newest to oldest.
 
 Admin viewer:
 
-https://privoz.kotucheniy.com.ua/api/feedback-admin.php
+https\://privoz.kotucheniy.com.ua/api/feedback-admin.php
 
 It is protected by the configured password.
 
@@ -242,11 +242,11 @@ The admin viewer and JSON reports can be inspected directly in the browser.
 
 Email notification has NOT been implemented yet.
 
-# Feedback local development
+**# Feedback local development**
 
 Local feedback API runs separately from React:
 
-PRIVOZ_FEEDBACK_DIR=/tmp/privoz-feedback \
+PRIVOZ\_FEEDBACK\_DIR=/tmp/privoz-feedback \\
 
 php -S localhost:8082 -t .
 
@@ -256,7 +256,7 @@ React local environment uses:
 
 with:
 
-REACT_APP_FEEDBACK_API_URL=http://localhost:8082/api/feedback.php
+REACT\_APP\_FEEDBACK\_API\_URL=http\://localhost:8082/api/feedback.php
 
 .env.local is ignored by Git.
 
@@ -268,23 +268,23 @@ Safe production procedure:
 
 remove .env.local
 
-unset REACT_APP_FEEDBACK_API_URL
+unset REACT\_APP\_FEEDBACK\_API\_URL
 
 npm run build
 
 Then verify:
 
-grep -R "localhost:8082" build/static/js \
+grep -R "localhost:8082" build/static/js \\
 
-&& echo "ERROR: localhost found" \
+ && echo "ERROR: localhost found" \\
 
-|| echo "OK: production build clean"
+ || echo "OK: production build clean"
 
 Production must use:
 
 /api/feedback.php
 
-# Build/version information
+**# Build/version information**
 
 package.json now runs the build through:
 
@@ -296,7 +296,7 @@ npm run build currently succeeds.
 
 There are existing ESLint warnings in legacy files. They are not part of the feedback implementation unless a new change introduces additional warnings.
 
-# Deployment
+**# Deployment**
 
 React is still deployed as a CRA static build using:
 
@@ -306,19 +306,19 @@ The existing deploy command uploads build/ via FTP.
 
 Important:
 
-api/\*.php is NOT part of CRA build/.
+api/\\\*.php is NOT part of CRA build/.
 
 PHP feedback backend files therefore need to be uploaded separately when they change.
 
 Production API path:
 
-https://privoz.kotucheniy.com.ua/api/feedback.php
+https\://privoz.kotucheniy.com.ua/api/feedback.php
 
 Production admin:
 
-https://privoz.kotucheniy.com.ua/api/feedback-admin.php
+https\://privoz.kotucheniy.com.ua/api/feedback-admin.php
 
-# Multiplayer testing flow
+**# Multiplayer testing flow**
 
 The start screen contains localized buttons for:
 
@@ -338,17 +338,17 @@ es
 
 CreateServerPage now uses:
 
-window.location.origin
+window\.location.origin
 
 for invite URLs.
 
 Therefore the same code generates correct URLs for both:
 
-http://localhost:3000
+http\://localhost:3000
 
 and:
 
-https://privoz.kotucheniy.com.ua
+https\://privoz.kotucheniy.com.ua
 
 There should be no hardcoded localhost/production duplicate invite URLs.
 
@@ -362,7 +362,7 @@ Virtual players are opened in separate browser windows.
 
 The virtual-player URL automatically contains:
 
-peer_id
+peer\_id
 
 unique virtual player name
 
@@ -400,7 +400,7 @@ Start page
 
 Some navigation is still manual because the game is a prototype.
 
-# Rules page
+**# Rules page**
 
 Rules page:
 
@@ -424,31 +424,31 @@ Older versions of the rules are hidden by default and can be revealed with the "
 
 The feedback instructions are also included in the testing guide.
 
-# Important security/privacy decisions
+**# Important security/privacy decisions**
 
-Do not put SMTP passwords, admin passwords, tokens, PeerJS internals or other secrets into React REACT**APP**\* variables.
+Do not put SMTP passwords, admin passwords, tokens, PeerJS internals or other secrets into React REACT*\*APP\**\\\* variables.
 
-REACT**APP**\* values become public inside the frontend bundle.
+REACT*\*APP\**\\\* values become public inside the frontend bundle.
 
 Do not collect:
 
-- cookies;
+\- cookies;
 
-- arbitrary localStorage;
+\- arbitrary localStorage;
 
-- arbitrary sessionStorage;
+\- arbitrary sessionStorage;
 
-- passwords;
+\- passwords;
 
-- auth tokens;
+\- auth tokens;
 
-- .env contents;
+\- .env contents;
 
-- PeerJS internal objects.
+\- PeerJS internal objects.
 
 Only explicitly useful Privoz diagnostic data should be included.
 
-# Next major stage - Bot Player
+**# Next major stage - Bot Player**
 
 The next development stage is a player bot that can play instead of a real human.
 
@@ -498,7 +498,7 @@ bot identity / lifecycle
 
 → perform one already-stable action
 
-SELECT_TRADER is a strong candidate for the first automated action because it already uses the host-authoritative action flow.
+SELECT\_TRADER is a strong candidate for the first automated action because it already uses the host-authoritative action flow.
 
 After that:
 
@@ -510,29 +510,29 @@ test
 
 Then expand the bot action-by-action.
 
-Do not simultaneously refactor END_TURN, BUY_PRODUCT and all remaining gameplay actions while creating the initial bot infrastructure.
+Do not simultaneously refactor END\_TURN, BUY\_PRODUCT and all remaining gameplay actions while creating the initial bot infrastructure.
 
-# Bot design questions for next session
+**# Bot design questions for next session**
 
 Before implementation, inspect the current code and decide:
 
-- where the bot controller should live;
+\- where the bot controller should live;
 
-- whether it should run in the virtual player's browser window or as another client/controller;
+\- whether it should run in the virtual player's browser window or as another client/controller;
 
-- how it identifies that it is a bot;
+\- how it identifies that it is a bot;
 
-- how it observes gameState changes;
+\- how it observes gameState changes;
 
-- how it determines whether it is allowed to act;
+\- how it determines whether it is allowed to act;
 
-- how it avoids sending duplicate actions;
+\- how it avoids sending duplicate actions;
 
-- how it uses normal gameAction/network messages;
+\- how it uses normal gameAction/network messages;
 
-- how deterministic choices can be made for testing;
+\- how deterministic choices can be made for testing;
 
-- how bot actions can later be included in debug/feedback logs.
+\- how bot actions can later be included in debug/feedback logs.
 
 The first implementation should be deterministic and simple.
 
@@ -546,33 +546,33 @@ choose the first legal sector;
 
 Randomness or strategy can be introduced later.
 
-# Future game-core work
+**# Future game-core work**
 
 Still pending:
 
-END_TURN host-authoritative refactor
+END\_TURN host-authoritative refactor
 
 and conversion of remaining legacy gameplay mutations/actions.
 
 These tasks remain important, but they should not be mixed accidentally into the first bot infrastructure slice.
 
-# Starting a new development session
+**# Starting a new development session**
 
 At the beginning of the next ChatGPT session:
 
-1. provide the current project ZIP or relevant files;
+1\. provide the current project ZIP or relevant files;
 
-2. tell ChatGPT to read this file first:
+2\. tell ChatGPT to read this file first:
 
-docs/GAME_STATE.md
+docs/GAME\_STATE.md
 
-3. inspect the actual current source before making changes;
+3\. inspect the actual current source before making changes;
 
-4. work from branch bot-player;
+4\. work from branch bot-player;
 
-5. preserve the working prototype;
+5\. preserve the working prototype;
 
-6. implement only one small bot vertical slice at a time.
+6\. implement only one small bot vertical slice at a time.
 
 Every accepted player decision should eventually produce a compact,
 
@@ -585,3 +585,577 @@ player, legal actions available at that moment, the selected action,
 and the eventual game outcome.
 
 Human and bot decisions use the same learning format.
+# Bot Learning / Policy Architecture
+
+The bot architecture should be designed for a production environment where the developer's local computer and local Qwen model are assumed to be OFFLINE during normal gameplay.
+
+The production website must remain fully autonomous.
+
+Qwen is NOT required at runtime.
+
+Target long-term loop:
+
+gameplay on website
+
+→ compact learning logs
+
+→ export selected logs
+
+→ local analysis / simulations
+
+→ Qwen as offline analyst / teacher
+
+→ improved bot policy
+
+→ tests / simulation
+
+→ Git commit
+
+→ deploy new policy
+
+→ collect new gameplay
+
+→ repeat
+
+The website bot should therefore use a small deployable decision policy rather than calling an LLM during a live game.
+
+Conceptual runtime flow:
+
+authoritative/current gameState
+
+→ buildPlayerObservation()
+
+→ DecisionProvider
+
+→ PolicyEngine
+
+→ BotDecision
+
+→ same ACTION used by a human UI
+
+→ HOST
+
+→ validation / reducer
+
+→ authoritative gameState
+
+→ broadcast
+
+The bot must never directly mutate authoritative gameState.
+
+## Player observation boundary
+
+Do not pass raw authoritative gameState directly to bot intelligence, learning analysis or a future AI provider.
+
+Introduce a shared concept similar to:
+
+buildPlayerObservation(gameState, playerId)
+
+This should represent only information legally available to the acting player at that moment.
+
+The same observation format should eventually be reusable by:
+
+- Bot Player;
+- learning logs;
+- replay / analysis tools;
+- simulation tools;
+- future local Qwen analysis;
+- future compact trained models.
+
+This is an anti-cheating boundary.
+
+Hidden cards, future events, private opponent information or any other information unavailable to a normal player must not be exposed through the observation.
+
+## DecisionProvider abstraction
+
+Bot decision logic should be replaceable.
+
+Conceptual interface:
+
+DecisionProvider
+
+→ decide(observation, context)
+
+The interface should be async-capable from the beginning even if the first implementation is deterministic and synchronous internally.
+
+Initial provider:
+
+RuleBasedDecisionProvider / PolicyDecisionProvider
+
+Future providers may include:
+
+- improved heuristic policies;
+- simulation-backed policies;
+- locally tested policies generated with Qwen assistance;
+- a compact trained model;
+- other AI providers.
+
+The controller must not depend on a specific AI implementation.
+
+Qwen should not generate or mutate gameState.
+
+Qwen should also not be trusted as the source of game rules.
+
+Game rules, legal actions and state transitions belong to normal deterministic game code.
+
+## Initial bot intelligence
+
+The first bot does NOT require Qwen.
+
+Initial intelligence should come from deterministic game code:
+
+legal action generation
+
+→ simple evaluation
+
+→ deterministic policy
+
+→ normal player ACTION
+
+The first SELECT_TRADER slice may simply choose the first legal trader.
+
+Later the evaluator may score candidates using explicit features such as cost, expected profit, flexibility and risk.
+
+The exact scoring weights can evolve over time.
+
+## Future simulation layer
+
+When more of the game becomes host-authoritative and deterministic enough for simulation, add a simulation layer separately from the live game.
+
+Conceptual flow:
+
+observation / state
+
+→ legal candidate actions
+
+→ simulate candidate A
+
+→ simulate candidate B
+
+→ simulate candidate C
+
+→ candidate metrics
+
+→ policy chooses action
+
+Possible future methods:
+
+- deterministic lookahead;
+- heuristic evaluation;
+- Monte Carlo rollouts;
+- bot-vs-bot simulation;
+- policy tournaments.
+
+Qwen may analyze simulation results and propose strategy improvements, but proposed improvements must be validated by deterministic tests and/or simulation before deployment.
+
+Do not accept an LLM recommendation as proof that a move or strategy is better.
+
+## Learning data - humans and bots
+
+Learning data must include decisions made by BOTH:
+
+- real human players;
+- bot players.
+
+Human decisions are especially valuable because humans may discover strategies that the initial bot policy does not explore.
+
+Bot and human decisions should use the same compact learning format wherever possible.
+
+Every accepted player decision should eventually be capable of producing a privacy-safe learning sample containing only the information useful for game analysis.
+
+Conceptually, a decision sample should contain:
+
+- game ID;
+- sequence number;
+- game version;
+- phase / round where useful;
+- anonymous actor index;
+- actor type: human or bot;
+- bot policy version when applicable;
+- player observation at decision time;
+- legal actions available at decision time;
+- selected action;
+- whether the host accepted or rejected the action when relevant;
+- eventual game outcome / ranking after the game finishes.
+
+Do NOT collect learning data merely because it is technically available.
+
+Prefer the smallest useful representation.
+
+## Learning logs are separate from feedback/debug reports
+
+Feedback/debug reports and learning logs have different purposes and must remain separate.
+
+Feedback/debug reports:
+
+- investigate bugs;
+- may contain technical runtime diagnostics;
+- are manually triggered;
+- use the existing feedback infrastructure.
+
+Learning logs:
+
+- analyze gameplay decisions;
+- should be compact;
+- should avoid unnecessary runtime/browser information;
+- should be created as part of gameplay;
+- should be suitable for aggregation and training analysis.
+
+Do not copy full feedback snapshots into learning logs.
+
+Do not blindly serialize full gameState after every action.
+
+## Privacy / data minimization
+
+Learning logs should avoid unnecessary identifying information.
+
+Do not store in learning logs unless there is a specific future requirement:
+
+- real player names;
+- raw PeerJS IDs;
+- IP addresses;
+- cookies;
+- arbitrary localStorage/sessionStorage;
+- browser fingerprinting data;
+- passwords;
+- tokens;
+- environment variables;
+- PeerJS internal objects.
+
+Within a learning dataset, players should preferably be represented by anonymous per-game indexes such as:
+
+player_0
+
+player_1
+
+player_2
+
+The goal is gameplay learning, not user tracking.
+
+## Compact storage format
+
+Server storage must be designed for inexpensive shared hosting.
+
+Prefer event / decision-oriented records over repeated full state snapshots.
+
+A compact per-game record or append-friendly JSONL/NDJSON format is preferred.
+
+A typical game should contain:
+
+game metadata
+
+→ compact accepted decision records
+
+→ final outcome
+
+Do not log cosmetic navigation, React renders or redundant network chatter.
+
+If append-based storage is implemented, batching events is acceptable.
+
+A final best-effort flush may later use browser mechanisms such as sendBeacon(), but this should not be mixed into the first bot slice unless required.
+
+## Authoritative logging
+
+Learning records should ultimately represent actions accepted by the HOST.
+
+Preferred conceptual flow:
+
+player/bot sends ACTION
+
+→ HOST validates
+
+→ reducer applies authoritative change
+
+→ accepted decision is recorded
+
+This avoids treating an attempted or invalid client action as a successful gameplay decision.
+
+Where possible, human and bot actions should enter learning logging after the same host-authoritative validation path.
+
+Legacy actions should be migrated carefully and individually before assuming this guarantee.
+
+## Game result attachment
+
+Decision quality cannot be analyzed properly without knowing the eventual result.
+
+When a game finishes, the learning record should be finalized with useful outcome data such as:
+
+- winner / ranking;
+- final scores or relevant final resources;
+- total rounds / turns;
+- policy versions used by bots.
+
+The exact result schema should follow the actual game rules and should remain compact.
+
+## Policy versioning
+
+Every deployed bot policy must have an explicit version.
+
+Examples:
+
+policy-v001
+
+policy-v002
+
+policy-v003
+
+The version used by a bot must be included in learning records.
+
+Policies should be versioned in Git.
+
+Conceptually:
+
+src/bot/policies/
+
+policy-v001.json
+
+policy-v002.json
+
+...
+
+This allows later comparison of policy performance and prevents mixing decisions from different bot generations without knowing which logic produced them.
+
+## Learning log inventory / manifest
+
+The server should maintain enough metadata to know which game logs exist and how they have been used.
+
+Each stored game should eventually have tracking information conceptually equivalent to:
+
+- game ID;
+- date;
+- storage size;
+- number of human players;
+- number of bot players;
+- policy versions;
+- status: unused / used / eligible_for_deletion;
+- useCount;
+- first training batch;
+- last training batch.
+
+This metadata may be stored in a manifest/index or derived safely from per-game metadata, depending on the simplest reliable implementation for the hosting environment.
+
+The important requirement is that we must be able to answer:
+
+- how many unused games exist;
+- how many games have already been used;
+- how many times a game has been reused;
+- how much storage learning logs consume;
+- which logs may be deleted safely.
+
+## Training batches
+
+Training / analysis exports should be explicitly versioned.
+
+Example:
+
+training-001
+
+training-002
+
+training-003
+
+A future export may contain:
+
+- manifest.json;
+- games.jsonl;
+- summary.json.
+
+A training batch should record which game logs were included.
+
+New training cycles should normally prioritize unused games but may deliberately include a smaller replay sample of older used games.
+
+Conceptual example:
+
+70% unused/new games
+
+30% previously used replay sample
+
+The percentages are NOT fixed rules and should remain configurable.
+
+This prevents the learning process from focusing only on the most recent games.
+
+## Log retention / cleanup
+
+Do not keep detailed learning logs forever by default.
+
+Old logs may become eligible for deletion after they have been used in multiple training/analysis cycles.
+
+Possible future retention controls:
+
+- minimum training use count before deletion;
+- minimum age;
+- maximum number of retained used games;
+- maximum number of unused games;
+- maximum storage size in MB;
+- number of training generations to retain.
+
+These values should be configuration, not hardcoded architecture assumptions.
+
+Do NOT delete a game immediately after its first use.
+
+After a detailed log is deleted, a very small aggregate/statistical record may be retained so long-term statistics such as total games, bot win rate or policy performance are not lost.
+
+Deletion should initially be an explicit/admin-controlled operation until the process has been proven safe.
+
+## Admin / export workflow
+
+A future learning-data admin tool should allow the developer to inspect at least:
+
+- unused game count;
+- used game count;
+- total stored game count;
+- approximate storage size;
+- policy-version distribution;
+- logs eligible for deletion.
+
+Useful future actions:
+
+- export a training batch;
+- download unused logs;
+- mark/export logs as used;
+- generate a compact analysis package;
+- clean up old eligible logs.
+
+Do not build the full admin system as part of the first SELECT_TRADER bot slice.
+
+## Copyable / AI-friendly analysis packages
+
+For small or medium datasets, provide a way to generate compact summaries suitable for copying into a local Qwen session.
+
+For larger datasets, export machine-readable files instead of producing enormous copy/paste text.
+
+The local analysis pipeline may later split large datasets into chunks, analyze chunks independently and then synthesize results.
+
+The server should not be responsible for running Qwen.
+
+## Role of local Qwen
+
+The local Qwen model should be treated initially as an offline analyst / teacher, not as the live game engine.
+
+Expected workflow:
+
+download selected learning batch
+
+→ deterministic preprocessing / statistics
+
+→ simulation where available
+
+→ Qwen analyzes patterns and proposes strategy changes
+
+→ convert accepted ideas into a new explicit policy
+
+→ automated/manual tests
+
+→ bot-vs-bot comparison when available
+
+→ deploy only after validation
+
+Initially, "training the bot" means improving the deployed bot policy with evidence from game logs and simulations.
+
+It does NOT necessarily mean fine-tuning Qwen's model weights.
+
+Actual model fine-tuning or distillation can be considered later when enough clean decision data exists.
+
+## Future compact trained model
+
+If enough high-quality decision samples accumulate, a future phase may train a much smaller model specifically for Privoz.
+
+Conceptual future flow:
+
+game logs
+
+→ curated dataset
+
+→ local training / teacher analysis
+
+→ compact student model
+
+→ deploy small model to browser/site
+
+This model could potentially replace or complement heuristic policies while still using:
+
+observation
+
+→ decision
+
+→ normal ACTION
+
+→ HOST
+
+The host-authoritative security model must remain unchanged.
+
+## Bot Player implementation roadmap
+
+Keep the first implementation small despite the long-term learning design.
+
+Recommended safe sequence:
+
+1. Bot identity / lifecycle.
+
+2. Bot connects through the existing normal PeerJS player flow.
+
+3. Introduce buildPlayerObservation() or equivalent minimal observation boundary required for the first action.
+
+4. Introduce replaceable DecisionProvider / PolicyEngine structure.
+
+5. Implement one deterministic SELECT_TRADER decision.
+
+6. Convert that decision into the same SELECT_TRADER action used by human UI.
+
+7. Send it through the normal client → HOST → reducer → broadcast flow.
+
+8. Prevent duplicate bot actions while the turn remains unchanged.
+
+9. Add the smallest useful learning record for accepted SELECT_TRADER decisions for BOTH humans and bots.
+
+10. Attach policy version to bot learning records.
+
+11. Build / git diff --check / multiplayer test / commit.
+
+12. Only after the slice is stable, expand learning and bot support action-by-action.
+
+Do NOT use this roadmap as justification to refactor END_TURN, BUY_PRODUCT or unrelated legacy flows during the initial bot work.
+
+## Validation workflow
+
+After each substantial implementation slice:
+
+npm run build
+
+git diff --check
+
+manual and/or automated multiplayer test
+
+separate commit
+
+Bot changes should remain reviewable and reversible.
+
+## Long-term closed loop
+
+The intended long-term system is:
+
+human and bot games
+
+→ compact privacy-safe learning logs
+
+→ controlled server storage
+
+→ training batch selection
+
+→ local download
+
+→ deterministic statistics / replay / simulation
+
+→ Qwen offline analysis
+
+→ improved policy
+
+→ validation / bot arena
+
+→ deploy new policy version
+
+→ collect new games
+
+→ repeat
+
+The production game must continue to work even when the local computer, Qwen and all training tools are unavailable.

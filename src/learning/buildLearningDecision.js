@@ -1,0 +1,114 @@
+import { ACTION_TYPES } from '../game/actions';
+import { buildPlayerObservation } from '../bot/observation/buildPlayerObservation';
+
+function sanitizeIdPart(value) {
+  const normalized = value === null || value === undefined || value === '' ? 'unknown' : value;
+
+  return String(normalized)
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 48);
+}
+
+function getLegalSelectTraderActions(observation) {
+  if (!observation || observation.currentTurnUserId !== observation.self?.playerId) {
+    return [];
+  }
+
+  const price = Number(observation.self?.tradersCount || 0) * 15;
+
+  if (Number(observation.self?.coins || 0) < price) {
+    return [];
+  }
+
+  const ownedTraderIds = new Set(observation.self?.traderIds || []);
+
+  return (observation.visibleTraders || [])
+    .filter(trader => trader?.traderId && !trader.taken && !ownedTraderIds.has(trader.traderId))
+    .map(trader => ({
+      type: ACTION_TYPES.SELECT_TRADER,
+      traderId: trader.traderId,
+    }));
+}
+
+function buildCompactObservation(observation) {
+  return {
+    phase: observation.phase,
+    round: observation.round,
+    self: {
+      coins: observation.self.coins,
+      traderIds: observation.self.traderIds,
+      tradersCount: observation.self.tradersCount,
+    },
+    visibleTraders: observation.visibleTraders,
+  };
+}
+
+/**
+ * Build a privacy-minimized learning sample for an accepted action.
+ *
+ * No player name, PeerJS ID, IP, browser fingerprint or full gameState
+ * is included.
+ */
+export function buildLearningDecision({ beforeState, afterState, action, actorId, appVersion }) {
+  if (!beforeState?.gameId || !action || !actorId || beforeState === afterState) {
+    return null;
+  }
+
+  if (action.type !== ACTION_TYPES.SELECT_TRADER) {
+    return null;
+  }
+
+  const actorIndex = beforeState.players?.findIndex(player => player.user_id === actorId) ?? -1;
+
+  if (actorIndex < 0) {
+    return null;
+  }
+
+  const actor = beforeState.players[actorIndex];
+  const observation = buildPlayerObservation(beforeState, actorId);
+
+  if (!observation) {
+    return null;
+  }
+
+  const traderId = action.payload?.traderId;
+
+  if (!traderId) {
+    return null;
+  }
+
+  const eventId = [
+    'LE',
+    sanitizeIdPart(beforeState.round || 0),
+    sanitizeIdPart(actorIndex),
+    sanitizeIdPart(observation.self.tradersCount),
+    sanitizeIdPart(traderId),
+  ].join('-');
+
+  const players = Array.isArray(beforeState.players) ? beforeState.players : [];
+
+  return {
+    schemaVersion: 1,
+    gameId: beforeState.gameId,
+    eventId,
+    gameVersion: appVersion?.version || 'dev',
+    gitCommit: appVersion?.gitCommit || 'unknown',
+    phase: beforeState.phase || null,
+    round: Number(beforeState.round || 0),
+    actorIndex,
+    actorType: actor?.isBot === true ? 'bot' : 'human',
+    policyVersion: actor?.isBot === true ? actor.botPolicyVersion || 'unknown' : null,
+    playerCounts: {
+      total: players.length,
+      human: players.filter(player => player?.isBot !== true).length,
+      bot: players.filter(player => player?.isBot === true).length,
+    },
+    observation: buildCompactObservation(observation),
+    legalActions: getLegalSelectTraderActions(observation),
+    selectedAction: {
+      type: ACTION_TYPES.SELECT_TRADER,
+      traderId,
+    },
+    result: 'accepted',
+  };
+}

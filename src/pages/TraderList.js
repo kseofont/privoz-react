@@ -17,6 +17,8 @@ import { selectTraderAction } from '../game/actions';
 
 import { gameReducer } from '../game/reducer';
 
+import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
+
 
 const TraderList = () => {
   const { t, i18n } = useTranslation();
@@ -253,6 +255,13 @@ const TraderList = () => {
 
         return;
       }
+
+      recordAcceptedLearningDecision({
+        beforeState: gameState,
+        afterState: nextState,
+        action,
+        actorId: myUserId,
+      });
 
       /*
        * Remember expected trader before updating state.

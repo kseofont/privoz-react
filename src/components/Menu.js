@@ -22,6 +22,8 @@ import { Modal, Button, Row, Col } from 'react-bootstrap';
 import CurrentPlayerInfo from './CurrentPlayerInfo';
 import OtherPlayersInfo from './OtherPlayersInfo';
 import FeedbackButton from './FeedbackButton';
+import BotPlayerController from '../bot/BotPlayerController';
+import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 
 const Menu = ({
   myUserId: propMyUserId,
@@ -248,6 +250,7 @@ const Menu = ({
     const gameActionHandler = handleHostGameAction({
       connectionsRef,
       setGameState,
+      onAcceptedAction: recordAcceptedLearningDecision,
     });
 
     const subscriptions = connectionsRef.current.map(conn => {
@@ -510,6 +513,7 @@ const Menu = ({
 
   return (
     <div className="col">
+      <BotPlayerController gameState={gameState} myUserId={myUserId} connection={connection} />
       <div className="language-block col-12 mb-4">
         <button onClick={() => i18n.changeLanguage('ua')}>Укр</button>
         <button onClick={() => i18n.changeLanguage('ru')}>Рус</button>
