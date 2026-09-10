@@ -5,7 +5,6 @@ import PrivozSector from '../components/PrivozSector';
 import Menu from '../components/Menu';
 
 import { connectionsRef } from '../globals';
-import { handleHostEndTurn } from '../logic/logic';
 
 const GamePage = () => {
   const location = useLocation();
@@ -121,51 +120,6 @@ const GamePage = () => {
   }, [connection]);
 
   /*
-   * HOST DATA LISTENERS
-   *
-   * Before this stabilization pass GamePage added a new anonymous
-   * `data` listener every time the page was mounted:
-   *
-   * conn.on('data', data => handler(data, conn))
-   *
-   * and never removed it.
-   *
-   * After several rounds one PeerJS connection could therefore execute
-   * the same host action several times.
-   *
-   * Now we retain the exact listener function and remove it on unmount.
-   */
-  useEffect(() => {
-    if (!isHost) {
-      return undefined;
-    }
-
-    const handler = handleHostEndTurn({
-      connectionsRef,
-      setGameState,
-    });
-
-    const subscriptions = connectionsRef.current.map(conn => {
-      const onData = data => {
-        handler(data, conn);
-      };
-
-      conn.on('data', onData);
-
-      return {
-        conn,
-        onData,
-      };
-    });
-
-    return () => {
-      subscriptions.forEach(({ conn, onData }) => {
-        conn.off('data', onData);
-      });
-    };
-  }, [isHost]);
-
-  /*
    * Current turn.
    */
   const myTurn = isAuthorized && gameState?.currentTurnUserId === myUserId;
@@ -202,6 +156,7 @@ const GamePage = () => {
                     connection={connection}
                     myTurn={myTurn}
                     setGameState={setGameState}
+                    broadcastGameState={isHost ? broadcastGameState : undefined}
                     clickable={isAuthorized && myTurn}
                   />
                 </div>

@@ -1,88 +1,7 @@
 // logic.js
 import { PHASES } from '../game/phases';
-export function endTurn({ connection, myTurn, myUserId, gameState, setGameState, connectionsRef }) {
-  console.log(' endTurn + gameState ', gameState);
-  // console.log(' connection ', connection);
-  // console.log(' setGameState ', setGameState);
-  if (connection && myTurn) {
-    // Только на клиенте
-    console.log('[CLIENT] Отправляю endTurn + gameState хосту');
-    connection.send({
-      type: 'endTurn',
-      playerId: myUserId,
-      gameState,
-    });
-    // Optimistic UI, если хочешь:
-    if (setGameState) {
-      setGameState(prev => ({ ...prev, waitingForHost: true }));
-    }
-    return;
-  }
-  // Хосту: обновление состояния (только если setGameState передан)
-  if (!connection && myTurn && typeof setGameState === 'function') {
-    // !!! conn и data тут не определены, это должно быть внутри обработчика on('data')
-    // Но если вызывается так — ты должен передать gameState как аргумент!
-    setGameState(prev => {
-      const incomingState = gameState;
-      const currentIndex = incomingState.players.findIndex(
-        p => p.user_id === incomingState.currentTurnUserId
-      );
-      const nextIndex = (currentIndex + 1) % incomingState.players.length;
-      const nextUserId = incomingState.players[nextIndex].user_id;
-      const updatedGameState = {
-        ...incomingState,
-        currentTurnUserId: nextUserId,
-        waitingForHost: false,
-      };
-      console.log('[HOST] Рассылаю updatedGameState всем:', updatedGameState);
-      connectionsRef.current.forEach(c => {
-        c.send({ type: 'gameState', gameState: updatedGameState });
-      });
-      return updatedGameState;
-    });
-  }
-}
-
-// Обработка endTurn на стороне хоста
-export function handleHostEndTurn({ connectionsRef, setGameState }) {
-  // Верни функцию, которую будешь использовать как обработчик данных
-  return function onHostData(data, conn) {
-    // console.log('[HOST] Получил g');
-    if (data.type === 'endTurn') {
-      console.log(`[HOST] Получил endTurn от ${conn.peer}`, data);
-
-      setGameState(prev => {
-        // Используем gameState от клиента, если доверяешь, или только свой prev (лучше prev!)
-        const incomingState = data.gameState || prev;
-        // Тут можно вставить валидацию!
-
-        // Вычисляем следующего игрока
-        const currentIndex = incomingState.players.findIndex(
-          p => p.user_id === incomingState.currentTurnUserId
-        );
-        const nextIndex = (currentIndex + 1) % incomingState.players.length;
-        const nextUserId = incomingState.players[nextIndex].user_id;
-
-        const updatedGameState = {
-          ...incomingState,
-          currentTurnUserId: nextUserId,
-          waitingForHost: false,
-        };
-
-        // Рассылаем новый gameState всем клиентам
-        if (connectionsRef && Array.isArray(connectionsRef.current)) {
-          connectionsRef.current.forEach(c => {
-            c.send({ type: 'gameState', gameState: updatedGameState });
-          });
-        }
-
-        console.log('[HOST] Рассылаю updatedGameState всем:', updatedGameState);
-        return updatedGameState;
-      });
-    }
-  };
-}
-
+import { syncPlayerSectorsWithTraders } from '../game/playerDerivedState';
+import { settleRound } from '../game/roundEnd';
 // Конец раунда
 // Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {
@@ -92,61 +11,11 @@ export function handleEndRound(setGameState, isHost, broadcastGameState) {
   }
 
   setGameState(prev => {
-    if (!prev || !Array.isArray(prev.players)) return prev;
+    const newState = settleRound(prev);
 
-    const updatedPlayers = prev.players.map(player => {
-      let coinsEarned = 0;
-
-      // Обрабатываем всех трейдеров игрока
-      const updatedTraders = (player.traders || []).map(trader => {
-        // Проверка: торговец размещён в секторе и есть товары
-        if (
-          typeof trader.card_in_game === 'string' &&
-          trader.card_in_game.startsWith('sector_') &&
-          Array.isArray(trader.goods) &&
-          trader.goods.length > 0
-        ) {
-          // Считаем доход с каждого товара у этого торговца
-          trader.goods.forEach(product => {
-            const quantity = Number(product.quantity_player_card) || 0;
-            // Название цены может быть sellingPrice, retailPrice или что-то ещё
-            const sellingPrice =
-              Number(product.sellingPrice) ||
-              Number(product.retailPrice) ||
-              Number(product.profit) ||
-              0;
-            coinsEarned += quantity * sellingPrice;
-          });
-
-          // Очищаем товары (после продажи)
-          return {
-            ...trader,
-            goods: [],
-            card_in_game: `${player.user_id}_hand`, // <- ключевое изменение
-            location: null, // можно явно убрать сектор, если он был
-          };
-        }
-        // Если не размещён или нет товаров, ничего не меняем
-        return trader;
-      });
-
-      return {
-        ...player,
-        coins: (player.coins || 0) + coinsEarned,
-        traders: updatedTraders,
-      };
-    });
-
-    const nextRound = (prev.round || 1) + 1;
-    const newState = {
-      ...prev,
-      round: nextRound,
-      players: updatedPlayers,
-      __roundProcessing: true, // временно блокируем повтор
-      phase: PHASES.TRADER_SELECTION,
-      eventCardPhase: undefined,
-      playerEventChoices: undefined, // или сохранять в историю
-    };
+    if (newState === prev) {
+      return prev;
+    }
 
     if (isHost && typeof broadcastGameState === 'function') {
       broadcastGameState(newState);
@@ -298,30 +167,6 @@ export function startEventChoicePhase(prevGameState) {
     phase: PHASES.PERSONAL_EVENTS,
     eventCardPhase,
     playerEventChoices: {}, // сбрасываем, чтобы начать заново
-  };
-}
-
-/**
- * Кладём выбор конкретного игрока в gameState (может вызываться у хоста или локально, если хост сам себе).
- * positiveChoices: { [cardKey]: 'keep' | 'use' }
- * effectTargets:   { [cardId]: { playerId?, sector?, traderId? } }
- */
-export function applyPlayerEventChoice(
-  prevGameState,
-  userId,
-  { positiveChoices = {}, effectTargets = {} }
-) {
-  if (!prevGameState) return prevGameState;
-  return {
-    ...prevGameState,
-    eventCardPhase: {
-      ...(prevGameState.eventCardPhase || {}),
-      [userId]: true,
-    },
-    playerEventChoices: {
-      ...(prevGameState.playerEventChoices || {}),
-      [userId]: { positiveChoices, effectTargets },
-    },
   };
 }
 
@@ -591,7 +436,7 @@ function replaceTrader(player, traderId, newTraderObj) {
   const idx = list.findIndex(t => t.traderId === traderId);
   if (idx === -1) return player;
   list[idx] = newTraderObj;
-  return { ...player, traders: list };
+  return syncPlayerSectorsWithTraders(player, list);
 }
 
 // применить штраф к игроку (не уходим в минус)
@@ -1159,16 +1004,6 @@ export function finalizeEndRoundWithEvents({
 
 // logic/logic.js
 
-/** упаковать сообщение от клиента с выбором */
-export function makeEventChoiceMessage({ userId, positiveChoices, effectTargets }) {
-  return {
-    type: 'eventCardChoiceDone',
-    userId,
-    positiveChoices,
-    effectTargets,
-  };
-}
-
 /** разослать всем новое состояние (хост) */
 export function broadcastState(connectionsRef, state) {
   if (!connectionsRef?.current) return;
@@ -1177,17 +1012,4 @@ export function broadcastState(connectionsRef, state) {
       conn.send({ type: 'gameState', gameState: state });
     } catch {}
   });
-}
-
-// Очистить логи для конкретного игрока (можно вызывать у хоста)
-export function clearEventLogForUser(prevGameState, userId) {
-  if (!prevGameState?.eventResultLog) return prevGameState;
-  const nextLog = { ...prevGameState.eventResultLog };
-  nextLog[userId] = [];
-  return { ...prevGameState, eventResultLog: nextLog };
-}
-
-// Сообщение-ACK от клиента хосту
-export function makeEventLogAckMessage(userId) {
-  return { type: 'ackEventResults', userId };
 }

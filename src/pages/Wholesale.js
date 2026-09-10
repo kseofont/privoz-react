@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Modal, Button } from 'react-bootstrap';
 
 import Product from '../components/Product';
@@ -10,7 +10,10 @@ import localProductsData from '../data/products.json';
 
 import { connectionsRef } from '../globals';
 
-import { handleHostEndTurn, getField } from '../logic/logic';
+import { getField } from '../logic/logic';
+import { buyProductAction } from '../game/actions';
+import { gameReducer } from '../game/reducer';
+import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 
 const Wholesale = () => {
   const { t, i18n } = useTranslation();
@@ -18,6 +21,7 @@ const Wholesale = () => {
   const lang = i18n.language || 'en';
 
   const location = useLocation();
+  const navigate = useNavigate();
   const params = useParams();
 
   /*
@@ -46,6 +50,10 @@ const Wholesale = () => {
   const [showModal, setShowModal] = useState(false);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Client-only flag: navigate to the market only after the host broadcasts
+  // the authoritative state that contains the confirmed purchase.
+  const navigateAfterPurchaseRef = useRef(false);
 
   /*
    * Make sure the current user actually exists in gameState.
@@ -109,48 +117,6 @@ const Wholesale = () => {
   };
 
   /*
-   * HOST DATA LISTENERS
-   *
-   * Previously Wholesale added:
-   *
-   * conn.on('data', ...)
-   *
-   * on every mount but never removed it.
-   *
-   * After multiple rounds the host could therefore accumulate several
-   * Wholesale listeners on the same connection.
-   */
-  useEffect(() => {
-    if (!isHost) {
-      return undefined;
-    }
-
-    const handler = handleHostEndTurn({
-      connectionsRef,
-      setGameState,
-    });
-
-    const subscriptions = connectionsRef.current.map(conn => {
-      const onData = data => {
-        handler(data, conn);
-      };
-
-      conn.on('data', onData);
-
-      return {
-        conn,
-        onData,
-      };
-    });
-
-    return () => {
-      subscriptions.forEach(({ conn, onData }) => {
-        conn.off('data', onData);
-      });
-    };
-  }, [isHost]);
-
-  /*
    * CLIENT DATA LISTENER
    *
    * Receive authoritative gameState from host.
@@ -165,6 +131,20 @@ const Wholesale = () => {
 
       if (data.type === 'gameState' && data.gameState) {
         setGameState(data.gameState);
+
+        if (navigateAfterPurchaseRef.current) {
+          navigateAfterPurchaseRef.current = false;
+
+          window.gameState = data.gameState;
+          window.myUserId = myUserId;
+
+          navigate(`/game/${myUserId}`, {
+            state: {
+              gameState: data.gameState,
+              myUserId,
+            },
+          });
+        }
       }
     };
 
@@ -173,7 +153,7 @@ const Wholesale = () => {
     return () => {
       connection.off('data', onData);
     };
-  }, [connection]);
+  }, [connection, myUserId, navigate]);
 
   /*
    * Products fallback.
@@ -226,146 +206,77 @@ const Wholesale = () => {
   /*
    * Confirm wholesale purchase.
    *
-   * Gameplay intentionally stays exactly as it was before the
-   * PeerJS lifecycle stabilization.
+   * HOST:
+   * applies its own BUY_PRODUCT action through the same reducer used for
+   * client actions, records learning data, then broadcasts the result.
+   *
+   * CLIENT:
+   * sends only an intent and waits for authoritative gameState.
    */
-  const handleConfirmProduct = () => {
-    if (!selectedProduct || !isAuthorized || !gameState) {
+  const handleConfirmProduct = (goToMarket = false) => {
+    if (!selectedProduct || !isAuthorized || !gameState || !myTurn) {
       return;
     }
 
-    setGameState(prev => {
-      if (!prev) {
-        return prev;
+    const action = buyProductAction({
+      playerId: myUserId,
+      productId: selectedProduct.productId,
+    });
+
+    if (isHost) {
+      const nextState = gameReducer(gameState, action);
+
+      if (nextState === gameState) {
+        console.warn('[Wholesale] Host BUY_PRODUCT rejected:', action);
+        return;
       }
 
-      /*
-       * Resolve the latest product object from current gameState.
-       */
-      const productList = Array.isArray(prev.products)
-        ? prev.products
-        : Array.isArray(prev.products?.products)
-          ? prev.products.products
-          : [];
+      recordAcceptedLearningDecision({
+        beforeState: gameState,
+        afterState: nextState,
+        action,
+        actorId: myUserId,
+      });
 
-      const productIndex = productList.findIndex(
-        product => product.productId === selectedProduct.productId
-      );
+      setShowModal(false);
+      setSelectedProduct(null);
+      setGameState(nextState);
+      broadcastGameState(nextState);
 
-      if (productIndex === -1) {
-        return prev;
-      }
+      if (goToMarket) {
+        window.gameState = nextState;
+        window.myUserId = myUserId;
 
-      const product = productList[productIndex];
-
-      /*
-       * No free cards left.
-       */
-      if ((product.quantity_free_card || 0) <= 0) {
-        return prev;
-      }
-
-      const playerIndex = prev.players.findIndex(player => player.user_id === myUserId);
-
-      if (playerIndex === -1) {
-        return prev;
-      }
-
-      const player = prev.players[playerIndex];
-
-      /*
-       * Not enough money.
-       */
-      if ((player.coins || 0) < (product.wholesalePrice || 0)) {
-        return prev;
-      }
-
-      /*
-       * Reduce available wholesale quantity.
-       */
-      const updatedProduct = {
-        ...product,
-
-        quantity_free_card: Math.max(0, (product.quantity_free_card || 0) - 1),
-      };
-
-      const updatedProductList = [...productList];
-
-      updatedProductList[productIndex] = updatedProduct;
-
-      /*
-       * Add purchased card to player's inventory.
-       */
-      const playerProducts = Array.isArray(player.products) ? [...player.products] : [];
-
-      const existingPlayerProductIndex = playerProducts.findIndex(
-        playerProduct => playerProduct.productId === updatedProduct.productId
-      );
-
-      if (existingPlayerProductIndex !== -1) {
-        playerProducts[existingPlayerProductIndex] = {
-          ...playerProducts[existingPlayerProductIndex],
-          ...updatedProduct,
-
-          quantity_player_card:
-            (playerProducts[existingPlayerProductIndex].quantity_player_card || 1) + 1,
-        };
-      } else {
-        playerProducts.push({
-          ...updatedProduct,
-          quantity_player_card: 1,
+        navigate(`/game/${myUserId}`, {
+          state: {
+            gameState: nextState,
+            myUserId,
+          },
         });
       }
 
-      /*
-       * Charge the player.
-       */
-      const newCoins = Math.max(0, (player.coins || 0) - (product.wholesalePrice || 0));
+      return;
+    }
 
-      const updatedPlayer = {
-        ...player,
-        products: playerProducts,
-        coins: newCoins,
-      };
+    if (!connection?.open) {
+      console.error('[Wholesale] Cannot send BUY_PRODUCT: connection is not open.');
+      return;
+    }
 
-      const updatedPlayers = [...prev.players];
+    try {
+      navigateAfterPurchaseRef.current = goToMarket;
 
-      updatedPlayers[playerIndex] = updatedPlayer;
-
-      /*
-       * Preserve the existing shape of gameState.products.
-       *
-       * The project currently supports both:
-       *
-       * products: [...]
-       *
-       * and:
-       *
-       * products: {
-       *   products: [...]
-       * }
-       */
-      let newProducts;
-
-      if (Array.isArray(prev.products)) {
-        newProducts = updatedProductList;
-      } else if (prev.products && Array.isArray(prev.products.products)) {
-        newProducts = {
-          ...prev.products,
-          products: updatedProductList,
-        };
-      } else {
-        newProducts = prev.products;
-      }
+      connection.send({
+        type: 'gameAction',
+        action,
+      });
 
       setShowModal(false);
-
-      return {
-        ...prev,
-        players: updatedPlayers,
-        products: newProducts,
-      };
-    });
+      setSelectedProduct(null);
+    } catch (error) {
+      navigateAfterPurchaseRef.current = false;
+      console.error('[Wholesale] Failed to send BUY_PRODUCT:', error);
+    }
   };
 
   const currentPlayer = gameState?.players?.find(player => player.user_id === myUserId) || {};
@@ -379,7 +290,7 @@ const Wholesale = () => {
   return (
     <div className="container-fluid">
       <div className="row flex-column flex-sm-row">
-        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column  align-items-center text-center">
           <div className="row flex-column flex-sm-row">
             <h2>Wholesale Marketplace</h2>
 
@@ -477,19 +388,29 @@ const Wholesale = () => {
                 )}
               </Modal.Body>
 
-              <Modal.Footer>
+              <Modal.Footer className="d-flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => setShowModal(false)}>
-                  Отмена
+                  {t('wholesaleCancel')}
                 </Button>
 
                 <Button
                   variant="primary"
-                  onClick={handleConfirmProduct}
+                  onClick={() => handleConfirmProduct(false)}
                   disabled={
                     !isAuthorized || !selectedProduct || !myTurn || !enoughCoinsForSelectedProduct
                   }
                 >
-                  Подтвердить выбор
+                  {t('wholesaleBuyAndContinue')}
+                </Button>
+
+                <Button
+                  variant="success"
+                  onClick={() => handleConfirmProduct(true)}
+                  disabled={
+                    !isAuthorized || !selectedProduct || !myTurn || !enoughCoinsForSelectedProduct
+                  }
+                >
+                  {t('wholesaleBuyAndGoToMarket')}
                 </Button>
               </Modal.Footer>
             </Modal>

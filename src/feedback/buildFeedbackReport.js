@@ -140,6 +140,9 @@ function summarizePlayer(player) {
     className: player.className,
     color: player.color,
     isHost: player.isHost,
+    isBot: player.isBot,
+    botPolicyVersion: player.botPolicyVersion,
+    botBehaviorProfile: player.botBehaviorProfile,
     disconnected: player.disconnected,
     coins: player.coins,
     tradersCount: player.tradersCount,
@@ -182,18 +185,24 @@ function summarizeCoinsLog(gameState, myUserId) {
   if (typeof window === 'undefined' || !myUserId) return [];
 
   const gameId = gameState?.gameId || 'defaultGame';
-  const storageKey = `coinsLog:${gameId}:${myUserId}`;
+  const newStorageKey = `debugCoinHistory:${gameId}`;
+  const legacyStorageKey = `coinsLog:${gameId}:${myUserId}`;
 
   try {
-    const parsed = JSON.parse(window.sessionStorage.getItem(storageKey) || '[]');
-    if (!Array.isArray(parsed)) return [];
+    const historyByPlayer = JSON.parse(window.sessionStorage.getItem(newStorageKey) || '{}');
+    const currentHistory = Array.isArray(historyByPlayer?.[myUserId])
+      ? historyByPlayer[myUserId]
+      : null;
+    const legacyHistory = JSON.parse(window.sessionStorage.getItem(legacyStorageKey) || '[]');
+    const entries = currentHistory || (Array.isArray(legacyHistory) ? legacyHistory : []);
 
-    return parsed.slice(0, MAX_COINS_LOG_ENTRIES).map(entry =>
+    return entries.slice(0, MAX_COINS_LOG_ENTRIES).map(entry =>
       compactObject({
         ts: entry?.ts,
         before: entry?.before,
         delta: entry?.delta,
         after: entry?.after,
+        reasonType: entry?.reasonType,
         reason: entry?.reason,
         source: entry?.source,
         cardId: entry?.cardId,
