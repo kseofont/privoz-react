@@ -7,16 +7,12 @@ import {
   handleEndRound,
   getField,
   startEventChoicePhase,
-  applyPlayerEventChoice,
   areAllEventChoicesIn,
   finalizeEndRoundWithEvents,
-  makeEventChoiceMessage,
-  makeEventLogAckMessage,
-  clearEventLogForUser,
 } from '../logic/logic';
 import { connectionsRef } from '../globals';
 import { applyHostGameAction, handleHostGameAction } from '../game/hostActionHandler';
-import { endTurnAction } from '../game/actions';
+import { ackEventResultsAction, endTurnAction, submitEventChoicesAction } from '../game/actions';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import CurrentPlayerInfo from './CurrentPlayerInfo';
@@ -73,6 +69,7 @@ const Menu = ({
   // Текущий игрок и другие игроки
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
   const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
+  const currentUserIsBot = currentUserData?.isBot === true;
 
   // Для каких страниц показываем кнопку "Конец хода"
   const specialPages = ['/game', '/traders', '/wholesale', '/eventcards'];
@@ -93,29 +90,13 @@ const Menu = ({
   // Показываем модалку только когда есть логи И они ещё не подтверждены локально
   useEffect(() => {
     const hasMyLogs = !!gameState?.eventResultLog?.[myUserId]?.length;
-    if (hasMyLogs && !resultsAcked) setShowResultModal(true);
+    if (hasMyLogs && !resultsAcked && !currentUserIsBot) setShowResultModal(true);
     if (!hasMyLogs) {
       // как только хост очистил логи и прислал стейт — сбрасываем локальный флаг
       setResultsAcked(false);
       setShowResultModal(false);
     }
-  }, [gameState?.eventResultLog, myUserId, resultsAcked]);
-
-  // очищаем только мой лог (чтобы не трогать чужие)
-  const clearMyLogs = () => {
-    if (!setGameState) return;
-    setGameState(prev => {
-      const current = prev?.eventResultLog || {};
-      return {
-        ...prev,
-        eventResultLog: {
-          ...current,
-          [myUserId]: [],
-        },
-      };
-    });
-    setShowResultModal(false);
-  };
+  }, [gameState?.eventResultLog, myUserId, resultsAcked, currentUserIsBot]);
 
   // const roundNum = gameState?.round || 1;
 
@@ -149,25 +130,34 @@ const Menu = ({
     return result;
   }
 
-  // Клиент: «Готово» в модалке — отправляем свой выбор хосту (или применяем локально, если мы хост)
+  // «Готово» в модалке — тот же host-authoritative action для человека и бота.
   const handleSubmitEventChoices = () => {
     setShowEventModal(false);
     setRoundProcessing(true);
 
     const filledChoices = finalizePositiveChoicesForSubmit(currentUserData, lang, positiveChoices);
-
-    const outgoing = makeEventChoiceMessage({
-      userId: myUserId,
+    const action = submitEventChoicesAction({
+      playerId: myUserId,
       positiveChoices: filledChoices,
       effectTargets,
     });
 
-    if (connection) {
-      // клиент -> хост
-      connection.send(outgoing);
-    } else {
-      // хост сам себе
-      setGameState(prev => applyPlayerEventChoice(prev, myUserId, outgoing));
+    if (connection?.open) {
+      connection.send({
+        type: 'gameAction',
+        action,
+      });
+      return;
+    }
+
+    if (isHost) {
+      applyHostGameAction({
+        connectionsRef,
+        setGameState,
+        action,
+        actorId: myUserId,
+        onAcceptedAction: recordAcceptedLearningDecision,
+      });
     }
   };
 
@@ -193,6 +183,7 @@ const Menu = ({
 
   useEffect(() => {
     if (
+      !currentUserIsBot &&
       gameState?.phase === PHASES.PERSONAL_EVENTS &&
       gameState?.eventCardPhase &&
       !gameState?.eventCardPhase[myUserId]
@@ -201,7 +192,7 @@ const Menu = ({
     } else {
       setShowEventModal(false);
     }
-  }, [gameState?.phase, gameState?.eventCardPhase, myUserId]);
+  }, [gameState?.phase, gameState?.eventCardPhase, myUserId, currentUserIsBot]);
 
   // const allEventChoicesDone =
   //   gameState?.phase === 'eventChoice' &&
@@ -266,10 +257,7 @@ const Menu = ({
   // Menu присутствует на всех игровых страницах, поэтому host продолжает
   // принимать gameAction даже после перехода между страницами.
   //
-  // Здесь пока обрабатываем:
-  // - gameAction (новый host-authoritative flow)
-  // - eventCardChoiceDone (legacy event flow)
-  // - ackEventResults (legacy event-result ACK)
+  // Здесь обрабатываем все migrated gameAction, включая personal events/ACK.
   useEffect(() => {
     if (!isHost || typeof setGameState !== 'function' || !Array.isArray(connectionsRef.current)) {
       return undefined;
@@ -284,23 +272,6 @@ const Menu = ({
     const subscriptions = connectionsRef.current.map(conn => {
       const onData = data => {
         gameActionHandler(data, conn);
-
-        if (data?.type === 'eventCardChoiceDone') {
-          const authoritativeUserId = conn.peer;
-
-          setGameState(prev =>
-            applyPlayerEventChoice(prev, authoritativeUserId, {
-              ...data,
-              userId: authoritativeUserId,
-            })
-          );
-
-          return;
-        }
-
-        if (data?.type === 'ackEventResults') {
-          setGameState(prev => clearEventLogForUser(prev, conn.peer));
-        }
       };
 
       conn.on('data', onData);
@@ -369,33 +340,19 @@ const Menu = ({
   // }, [gameState?.eventResultLog, myUserId]);
   // показываем только если есть строки И nonce больше, чем уже видели
   useEffect(() => {
-    if (myLogs.length > 0 && currentNonce > lastSeenRef.current) {
+    if (!currentUserIsBot && myLogs.length > 0 && currentNonce > lastSeenRef.current) {
       setShowResultModal(true);
     }
-  }, [myLogs.length, currentNonce]);
+  }, [myLogs.length, currentNonce, currentUserIsBot]);
 
   useEffect(() => {
-    const shouldShow = myLogs.length > 0 && !resultsAcked;
+    const shouldShow = !currentUserIsBot && myLogs.length > 0 && !resultsAcked;
     // на всякий случай закроем модал выбора перед показом результатов
     if (shouldShow) setShowEventModal(false);
     setShowResultModal(shouldShow);
-  }, [myLogs.length, resultsAcked]);
+  }, [myLogs.length, resultsAcked, currentUserIsBot]);
 
-  // 2) Закрытие модала результатов + ACK -> хосту/очистка
-  // const onResultsOk = () => {
-  //   console.log('click onResultsOk');
-  //   // зафиксировать текущую версию как «увиденную», чтобы не автопоказывать её снова
-  //   const sig = myLogs.length ? JSON.stringify(myLogs) : '';
-  //   lastSeenLogSigRef.current = sig;
-  //   setShowResultModal(false);
-  //   //  setResultsAcked(true);
-
-  //   if (connection) {
-  //     connection.send(makeEventLogAckMessage(myUserId));
-  //   } else if (setGameState) {
-  //     setGameState(prev => clearEventLogForUser(prev, myUserId));
-  //   }
-  // };
+  // 2) Закрытие модала результатов + host-authoritative ACK.
   const onResultsOk = () => {
     setShowResultModal(false);
 
@@ -403,27 +360,44 @@ const Menu = ({
     lastSeenRef.current = currentNonce;
     sessionStorage.setItem(seenKey, String(currentNonce));
 
-    // отправляем ACK хосту или чистим локально (соло)
-    if (connection) {
-      connection.send(makeEventLogAckMessage(myUserId));
-    } else if (setGameState) {
-      setGameState(prev => clearEventLogForUser(prev, myUserId));
+    const action = ackEventResultsAction({ playerId: myUserId });
+
+    if (connection?.open) {
+      connection.send({
+        type: 'gameAction',
+        action,
+      });
+    } else if (isHost) {
+      applyHostGameAction({
+        connectionsRef,
+        setGameState,
+        action,
+        actorId: myUserId,
+        onAcceptedAction: recordAcceptedLearningDecision,
+      });
     }
   };
   // на случай ухода со страницы до клика — шлём ACK/помечаем как увиденное
   useEffect(() => {
     return () => {
-      if (showResultModal) {
+      if (showResultModal && !currentUserIsBot) {
         lastSeenRef.current = currentNonce;
         sessionStorage.setItem(seenKey, String(currentNonce));
-        if (connection) {
-          connection.send(makeEventLogAckMessage(myUserId));
-        } else if (setGameState) {
-          setGameState(prev => clearEventLogForUser(prev, myUserId));
+        const action = ackEventResultsAction({ playerId: myUserId });
+        if (connection?.open) {
+          connection.send({ type: 'gameAction', action });
+        } else if (isHost) {
+          applyHostGameAction({
+            connectionsRef,
+            setGameState,
+            action,
+            actorId: myUserId,
+            onAcceptedAction: recordAcceptedLearningDecision,
+          });
         }
       }
     };
-  }, [showResultModal, currentNonce, connection, myUserId, setGameState]);
+  }, [showResultModal, currentNonce, connection, myUserId, setGameState, isHost, currentUserIsBot]);
 
   // log of coins
   // Внутри Menu
@@ -689,7 +663,9 @@ const Menu = ({
                       {card.goal_action === 'player' && (
                         <div>
                           <p>Выберите игрока:</p>
-                          {gameState.players.map(user => (
+                          {gameState.players
+                            .filter(user => user.user_id !== myUserId)
+                            .map(user => (
                             <Button
                               key={user.user_id}
                               variant={
@@ -719,6 +695,7 @@ const Menu = ({
                           {[
                             ...new Set(
                               gameState.players
+                                .filter(p => p.user_id !== myUserId)
                                 .flatMap(p => (p.traders || []).map(t => t.location))
                                 .filter(Boolean)
                             ),
@@ -750,6 +727,7 @@ const Menu = ({
                         <div>
                           <p>Выберите торговца:</p>
                           {gameState.players
+                            .filter(p => p.user_id !== myUserId)
                             .flatMap(p => p.traders || [])
                             .map(trader => (
                               <Button

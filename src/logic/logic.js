@@ -222,30 +222,6 @@ export function startEventChoicePhase(prevGameState) {
 }
 
 /**
- * Кладём выбор конкретного игрока в gameState (может вызываться у хоста или локально, если хост сам себе).
- * positiveChoices: { [cardKey]: 'keep' | 'use' }
- * effectTargets:   { [cardId]: { playerId?, sector?, traderId? } }
- */
-export function applyPlayerEventChoice(
-  prevGameState,
-  userId,
-  { positiveChoices = {}, effectTargets = {} }
-) {
-  if (!prevGameState) return prevGameState;
-  return {
-    ...prevGameState,
-    eventCardPhase: {
-      ...(prevGameState.eventCardPhase || {}),
-      [userId]: true,
-    },
-    playerEventChoices: {
-      ...(prevGameState.playerEventChoices || {}),
-      [userId]: { positiveChoices, effectTargets },
-    },
-  };
-}
-
-/**
  * Проверка: все ли игроки сдали выборы.
  */
 export function areAllEventChoicesIn(gameState) {
@@ -1079,16 +1055,6 @@ export function finalizeEndRoundWithEvents({
 
 // logic/logic.js
 
-/** упаковать сообщение от клиента с выбором */
-export function makeEventChoiceMessage({ userId, positiveChoices, effectTargets }) {
-  return {
-    type: 'eventCardChoiceDone',
-    userId,
-    positiveChoices,
-    effectTargets,
-  };
-}
-
 /** разослать всем новое состояние (хост) */
 export function broadcastState(connectionsRef, state) {
   if (!connectionsRef?.current) return;
@@ -1097,17 +1063,4 @@ export function broadcastState(connectionsRef, state) {
       conn.send({ type: 'gameState', gameState: state });
     } catch {}
   });
-}
-
-// Очистить логи для конкретного игрока (можно вызывать у хоста)
-export function clearEventLogForUser(prevGameState, userId) {
-  if (!prevGameState?.eventResultLog) return prevGameState;
-  const nextLog = { ...prevGameState.eventResultLog };
-  nextLog[userId] = [];
-  return { ...prevGameState, eventResultLog: nextLog };
-}
-
-// Сообщение-ACK от клиента хосту
-export function makeEventLogAckMessage(userId) {
-  return { type: 'ackEventResults', userId };
 }

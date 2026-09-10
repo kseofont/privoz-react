@@ -1,12 +1,13 @@
 import { PHASES } from '../../game/phases';
 import { MAX_TRADER_GOODS, normalizeSectorKey } from '../../game/placeTraderRules';
-import policy from '../policies/policy-v004.json';
+import policy from '../policies/policy-v005.json';
 
 export const BOT_DECISION_TYPES = Object.freeze({
   SELECT_TRADER: 'select_trader',
   BUY_PRODUCT: 'buy_product',
   PLACE_TRADER: 'place_trader',
   END_TURN: 'end_turn',
+  SUBMIT_EVENT_CHOICES: 'submit_event_choices',
 });
 
 export const BOT_BEHAVIOR_PROFILES = Object.freeze([
@@ -359,6 +360,253 @@ function decidePlacement(observation, behaviorProfile) {
   };
 }
 
+
+function normalizeObservedSector(value) {
+  return normalizeSectorKey(value || '');
+}
+
+function getEventProfile(behaviorProfile) {
+  const profileId = normalizeBotBehaviorProfile(behaviorProfile);
+
+  return {
+    id: profileId,
+    config:
+      policy.eventChoice?.profiles?.[profileId] ||
+      policy.eventChoice?.profiles?.[policy.defaultBehaviorProfile] ||
+      {},
+  };
+}
+
+function hasUsefulPositiveEventTarget(card, observation) {
+  const effects = Array.isArray(card?.effect) ? card.effect : [];
+  const placedWithGoods = (observation.self?.traders || []).filter(
+    trader => trader?.location && Array.isArray(trader.goods) && trader.goods.length > 0
+  );
+
+  if (effects.some(effect => effect?.extra_product)) {
+    return placedWithGoods.length > 0;
+  }
+
+  if (effects.some(effect => effect?.extra_price)) {
+    return placedWithGoods.length > 0;
+  }
+
+  if (card?.goalItem === 'trader') {
+    return (observation.self?.traders || []).some(trader => trader?.location);
+  }
+
+  return true;
+}
+
+function hasIllegalGoodsOnOwnBoard(observation) {
+  return (observation.self?.traders || []).some(trader =>
+    (trader.goods || []).some(good => good?.legality === 'illegal')
+  );
+}
+
+function choosePositiveEventAction(card, observation, config) {
+  const keepCost = Math.max(0, Number(policy.eventChoice?.keepCost || 5));
+  const canKeep = Number(observation.self?.coins || 0) >= keepCost;
+  const effectiveNow = hasUsefulPositiveEventTarget(card, observation);
+
+  switch (config.positiveMode) {
+    case 'use_now':
+      return 'use';
+
+    case 'keep_if_affordable':
+      return canKeep ? 'keep' : 'use';
+
+    case 'use_if_illegal_goods':
+      if (hasIllegalGoodsOnOwnBoard(observation) && effectiveNow) {
+        return 'use';
+      }
+      return canKeep ? 'keep' : 'use';
+
+    case 'use_if_effective':
+    default:
+      if (effectiveNow) {
+        return 'use';
+      }
+      return canKeep ? 'keep' : 'use';
+  }
+}
+
+function buildOpponentSectorStats(observation) {
+  const stats = new Map();
+
+  (observation.visibleOpponents || []).forEach(opponent => {
+    (opponent.traders || []).forEach(trader => {
+      if (!trader?.location) {
+        return;
+      }
+
+      const sector = trader.location;
+      const sectorKey = normalizeObservedSector(sector);
+      const current = stats.get(sectorKey) || {
+        sector,
+        traderCount: 0,
+        unprotectedTraders: 0,
+        goodsCount: 0,
+        illegalGoods: 0,
+        mismatchedGoods: 0,
+        goodsValue: 0,
+      };
+
+      current.traderCount += 1;
+      if (!trader.protectedFromIllegalInspection) {
+        current.unprotectedTraders += 1;
+      }
+
+      (trader.goods || []).forEach(good => {
+        const quantity = Math.max(1, Number(good?.quantity || 1));
+        current.goodsCount += quantity;
+        current.goodsValue += Number(good?.sellingPrice || good?.profit || 0) * quantity;
+
+        if (good?.legality === 'illegal') {
+          current.illegalGoods += quantity;
+        }
+
+        if (
+          good?.sector &&
+          normalizeObservedSector(good.sector) !== normalizeObservedSector(trader.location)
+        ) {
+          current.mismatchedGoods += quantity;
+        }
+      });
+
+      stats.set(sectorKey, current);
+    });
+  });
+
+  return [...stats.values()];
+}
+
+function scoreNegativeSectorTarget(stat, observation, mode) {
+  const ownSectors = new Set(
+    (observation.self?.traders || [])
+      .flatMap(trader => [trader.location, trader.favoriteSector])
+      .filter(Boolean)
+      .map(normalizeObservedSector)
+  );
+
+  const inOwnCompetition = ownSectors.has(normalizeObservedSector(stat.sector));
+
+  switch (mode) {
+    case 'max_damage':
+      return stat.unprotectedTraders * 140 + stat.goodsCount * 45 + stat.goodsValue;
+
+    case 'own_sector_competition':
+      return (
+        (inOwnCompetition ? 260 : 0) +
+        stat.unprotectedTraders * 70 +
+        stat.goodsCount * 20 +
+        stat.illegalGoods * 30
+      );
+
+    case 'crowded_sector':
+      return stat.traderCount * 140 + stat.goodsCount * 25 + stat.unprotectedTraders * 20;
+
+    case 'illegal_competition':
+      return (
+        stat.illegalGoods * 240 +
+        stat.mismatchedGoods * 180 +
+        stat.unprotectedTraders * 35 +
+        stat.goodsCount * 10
+      );
+
+    case 'illegal_exposure':
+    default:
+      return (
+        stat.illegalGoods * 220 +
+        stat.mismatchedGoods * 160 +
+        stat.unprotectedTraders * 40 +
+        stat.goodsCount * 12
+      );
+  }
+}
+
+function chooseNegativeSectorTarget(observation, mode) {
+  const candidates = buildOpponentSectorStats(observation)
+    .map(stat => ({
+      ...stat,
+      score: scoreNegativeSectorTarget(stat, observation, mode),
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      return String(a.sector).localeCompare(String(b.sector));
+    });
+
+  return candidates[0]?.sector || null;
+}
+
+function choosePositiveTraderTarget(observation) {
+  const traders = (observation.self?.traders || [])
+    .filter(trader => trader?.traderId && trader?.location)
+    .sort((a, b) => {
+      if ((b.goods?.length || 0) !== (a.goods?.length || 0)) {
+        return (b.goods?.length || 0) - (a.goods?.length || 0);
+      }
+      return String(a.traderId).localeCompare(String(b.traderId));
+    });
+
+  return traders[0]?.traderId || null;
+}
+
+function decideEventChoices(observation, behaviorProfile) {
+  if (
+    observation.phase !== PHASES.PERSONAL_EVENTS ||
+    observation.self?.eventChoicePending !== true
+  ) {
+    return null;
+  }
+
+  const { id: profileId, config } = getEventProfile(behaviorProfile);
+  const positiveChoices = {};
+  const effectTargets = {};
+
+  (observation.self?.eventCards || []).forEach(card => {
+    if (!card?.cardId) {
+      return;
+    }
+
+    if (card.fortune === 'positive') {
+      const choice = choosePositiveEventAction(card, observation, config);
+      positiveChoices[card.cardId] = choice;
+
+      if (choice === 'use' && card.goalAction === 'trader') {
+        const traderId = choosePositiveTraderTarget(observation);
+        if (traderId) {
+          effectTargets[card.cardId] = { traderId };
+        }
+      }
+
+      return;
+    }
+
+    if (card.fortune === 'negative' && card.goalAction === 'sector') {
+      const sector = chooseNegativeSectorTarget(
+        observation,
+        config.negativeTargetMode || 'illegal_exposure'
+      );
+
+      if (sector) {
+        effectTargets[card.cardId] = { sector };
+      }
+    }
+  });
+
+  return {
+    type: BOT_DECISION_TYPES.SUBMIT_EVENT_CHOICES,
+    positiveChoices,
+    effectTargets,
+    behaviorProfile: profileId,
+    policyVersion: policy.version,
+  };
+}
+
 /**
  * Small deployable policy used by the website.
  *
@@ -369,6 +617,10 @@ function decidePlacement(observation, behaviorProfile) {
 export async function decideWithPolicy(observation, context = {}) {
   if (!observation) {
     return null;
+  }
+
+  if (context.stage === 'personal_events') {
+    return decideEventChoices(observation, context.behaviorProfile);
   }
 
   if (context.stage === 'wholesale') {

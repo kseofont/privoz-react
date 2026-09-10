@@ -1,5 +1,6 @@
 import {
   buyProductAction,
+  submitEventChoicesAction,
   endTurnAction,
   placeTraderAction,
   selectTraderAction,
@@ -52,6 +53,13 @@ export function botDecisionToAction(decision, playerId) {
 
     case BOT_DECISION_TYPES.END_TURN:
       return endTurnAction({ playerId });
+
+    case BOT_DECISION_TYPES.SUBMIT_EVENT_CHOICES:
+      return submitEventChoicesAction({
+        playerId,
+        positiveChoices: decision.positiveChoices || {},
+        effectTargets: decision.effectTargets || {},
+      });
 
     default:
       return null;

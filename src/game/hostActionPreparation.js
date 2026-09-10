@@ -1,5 +1,6 @@
 import { ACTION_TYPES } from './actions';
 import { chooseRandomEventCardId } from './eventCards';
+import { validateAndNormalizeEventChoice } from './eventChoiceRules';
 
 /**
  * Convert a client/host intent into the action that is allowed to reach
@@ -22,6 +23,15 @@ export function prepareAuthoritativeGameAction(gameState, incomingAction, actorI
     const productIds = Array.isArray(payload.productIds) ? payload.productIds : [];
 
     payload.eventCardId = productIds.length > 0 ? chooseRandomEventCardId(gameState) : null;
+  }
+
+  if (incomingAction.type === ACTION_TYPES.SUBMIT_EVENT_CHOICES) {
+    const validation = validateAndNormalizeEventChoice(gameState, payload);
+
+    if (validation.ok) {
+      payload.positiveChoices = validation.positiveChoices;
+      payload.effectTargets = validation.effectTargets;
+    }
   }
 
   return {

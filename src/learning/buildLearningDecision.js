@@ -1,6 +1,7 @@
 import { ACTION_TYPES } from '../game/actions';
 import { buildPlayerObservation } from '../bot/observation/buildPlayerObservation';
 import { MAX_TRADER_GOODS, normalizeSectorKey } from '../game/placeTraderRules';
+import { EVENT_KEEP_COST, getValidEventTargets } from '../game/eventChoiceRules';
 
 function sanitizeIdPart(value) {
   const normalized = value === null || value === undefined || value === '' ? 'unknown' : value;
@@ -103,6 +104,84 @@ function getLegalPlaceTraderActions(observation) {
   );
 }
 
+
+function getLegalEventChoiceActions(beforeState, actorId, observation) {
+  if (
+    !observation ||
+    observation.phase !== 'personal_events' ||
+    observation.self?.eventChoicePending !== true
+  ) {
+    return [];
+  }
+
+  const cards = (observation.self?.eventCards || []).map(card => {
+    const sourceCard = beforeState.players
+      ?.find(player => player.user_id === actorId)
+      ?.eventCards?.find(currentCard => currentCard.id === card.cardId);
+    const validTargets = getValidEventTargets(beforeState, actorId, sourceCard);
+
+    return {
+      cardId: card.cardId,
+      fortune: card.fortune,
+      choices:
+        card.fortune === 'positive'
+          ? Number(observation.self?.coins || 0) >= EVENT_KEEP_COST
+            ? ['use', 'keep']
+            : ['use']
+          : ['use'],
+      targets: {
+        sectors: validTargets.sectors,
+        traderIds: validTargets.traderIds,
+        playerActorIndexes: validTargets.playerIds
+          .map(playerId => beforeState.players.findIndex(player => player.user_id === playerId))
+          .filter(index => index >= 0),
+      },
+    };
+  });
+
+  return [
+    {
+      type: ACTION_TYPES.SUBMIT_EVENT_CHOICES,
+      cards,
+    },
+  ];
+}
+
+function sanitizeLearningEffectTargets(beforeState, effectTargets = {}) {
+  const next = {};
+
+  Object.entries(effectTargets || {}).forEach(([cardId, target]) => {
+    if (!target || typeof target !== 'object') {
+      return;
+    }
+
+    const compactTarget = {};
+
+    if (typeof target.sector === 'string' && target.sector) {
+      compactTarget.sector = target.sector;
+    }
+
+    if (target.traderId) {
+      compactTarget.traderId = target.traderId;
+    }
+
+    if (target.playerId) {
+      const actorIndex =
+        beforeState.players?.findIndex(player => player.user_id === target.playerId) ?? -1;
+
+      if (actorIndex >= 0) {
+        compactTarget.actorIndex = actorIndex;
+      }
+    }
+
+    if (Object.keys(compactTarget).length > 0) {
+      next[cardId] = compactTarget;
+    }
+  });
+
+  return next;
+}
+
 function buildCompactObservation(observation, actionType) {
   const compact = {
     phase: observation.phase,
@@ -142,6 +221,18 @@ function buildCompactObservation(observation, actionType) {
         products: observation.self.products,
       },
       visibleSectors: observation.visibleSectors,
+    };
+  }
+
+  if (actionType === ACTION_TYPES.SUBMIT_EVENT_CHOICES) {
+    return {
+      ...compact,
+      self: {
+        ...compact.self,
+        traders: observation.self.traders,
+        eventCards: observation.self.eventCards,
+      },
+      visibleOpponents: observation.visibleOpponents,
     };
   }
 
@@ -191,6 +282,16 @@ function buildPlaceTraderEventId({ beforeState, actorIndex, observation, action 
   ].join('-');
 }
 
+
+function buildEventChoiceEventId({ beforeState, actorIndex }) {
+  return [
+    'LE',
+    'EVENT',
+    sanitizeIdPart(beforeState.round || 0),
+    sanitizeIdPart(actorIndex),
+  ].join('-');
+}
+
 /**
  * Build a privacy-minimized learning sample for an accepted action.
  *
@@ -205,7 +306,8 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
   if (
     action.type !== ACTION_TYPES.SELECT_TRADER &&
     action.type !== ACTION_TYPES.BUY_PRODUCT &&
-    action.type !== ACTION_TYPES.PLACE_TRADER
+    action.type !== ACTION_TYPES.PLACE_TRADER &&
+    action.type !== ACTION_TYPES.SUBMIT_EVENT_CHOICES
   ) {
     return null;
   }
@@ -276,10 +378,20 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
     };
   }
 
+  if (action.type === ACTION_TYPES.SUBMIT_EVENT_CHOICES) {
+    eventId = buildEventChoiceEventId({ beforeState, actorIndex });
+    legalActions = getLegalEventChoiceActions(beforeState, actorId, observation);
+    selectedAction = {
+      type: ACTION_TYPES.SUBMIT_EVENT_CHOICES,
+      positiveChoices: action.payload?.positiveChoices || {},
+      effectTargets: sanitizeLearningEffectTargets(beforeState, action.payload?.effectTargets || {}),
+    };
+  }
+
   const players = Array.isArray(beforeState.players) ? beforeState.players : [];
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     gameId: beforeState.gameId,
     eventId,
     gameVersion: appVersion?.version || 'dev',

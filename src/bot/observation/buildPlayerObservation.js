@@ -33,8 +33,8 @@ function getEnglishField(value) {
  * player is allowed to know.
  *
  * The whitelist is expanded action-by-action. SELECT_TRADER, BUY_PRODUCT
- * and PLACE_TRADER use only public market data plus the represented
- * player's own inventory/trader information.
+ * PLACE_TRADER and personal event choices use only public board data plus
+ * the represented player's own inventory/trader/event-card information.
  */
 export function buildPlayerObservation(gameState, playerId) {
   if (!gameState || !playerId || !Array.isArray(gameState.players)) {
@@ -58,7 +58,7 @@ export function buildPlayerObservation(gameState, playerId) {
   const playerProducts = Array.isArray(player.products) ? player.products : [];
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: gameState.phase || null,
     round: Number(gameState.round || 0),
     currentTurnUserId: gameState.currentTurnUserId || null,
@@ -82,7 +82,25 @@ export function buildPlayerObservation(gameState, playerId) {
           getEnglishField(trader?.best_sector) ||
           null,
         goodsCount: Array.isArray(trader?.goods) ? trader.goods.length : 0,
+        goods: (trader?.goods || []).map(good => ({
+          productId: good?.productId ?? null,
+          sector: normalizeProductSector(good),
+          legality: normalizeProductLegality(good),
+          sellingPrice: Number(good?.sellingPrice || 0),
+          profit: Number(good?.profit || 0),
+          quantity: Number(good?.quantity_player_card || 1),
+        })),
+        protectedFromIllegalInspection: !!(trader?.Illigal_protection || trader?.illegal_protection),
       })),
+      eventCards: (player.eventCards || []).map(card => ({
+        cardId: card?.id || null,
+        fortune: card?.fortune || null,
+        goalAction: card?.goal_action || null,
+        goalItem: card?.goal_item || null,
+        effect: Array.isArray(card?.effect) ? card.effect : [],
+      })),
+      eventChoicePending:
+        gameState.phase === 'personal_events' && gameState.eventCardPhase?.[playerId] === false,
       products: playerProducts
         .filter(product => product?.productId !== null && product?.productId !== undefined)
         .map(product => ({
@@ -94,6 +112,31 @@ export function buildPlayerObservation(gameState, playerId) {
           profit: Number(product.profit || 0),
         })),
     },
+
+    visibleOpponents: gameState.players
+      .map((currentPlayer, actorIndex) => ({ currentPlayer, actorIndex }))
+      .filter(({ currentPlayer }) => currentPlayer.user_id !== playerId)
+      .map(({ currentPlayer, actorIndex }) => ({
+        actorIndex,
+        coins: Number(currentPlayer.coins || 0),
+        traders: (currentPlayer.traders || [])
+          .filter(trader => trader?.traderId && trader?.location)
+          .map(trader => ({
+            traderId: trader.traderId,
+            location: trader.location,
+            protectedFromIllegalInspection: !!(
+              trader?.Illigal_protection || trader?.illegal_protection
+            ),
+            goods: (trader.goods || []).map(good => ({
+              productId: good?.productId ?? null,
+              sector: normalizeProductSector(good),
+              legality: normalizeProductLegality(good),
+              sellingPrice: Number(good?.sellingPrice || 0),
+              profit: Number(good?.profit || 0),
+              quantity: Number(good?.quantity_player_card || 1),
+            })),
+          })),
+      })),
 
     visibleTraders: traderList.map(trader => ({
       traderId: trader?.traderId || null,

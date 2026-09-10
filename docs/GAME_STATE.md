@@ -1513,3 +1513,144 @@ Required tests before commit:
 - manual Host + multiple bots test.
 
 Stage 7 does NOT migrate the full round-end/event-choice system. That remains separate follow-up work.
+
+## Current Bot Player stage - personal event choices / automatic result ACK (policy-v005)
+
+Stage 8A removes the current round-transition blocker for bots without defining final game outcome rules yet.
+
+Scope of Stage 8A:
+
+- personal event choices;
+- bot keep/use decisions for positive cards;
+- bot target selection for negative cards;
+- host-authoritative validation of event submissions;
+- automatic bot ACK of event-result messages/modals;
+- privacy-safe learning samples for strategic event choices.
+
+Game outcome/final ranking is intentionally deferred to Stage 8B because the authoritative game-length/end trigger still needs to be defined explicitly.
+
+Personal event submission now follows the normal gameplay path:
+
+human or bot decision
+
+→ SUBMIT_EVENT_CHOICES action
+
+→ HOST assigns authoritative playerId
+
+→ host validates/normalizes choices and targets
+
+→ reducer marks that player's event choice complete
+
+→ authoritative gameState
+
+→ broadcast
+
+When every player has submitted, the existing host round-finalization flow applies the selected card effects and advances the round.
+
+The old direct PeerJS messages eventCardChoiceDone and ackEventResults are removed from the active Menu flow. Human UI and bots use gameAction for these interactions.
+
+### Event-choice validation
+
+The host accepts choices only for cards actually owned by the acting player.
+
+Positive cards support the existing prototype choices:
+
+- keep - pay 5 coins and retain the card when affordable;
+- use - apply the card now and consume it.
+
+Targets are sanitized according to card goal/fortune:
+
+- negative sector targets may reference only sectors containing opponents' placed traders;
+- negative trader targets may reference only opponents' placed traders;
+- negative player targets may reference only opponents;
+- positive trader targets may reference only the acting player's placed traders.
+
+Invalid/spoofed targets are removed by the host before the reducer stores the choice.
+
+### Bot event behavior
+
+Bot personal-event decisions are simultaneous round decisions and therefore do NOT depend on currentTurnUserId.
+
+BotPlayerController checks PERSONAL_EVENTS before normal per-turn lifecycle handling. A bot whose eventCardPhase entry is still false submits exactly one host-authoritative event decision for that round.
+
+policy-v005 keeps the previous trader/wholesale/placement/end-turn behavior and adds event-choice strategy families.
+
+Initial deterministic event strategies:
+
+- balanced - uses a positive card when its effect is useful now; negative sector cards prioritize illegal/off-sector exposure;
+- all_in - uses positive cards immediately and targets the largest immediate damage opportunity;
+- saver - avoids paying the keep cost when possible and uses positive cards immediately;
+- specialist - favors event pressure in sectors where it competes/operates;
+- diversifier - may keep a positive card when affordable and attacks crowded opponent sectors;
+- smuggler - uses positive cards immediately when they reinforce its illegal goods and strongly targets competing illegal/off-sector goods.
+
+For the current Federal Police card, sector scoring explicitly considers:
+
+- number of illegal goods;
+- goods whose native sector does not match the trader's current sector;
+- unprotected traders;
+- goods count/value.
+
+Therefore a visible opponent selling an illegal product such as Vodka in the Dairy sector is intentionally a high-priority Federal Police target for the relevant baseline strategies.
+
+These are deterministic baseline behaviors for comparison/testing, not optimal-play claims.
+
+### Automatic bot result ACK
+
+Event-result acknowledgement is housekeeping rather than a strategic decision.
+
+Bots do not show the human event-choice/result modals. When eventResultLog contains new rows for a bot, BotPlayerController sends:
+
+ACK_EVENT_RESULTS
+
+through the normal gameAction → HOST → reducer → broadcast path.
+
+The reducer clears only that acting player's result log. The ACK is not stored as a learning decision.
+
+Human players continue to see the result modal and their OK/close flow sends the same host-authoritative ACK action.
+
+### Event learning data
+
+Accepted SUBMIT_EVENT_CHOICES actions are stored as strategic learning decisions using schemaVersion 4.
+
+The event learning observation contains only gameplay-relevant information available to the represented player:
+
+- own coins;
+- own event cards/effects;
+- own placed traders and compact goods;
+- anonymous opponent actor indexes;
+- opponents' publicly visible placed traders/goods;
+- legality/sector/value information needed to evaluate targets.
+
+It does NOT store player names or PeerJS IDs.
+
+The selected action records:
+
+- positive keep/use choices;
+- selected sector/trader targets;
+- player targets as anonymous actor indexes if such cards are introduced.
+
+The legal-action envelope records the available choices/targets for each owned event card.
+
+### Stage 8A validation
+
+Required tests before commit:
+
+- bot submits event choices even when it is not currentTurnUserId;
+- policy-v005 chooses a valid target for Federal Police;
+- illegal Vodka placed in Dairy is preferred over an ordinary legal target by the relevant policy;
+- positive Porters can be used automatically when a useful own trader exists;
+- spoofed playerId is overwritten by HOST;
+- invalid/self targets are removed by HOST;
+- reducer marks only the acting player's eventCardPhase complete;
+- human event modal uses the same SUBMIT_EVENT_CHOICES action;
+- bot automatically ACKs eventResultLog without a click;
+- human result modal uses the same ACK_EVENT_RESULTS action;
+- ACK clears only the acting player's result log;
+- event learning sample is compact and contains no names/PeerJS IDs;
+- existing SELECT_TRADER / BUY_PRODUCT / PLACE_TRADER / END_TURN tests remain green;
+- npm run build;
+- git diff --check;
+- manual Host + multiple bots test through round 1 → personal events → round 2.
+
+Stage 8B will separately define authoritative game completion and final outcome/ranking logging after the game-length/end condition is clarified.

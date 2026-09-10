@@ -7,7 +7,9 @@ function isSupportedHostAction(action) {
     action?.type === ACTION_TYPES.SELECT_TRADER ||
     action?.type === ACTION_TYPES.BUY_PRODUCT ||
     action?.type === ACTION_TYPES.PLACE_TRADER ||
-    action?.type === ACTION_TYPES.END_TURN
+    action?.type === ACTION_TYPES.END_TURN ||
+    action?.type === ACTION_TYPES.SUBMIT_EVENT_CHOICES ||
+    action?.type === ACTION_TYPES.ACK_EVENT_RESULTS
   );
 }
 

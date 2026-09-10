@@ -3,6 +3,7 @@ import { PHASES } from './phases';
 import { awardEventCardById } from './eventCards';
 import { validatePlaceTrader } from './placeTraderRules';
 import { syncPlayerSectorsWithTraders } from './playerDerivedState';
+import { validateAndNormalizeEventChoice } from './eventChoiceRules';
 
 /**
  * Pure game-state reducer.
@@ -32,6 +33,12 @@ export function gameReducer(gameState, action) {
 
     case ACTION_TYPES.END_TURN:
       return reduceEndTurn(gameState, action.payload);
+
+    case ACTION_TYPES.SUBMIT_EVENT_CHOICES:
+      return reduceSubmitEventChoices(gameState, action.payload);
+
+    case ACTION_TYPES.ACK_EVENT_RESULTS:
+      return reduceAckEventResults(gameState, action.payload);
 
     default:
       return gameState;
@@ -371,5 +378,49 @@ function reduceEndTurn(gameState, payload = {}) {
     ...gameState,
     currentTurnUserId: nextUserId,
     waitingForHost: false,
+  };
+}
+
+
+function reduceSubmitEventChoices(gameState, payload = {}) {
+  const validation = validateAndNormalizeEventChoice(gameState, payload);
+
+  if (!validation.ok) {
+    return gameState;
+  }
+
+  const { positiveChoices, effectTargets } = validation;
+  const playerId = payload.playerId;
+
+  return {
+    ...gameState,
+    eventCardPhase: {
+      ...(gameState.eventCardPhase || {}),
+      [playerId]: true,
+    },
+    playerEventChoices: {
+      ...(gameState.playerEventChoices || {}),
+      [playerId]: {
+        positiveChoices,
+        effectTargets,
+      },
+    },
+  };
+}
+
+function reduceAckEventResults(gameState, payload = {}) {
+  const playerId = payload.playerId;
+  const currentLogs = gameState?.eventResultLog?.[playerId];
+
+  if (!playerId || !Array.isArray(currentLogs) || currentLogs.length === 0) {
+    return gameState;
+  }
+
+  return {
+    ...gameState,
+    eventResultLog: {
+      ...(gameState.eventResultLog || {}),
+      [playerId]: [],
+    },
   };
 }

@@ -8,6 +8,8 @@ import {
   normalizeBotBehaviorProfile,
 } from './decisions/PolicyDecisionProvider';
 import { botDecisionToAction } from './actions/botDecisionToAction';
+import { ackEventResultsAction } from '../game/actions';
+import { PHASES } from '../game/phases';
 
 const BOT_STAGES = Object.freeze({
   AWAITING_TURN: 'awaiting_turn',
@@ -81,7 +83,12 @@ function buildDecisionKey(observation, stage, action) {
       ? `${action.payload?.traderId || 'none'}:${action.payload?.sector || 'none'}:${(
           action.payload?.productIds || []
         ).join(',')}`
-      : action.payload?.traderId ?? action.payload?.productId ?? 'none';
+      : action.type === 'SUBMIT_EVENT_CHOICES'
+        ? JSON.stringify({
+            positiveChoices: action.payload?.positiveChoices || {},
+            effectTargets: action.payload?.effectTargets || {},
+          })
+        : action.payload?.traderId ?? action.payload?.productId ?? 'none';
   const traderLocations = (observation.self?.traders || [])
     .map(trader => `${trader.traderId}:${trader.location || 'hand'}`)
     .sort()
@@ -127,6 +134,122 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       return undefined;
     }
 
+    const myEventLogs = gameState?.eventResultLog?.[myUserId] || [];
+    const eventResultNonce = Number(gameState?.eventResultNonce || 0);
+    const lastAckedEventNonce = Number(readStorage(myUserId, 'event-result-ack') || 0);
+
+    /*
+     * Event-result ACK is transport/UI housekeeping, not a strategic
+     * decision. Bots acknowledge it automatically through the same
+     * host-authoritative gameAction channel humans use.
+     */
+    if (
+      myEventLogs.length > 0 &&
+      eventResultNonce > lastAckedEventNonce &&
+      connection?.open &&
+      !decisionInFlightRef.current
+    ) {
+      decisionInFlightRef.current = true;
+
+      const ackAction = ackEventResultsAction({ playerId: myUserId });
+      writeStorage(myUserId, 'event-result-ack', eventResultNonce);
+
+      console.log('[BOT] acknowledging event results:', {
+        eventResultNonce,
+        lines: myEventLogs.length,
+      });
+
+      connection.send({
+        type: 'gameAction',
+        action: ackAction,
+      });
+
+      decisionInFlightRef.current = false;
+      return undefined;
+    }
+
+    /*
+     * Personal event choices are simultaneous round decisions. They are
+     * intentionally handled before myTurn because every player must submit
+     * during PERSONAL_EVENTS regardless of currentTurnUserId.
+     */
+    if (gameState?.phase === PHASES.PERSONAL_EVENTS) {
+      const eventChoicePending = gameState?.eventCardPhase?.[myUserId] === false;
+
+      if (!eventChoicePending || !connection?.open || decisionInFlightRef.current) {
+        return undefined;
+      }
+
+      const observation = buildPlayerObservation(gameState, myUserId);
+
+      if (!observation) {
+        return undefined;
+      }
+
+      const behaviorProfile = normalizeBotBehaviorProfile(
+        player?.botBehaviorProfile || getDefaultBotBehaviorProfile()
+      );
+      let cancelled = false;
+      decisionInFlightRef.current = true;
+
+      const decideAndSubmitEvents = async () => {
+        try {
+          const decision = await decideWithPolicy(observation, {
+            stage: 'personal_events',
+            behaviorProfile,
+          });
+
+          if (cancelled || !decision) {
+            decisionInFlightRef.current = false;
+            return;
+          }
+
+          const action = botDecisionToAction(decision, myUserId);
+
+          if (!action || !connection?.open) {
+            decisionInFlightRef.current = false;
+            return;
+          }
+
+          const decisionKey = buildDecisionKey(observation, 'personal_events', action);
+
+          if (readStorage(myUserId, 'last-event-decision') === decisionKey) {
+            decisionInFlightRef.current = false;
+            return;
+          }
+
+          writeStorage(myUserId, 'last-event-decision', decisionKey);
+
+          console.log('[BOT] sending event choices:', {
+            behaviorProfile,
+            decision,
+            action,
+          });
+
+          connection.send({
+            type: 'gameAction',
+            action,
+          });
+
+          decisionInFlightRef.current = false;
+        } catch (error) {
+          decisionInFlightRef.current = false;
+          writeStorage(myUserId, 'last-event-decision', null);
+          console.error('[BOT] Failed to decide/send event choices:', error);
+        }
+      };
+
+      decideAndSubmitEvents();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (gameState?.phase === PHASES.ROUND_END) {
+      return undefined;
+    }
+
     if (!myTurn) {
       if (getBotStage(myUserId) === BOT_STAGES.END_TURN) {
         console.log('[BOT] turn complete:', {
@@ -139,6 +262,9 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       clearActionGuard(myUserId);
       writeStorage(myUserId, 'pending-trader', null);
       writeStorage(myUserId, 'pending-placement', null);
+      if (gameState?.phase === PHASES.TRADER_SELECTION) {
+        writeStorage(myUserId, 'last-event-decision', null);
+      }
 
       return undefined;
     }

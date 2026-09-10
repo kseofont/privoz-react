@@ -35,7 +35,7 @@ function makeState(overrides = {}) {
         ],
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v004',
+        botPolicyVersion: 'policy-v005',
         botBehaviorProfile: 'balanced',
       },
       {
@@ -45,7 +45,7 @@ function makeState(overrides = {}) {
         traders: [],
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v004',
+        botPolicyVersion: 'policy-v005',
         botBehaviorProfile: 'smuggler',
       },
     ],
@@ -113,7 +113,7 @@ test('host local END_TURN uses the same authoritative apply/broadcast path', () 
   expect(sent.every(message => message.gameState.currentTurnUserId === 'peer-next')).toBe(true);
 });
 
-test('policy-v004 produces a normal END_TURN action after bot turn work is complete', async () => {
+test('policy-v005 produces a normal END_TURN action after bot turn work is complete', async () => {
   const state = makeState();
   const observation = buildPlayerObservation(state, 'peer-bot');
   const decision = await decideWithPolicy(observation, {
@@ -124,7 +124,7 @@ test('policy-v004 produces a normal END_TURN action after bot turn work is compl
 
   expect(decision).toEqual({
     type: 'end_turn',
-    policyVersion: 'policy-v004',
+    policyVersion: 'policy-v005',
   });
   expect(action).toEqual(endTurnAction({ playerId: 'peer-bot' }));
 });

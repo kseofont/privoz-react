@@ -88,7 +88,7 @@ function makeState({ profile = 'balanced', products = makeProducts(), extraPlaye
         products,
         eventCards: [],
         isBot: true,
-        botPolicyVersion: 'policy-v004',
+        botPolicyVersion: 'policy-v005',
         botBehaviorProfile: profile,
       },
       ...extraPlayers,
@@ -244,8 +244,8 @@ test('PLACE_TRADER learning sample is compact and identity-free', () => {
     appVersion: { version: 'test', gitCommit: 'abc123' },
   });
 
-  expect(sample.schemaVersion).toBe(3);
-  expect(sample.policyVersion).toBe('policy-v004');
+  expect(sample.schemaVersion).toBe(4);
+  expect(sample.policyVersion).toBe('policy-v005');
   expect(sample.behaviorProfile).toBe('smuggler');
   expect(sample.selectedAction).toEqual({
     type: 'PLACE_TRADER',
