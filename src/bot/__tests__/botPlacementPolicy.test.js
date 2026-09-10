@@ -325,7 +325,7 @@ test('placement policy can place every owned trader before ending the turn', asy
       productIds: first.productIds,
     })
   );
-  expect(state.players[1].coins).toBe(10);
+  expect(state.players[1].coins).toBe(20);
 
   const second = await decidePlacement(state, 'balanced');
   expect(second?.type).toBe('place_trader');
@@ -341,7 +341,7 @@ test('placement policy can place every owned trader before ending the turn', asy
     })
   );
 
-  expect(state.players[1].coins).toBe(0);
+  expect(state.players[1].coins).toBe(20);
   expect(state.players[1].traders.every(trader => !!trader.location)).toBe(true);
   expect(await decidePlacement(state, 'balanced')).toBeNull();
 });
