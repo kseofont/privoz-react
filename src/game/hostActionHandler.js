@@ -1,5 +1,6 @@
 import { gameReducer } from './reducer';
 import { ACTION_TYPES } from './actions';
+import { prepareAuthoritativeGameAction } from './hostActionPreparation';
 
 /**
  * Handle gameplay actions received by the host.
@@ -22,7 +23,8 @@ export function handleHostGameAction({ connectionsRef, setGameState, onAcceptedA
      */
     if (
       incomingAction.type !== ACTION_TYPES.SELECT_TRADER &&
-      incomingAction.type !== ACTION_TYPES.BUY_PRODUCT
+      incomingAction.type !== ACTION_TYPES.BUY_PRODUCT &&
+      incomingAction.type !== ACTION_TYPES.PLACE_TRADER
     ) {
       return;
     }
@@ -30,22 +32,14 @@ export function handleHostGameAction({ connectionsRef, setGameState, onAcceptedA
     /*
      * SECURITY / AUTHORITY:
      *
-     * Never trust playerId supplied by the client.
-     * PeerJS conn.peer tells the host who actually
-     * sent the action.
+     * Identity and host-only random outcomes are prepared against the
+     * current authoritative state inside setGameState().
      */
-    const authoritativeAction = {
-      ...incomingAction,
-
-      payload: {
-        ...(incomingAction.payload || {}),
-        playerId: conn.peer,
-      },
-    };
-
-    console.log('[HOST] gameAction:', authoritativeAction);
-
     setGameState(prev => {
+      const authoritativeAction = prepareAuthoritativeGameAction(prev, incomingAction, conn.peer);
+
+      console.log('[HOST] gameAction:', authoritativeAction);
+
       const nextState = gameReducer(prev, authoritativeAction);
 
       /*

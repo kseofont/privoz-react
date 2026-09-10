@@ -4,9 +4,27 @@ import { Modal, Button, Row, Col } from 'react-bootstrap';
 
 import Trader from './Trader';
 
-import { player_add_event } from '../logic/logic';
+import { placeTraderAction } from '../game/actions';
+import { gameReducer } from '../game/reducer';
+import { prepareAuthoritativeGameAction } from '../game/hostActionPreparation';
+import {
+  MAX_TRADER_GOODS,
+  isProductAllowedInSector,
+  validatePlaceTrader,
+} from '../game/placeTraderRules';
+import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 
-const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState }) => {
+const PrivozSector = ({
+  category,
+  maxTraders,
+  gameState,
+  myUserId,
+  connection,
+  myTurn,
+  setGameState,
+  broadcastGameState,
+  clickable,
+}) => {
   const { i18n } = useTranslation();
 
   const lang = i18n.language || 'en';
@@ -53,15 +71,6 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
 
   const [selectedProducts, setSelectedProducts] = useState([]);
 
-  const totalTradersCount = player?.tradersCount || 0;
-
-  /*
-   * Existing placement cost.
-   *
-   * Gameplay remains unchanged during this stabilization pass.
-   */
-  const coinsDecrease = totalTradersCount <= 1 ? 0 : totalTradersCount * 5;
-
   const getField = (obj, field, currentLang = 'en') => {
     if (!obj || !obj[field]) {
       return '';
@@ -79,6 +88,10 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
   const playerProducts = player?.products || [];
 
   const handleSectorClick = () => {
+    if (!clickable || !myTurn) {
+      return;
+    }
+
     if (!myTraders.length) {
       setShowNoTradersModal(true);
       return;
@@ -98,220 +111,106 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
     setShowProductSelectModal(true);
   };
 
-  /*
-   * Place trader without products.
-   *
-   * IMPORTANT:
-   * The previous implementation also sent:
-   *
-   * {
-   *   type: 'addTraderToSector'
-   * }
-   *
-   * to the host.
-   *
-   * There is currently no host handler for that message, so it had no
-   * effect. We remove that dead network message now.
-   *
-   * Client state is still synchronized with the host through the existing
-   * endTurn flow, exactly as before.
-   */
-  const handleConfirmAddTrader = () => {
-    if (!selectedTraderForSector) {
-      return;
+  const showValidationError = reason => {
+    if (reason === 'sector_full') {
+      setShowMaxTradersModal(true);
+    } else if (reason === 'not_enough_coins') {
+      setShowNotEnoughMoneyModal(true);
+    } else {
+      console.warn('[PrivozSector] PLACE_TRADER validation failed:', reason);
     }
-
-    setGameState(prev => {
-      if (!prev || !Array.isArray(prev.players)) {
-        return prev;
-      }
-
-      const playerIndex = prev.players.findIndex(
-        currentPlayer => currentPlayer.user_id === myUserId
-      );
-
-      if (playerIndex === -1) {
-        return prev;
-      }
-
-      const currentPlayer = prev.players[playerIndex];
-
-      const tradersInSelectedSector = prev.players
-        .flatMap(current => current.traders || [])
-        .filter(trader => trader.location === category);
-
-      if (tradersInSelectedSector.length >= maxTraders) {
-        setShowMaxTradersModal(true);
-        setShowTraderSelectModal(false);
-
-        return prev;
-      }
-
-      const currentTradersCount = currentPlayer.tradersCount || 0;
-
-      const placementCost = currentTradersCount <= 1 ? 0 : currentTradersCount * 5;
-
-      const updatedCoins = (currentPlayer.coins || 0) - placementCost;
-
-      if (updatedCoins < 0) {
-        setShowNotEnoughMoneyModal(true);
-        setShowTraderSelectModal(false);
-
-        return prev;
-      }
-
-      /*
-       * Compare by traderId instead of object identity.
-       *
-       * This is safer if gameState was refreshed between selecting and
-       * confirming the trader.
-       */
-      const updatedTraders = (currentPlayer.traders || []).map(trader =>
-        trader.traderId === selectedTraderForSector.traderId
-          ? {
-              ...trader,
-
-              card_in_game: `sector_${category}_user_${myUserId}`,
-
-              location: category,
-            }
-          : trader
-      );
-
-      const updatedPlayer = {
-        ...currentPlayer,
-
-        traders: updatedTraders,
-        coins: updatedCoins,
-      };
-
-      const updatedPlayers = [...prev.players];
-
-      updatedPlayers[playerIndex] = updatedPlayer;
-
-      setShowTraderSelectModal(false);
-      setShowSuccessModal(true);
-
-      return {
-        ...prev,
-        players: updatedPlayers,
-      };
-    });
   };
 
-  /*
-   * Place trader and transfer selected products.
-   *
-   * Existing gameplay is intentionally preserved here.
-   *
-   * The temporary addTraderToSector PeerJS message has also been removed
-   * from this flow.
-   */
-  const handleConfirmAddTraderWithProducts = () => {
-    if (!selectedTraderForSector) {
+  const finishPlacementUi = ({ eventCard = null } = {}) => {
+    setLastAddedEventCard(eventCard);
+    setShowTraderSelectModal(false);
+    setShowProductSelectModal(false);
+    setShowSuccessModal(true);
+    setSelectedProducts([]);
+    setSelectedTraderForSector(null);
+  };
+
+  const submitPlaceTrader = productIds => {
+    if (!selectedTraderForSector || !gameState || !myTurn) {
       return;
     }
 
-    setGameState(prev => {
-      if (!prev || !Array.isArray(prev.players)) {
-        return prev;
+    const action = placeTraderAction({
+      playerId: myUserId,
+      traderId: selectedTraderForSector.traderId,
+      sector: category,
+      productIds,
+    });
+    const clientValidation = validatePlaceTrader(gameState, action.payload);
+
+    if (!clientValidation.ok) {
+      showValidationError(clientValidation.reason);
+      return;
+    }
+
+    const isHost = !connection;
+
+    if (isHost) {
+      const authoritativeAction = prepareAuthoritativeGameAction(gameState, action, myUserId);
+      const nextState = gameReducer(gameState, authoritativeAction);
+
+      if (nextState === gameState) {
+        console.warn('[PrivozSector] Host PLACE_TRADER rejected:', authoritativeAction);
+        return;
       }
 
-      const playerIndex = prev.players.findIndex(
-        currentPlayer => currentPlayer.user_id === myUserId
-      );
+      recordAcceptedLearningDecision({
+        beforeState: gameState,
+        afterState: nextState,
+        action: authoritativeAction,
+        actorId: myUserId,
+      });
 
-      if (playerIndex === -1) {
-        return prev;
+      const awardedEventCardId = authoritativeAction.payload?.eventCardId;
+      const eventCard = awardedEventCardId
+        ? nextState.players
+            ?.find(player => player.user_id === myUserId)
+            ?.eventCards?.find(card => card.id === awardedEventCardId) || null
+        : null;
+
+      setGameState(nextState);
+
+      if (typeof broadcastGameState === 'function') {
+        broadcastGameState(nextState);
       }
 
-      const currentPlayer = prev.players[playerIndex];
+      finishPlacementUi({ eventCard });
+      return;
+    }
 
-      /*
-       * Copy products currently held by the player.
-       */
-      const updatedPlayerProducts = Array.isArray(currentPlayer.products)
-        ? [...currentPlayer.products]
-        : [];
+    if (!connection?.open) {
+      console.error('[PrivozSector] Cannot send PLACE_TRADER: connection is not open.');
+      return;
+    }
 
-      /*
-       * Remove each transferred product card from player's hand.
-       */
-      selectedProducts.forEach(selectedProduct => {
-        const productIndex = updatedPlayerProducts.findIndex(
-          product => product.productId === selectedProduct.productId
-        );
-
-        if (productIndex === -1) {
-          return;
-        }
-
-        const quantity = updatedPlayerProducts[productIndex].quantity_player_card || 1;
-
-        if (quantity > 1) {
-          updatedPlayerProducts[productIndex] = {
-            ...updatedPlayerProducts[productIndex],
-
-            quantity_player_card: quantity - 1,
-          };
-        } else {
-          updatedPlayerProducts.splice(productIndex, 1);
-        }
+    try {
+      connection.send({
+        type: 'gameAction',
+        action,
       });
 
       /*
-       * Place the selected trader and give him the selected goods.
+       * The host will validate again and broadcast authoritative state.
+       * Close the selection UI now; the market rendering itself updates
+       * only after that authoritative broadcast arrives.
        */
-      const updatedTraders = (currentPlayer.traders || []).map(trader =>
-        trader.traderId === selectedTraderForSector.traderId
-          ? {
-              ...trader,
+      finishPlacementUi();
+    } catch (error) {
+      console.error('[PrivozSector] Failed to send PLACE_TRADER:', error);
+    }
+  };
 
-              card_in_game: `sector_${category}_user_${myUserId}`,
+  const handleConfirmAddTrader = () => {
+    submitPlaceTrader([]);
+  };
 
-              location: category,
-
-              goods: selectedProducts,
-            }
-          : trader
-      );
-
-      const updatedPlayer = {
-        ...currentPlayer,
-
-        traders: updatedTraders,
-
-        coins: (currentPlayer.coins || 0) - coinsDecrease,
-
-        products: updatedPlayerProducts,
-      };
-
-      const updatedPlayers = [...prev.players];
-
-      updatedPlayers[playerIndex] = updatedPlayer;
-
-      const newGameState = {
-        ...prev,
-        players: updatedPlayers,
-      };
-
-      /*
-       * Keep the current event-card behavior unchanged for now.
-       *
-       * The return contract of player_add_event() will be fixed in the
-       * NEXT small stabilization commit.
-       */
-      const [eventedGameState, card] = player_add_event(newGameState, myUserId);
-
-      setLastAddedEventCard(card);
-
-      setShowTraderSelectModal(false);
-      setShowProductSelectModal(false);
-      setShowSuccessModal(true);
-      setSelectedProducts([]);
-
-      return eventedGameState;
-    });
+  const handleConfirmAddTraderWithProducts = () => {
+    submitPlaceTrader(selectedProducts.map(product => product.productId));
   };
 
   return (
@@ -322,7 +221,7 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
         className={`sector border p-3 mb-3 ${category.toLowerCase()}`}
         onClick={handleSectorClick}
         style={{
-          cursor: 'pointer',
+          cursor: clickable && myTurn ? 'pointer' : 'not-allowed',
         }}
       >
         <div className="row gap-1">
@@ -430,17 +329,18 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
         </Modal.Header>
 
         <Modal.Body>
+          <div className="small text-muted mb-2">
+            Можно передать до {MAX_TRADER_GOODS} товаров. Легальные товары должны соответствовать
+            сектору; нелегальные можно разместить в любом секторе.
+          </div>
+
           <Row>
             {playerProducts.length === 0 && (
               <div className="text-muted">У вас нет товаров для передачи продавцу.</div>
             )}
 
             {playerProducts.flatMap(product => {
-              const productSector = (product.product_sector || '').toLowerCase();
-
-              const currentSector = (category || '').toLowerCase();
-
-              const canAdd = productSector === currentSector || product.legality === 'illegal';
+              const canAdd = isProductAllowedInSector(product, category);
 
               return Array.from(
                 {
@@ -456,7 +356,13 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
                             selected => selected.productId === product.productId
                           ).length > index
                         }
-                        disabled={!canAdd}
+                        disabled={
+                          !canAdd ||
+                          (selectedProducts.filter(
+                            selected => selected.productId === product.productId
+                          ).length <= index &&
+                            selectedProducts.length >= MAX_TRADER_GOODS)
+                        }
                         onChange={() => {
                           if (!canAdd) {
                             return;
@@ -532,7 +438,7 @@ const PrivozSector = ({ category, maxTraders, gameState, myUserId, setGameState 
             disabled={selectedProducts.length === 0}
             onClick={handleConfirmAddTraderWithProducts}
           >
-            Передать товары продавцу
+            Передать товары продавцу ({selectedProducts.length}/{MAX_TRADER_GOODS})
           </Button>
         </Modal.Footer>
       </Modal>

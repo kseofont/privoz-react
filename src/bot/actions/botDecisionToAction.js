@@ -1,4 +1,4 @@
-import { buyProductAction, selectTraderAction } from '../../game/actions';
+import { buyProductAction, placeTraderAction, selectTraderAction } from '../../game/actions';
 import { BOT_DECISION_TYPES } from '../decisions/PolicyDecisionProvider';
 
 /**
@@ -31,6 +31,18 @@ export function botDecisionToAction(decision, playerId) {
       return buyProductAction({
         playerId,
         productId: decision.productId,
+      });
+
+    case BOT_DECISION_TYPES.PLACE_TRADER:
+      if (!decision.traderId || !decision.sector) {
+        return null;
+      }
+
+      return placeTraderAction({
+        playerId,
+        traderId: decision.traderId,
+        sector: decision.sector,
+        productIds: decision.productIds || [],
       });
 
     default:

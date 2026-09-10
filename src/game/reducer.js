@@ -1,5 +1,7 @@
 import { ACTION_TYPES } from './actions';
 import { PHASES } from './phases';
+import { awardEventCardById } from './eventCards';
+import { validatePlaceTrader } from './placeTraderRules';
 
 /**
  * Pure game-state reducer.
@@ -23,6 +25,9 @@ export function gameReducer(gameState, action) {
 
     case ACTION_TYPES.BUY_PRODUCT:
       return reduceBuyProduct(gameState, action.payload);
+
+    case ACTION_TYPES.PLACE_TRADER:
+      return reducePlaceTrader(gameState, action.payload);
 
     default:
       return gameState;
@@ -250,4 +255,82 @@ function reduceBuyProduct(gameState, payload = {}) {
     players: updatedPlayers,
     products: updatedProducts,
   };
+}
+
+
+function reducePlaceTrader(gameState, payload = {}) {
+  const validation = validatePlaceTrader(gameState, payload);
+
+  if (!validation.ok) {
+    return gameState;
+  }
+
+  const { player, trader, sector, productIds, placementCost } = validation;
+  const playerIndex = gameState.players.findIndex(currentPlayer => currentPlayer.user_id === payload.playerId);
+  const remainingProducts = Array.isArray(player.products)
+    ? player.products.map(product => ({ ...product }))
+    : [];
+  const goods = [];
+
+  productIds.forEach(productId => {
+    const productIndex = remainingProducts.findIndex(
+      product => String(product.productId) === String(productId)
+    );
+
+    if (productIndex === -1) {
+      return;
+    }
+
+    const sourceProduct = remainingProducts[productIndex];
+    const quantity = Math.max(0, Number(sourceProduct.quantity_player_card || 0));
+
+    goods.push({
+      ...sourceProduct,
+      quantity_player_card: 1,
+    });
+
+    if (quantity > 1) {
+      remainingProducts[productIndex] = {
+        ...sourceProduct,
+        quantity_player_card: quantity - 1,
+      };
+    } else {
+      remainingProducts.splice(productIndex, 1);
+    }
+  });
+
+  const updatedTraders = (player.traders || []).map(currentTrader =>
+    currentTrader.traderId === trader.traderId
+      ? {
+          ...currentTrader,
+          card_in_game: `sector_${sector}_user_${payload.playerId}`,
+          location: sector,
+          goods,
+        }
+      : currentTrader
+  );
+
+  const sectorsWithTraders = [
+    ...new Set(updatedTraders.map(currentTrader => currentTrader.location).filter(Boolean)),
+  ];
+
+  const updatedPlayers = [...gameState.players];
+  updatedPlayers[playerIndex] = {
+    ...player,
+    traders: updatedTraders,
+    products: remainingProducts,
+    coins: Number(player.coins || 0) - placementCost,
+    sectorsWithTraders,
+  };
+
+  let nextState = {
+    ...gameState,
+    players: updatedPlayers,
+  };
+
+  if (productIds.length > 0 && payload.eventCardId) {
+    nextState = awardEventCardById(nextState, payload.playerId, payload.eventCardId);
+  }
+
+  return nextState;
 }

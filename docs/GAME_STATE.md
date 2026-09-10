@@ -1327,3 +1327,91 @@ human and bot games
 → repeat
 
 The production game must continue to work even when the local computer, Qwen and all training tools are unavailable.
+
+## Current Bot Player stage - trader placement (policy-v003)
+
+Stage 6 extends the bot and human gameplay flow from wholesale purchasing into trader placement.
+
+PLACE_TRADER is now intended to use the same host-authoritative architecture as SELECT_TRADER and BUY_PRODUCT:
+
+human or bot decision
+
+→ PLACE_TRADER action
+
+→ HOST identity/random preparation
+
+→ reducer validation
+
+→ authoritative gameState
+
+→ broadcast
+
+→ learning decision
+
+The action payload contains only player intent:
+
+- traderId;
+- target sector;
+- productIds to transfer to the trader.
+
+Client-supplied playerId is never trusted by the host. Event-card selection is also host-only: when a placement transfers at least one product, the host selects the random event-card ID from the currently available deck and adds it to the authoritative action before the pure reducer applies the result. A client cannot choose its own event card.
+
+Shared PLACE_TRADER rules now enforce:
+
+- only the current player may place a trader;
+- the trader must belong to that player and must still be unplaced;
+- the target sector must exist;
+- sector capacity remains equal to the number of players, matching the existing prototype UI rule;
+- placement cost keeps the existing prototype formula;
+- a trader may receive at most 3 product cards, matching rulesTranslations.js;
+- the player must actually own every transferred product quantity;
+- legal products must match the selected sector;
+- illegal products may be transferred in any sector, preserving the existing prototype rule;
+- "Household goods" and product sector "household" are normalized to the same sector.
+
+The human PrivozSector UI must use this same action/reducer path. Client-side validation is only for immediate UX; HOST validation remains authoritative.
+
+The bot lifecycle now becomes:
+
+awaiting_turn
+
+→ trader
+
+→ wholesale
+
+→ placement
+
+→ done
+
+After its wholesale policy returns no further purchase, the bot navigates to /game/:peerId, chooses one unplaced trader, a legal sector and up to 3 owned products, sends one PLACE_TRADER action and waits for authoritative confirmation. END_TURN remains manual in this slice.
+
+policy-v003 keeps the existing wholesale profiles and adds deterministic placement behavior:
+
+- balanced - places up to 2 goods, preferring legal/value combinations;
+- all_in - tries to fill the trader with up to 3 useful goods;
+- saver - places only 1 legal good when available;
+- specialist - concentrates legal goods in one matching sector;
+- diversifier - prefers a sector not already used by that player's placed traders;
+- smuggler - places only illegal goods and prefers the trader's favorite sector when possible.
+
+These are baseline strategy families, not optimal-play claims. Their purpose is to generate distinct, reproducible behavior for later comparison with human play, simulation and offline Qwen analysis.
+
+buildPlayerObservation() now includes only the additional placement information the represented player may legally know:
+
+- own unplaced/placed trader IDs, locations and favorite sector;
+- own compact products with sector/legality/value;
+- placement cost;
+- public sectors with occupancy and capacity.
+
+PLACE_TRADER learning records use schemaVersion 3 and contain:
+
+- anonymous actorIndex / actorType;
+- policyVersion / behaviorProfile for bots;
+- compact placement observation;
+- compact legal placement envelopes per trader/sector with eligible owned product IDs and quantities;
+- selected trader, sector and productIds;
+- accepted result.
+
+The random event-card ID is not part of the player's selected action in learning data because it is not a player decision.
+
+Stage 6 intentionally does NOT automate END_TURN or refactor unrelated event-resolution/end-round flows.

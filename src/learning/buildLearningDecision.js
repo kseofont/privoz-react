@@ -1,5 +1,6 @@
 import { ACTION_TYPES } from '../game/actions';
 import { buildPlayerObservation } from '../bot/observation/buildPlayerObservation';
+import { MAX_TRADER_GOODS, normalizeSectorKey } from '../game/placeTraderRules';
 
 function sanitizeIdPart(value) {
   const normalized = value === null || value === undefined || value === '' ? 'unknown' : value;
@@ -55,6 +56,53 @@ function getLegalBuyProductActions(observation) {
     }));
 }
 
+
+function getLegalPlaceTraderActions(observation) {
+  if (!observation || observation.currentTurnUserId !== observation.self?.playerId) {
+    return [];
+  }
+
+  if (Number(observation.self?.coins || 0) < Number(observation.self?.placementCost || 0)) {
+    return [];
+  }
+
+  const unplacedTraders = (observation.self?.traders || []).filter(trader => !trader.location);
+
+  if (!unplacedTraders.length) {
+    return [];
+  }
+
+  return unplacedTraders.flatMap(trader =>
+    (observation.visibleSectors || [])
+      .filter(sectorInfo => Number(sectorInfo.occupied || 0) < Number(sectorInfo.capacity || 0))
+      .map(sectorInfo => {
+        const eligibleProducts = (observation.self?.products || [])
+          .filter(product => {
+            if (Number(product?.quantity || 0) <= 0) {
+              return false;
+            }
+
+            return (
+              product.legality === 'illegal' ||
+              normalizeSectorKey(product.sector) === normalizeSectorKey(sectorInfo.sector)
+            );
+          })
+          .map(product => ({
+            productId: product.productId,
+            quantity: Number(product.quantity || 0),
+          }));
+
+        return {
+          type: ACTION_TYPES.PLACE_TRADER,
+          traderId: trader.traderId,
+          sector: sectorInfo.sector,
+          maxProducts: MAX_TRADER_GOODS,
+          eligibleProducts,
+        };
+      })
+  );
+}
+
 function buildCompactObservation(observation, actionType) {
   const compact = {
     phase: observation.phase,
@@ -81,6 +129,19 @@ function buildCompactObservation(observation, actionType) {
         products: observation.self.products,
       },
       visibleProducts: observation.visibleProducts,
+    };
+  }
+
+  if (actionType === ACTION_TYPES.PLACE_TRADER) {
+    return {
+      ...compact,
+      self: {
+        ...compact.self,
+        placementCost: observation.self.placementCost,
+        traders: observation.self.traders,
+        products: observation.self.products,
+      },
+      visibleSectors: observation.visibleSectors,
     };
   }
 
@@ -114,6 +175,22 @@ function buildBuyProductEventId({ beforeState, actorIndex, observation, action }
   ].join('-');
 }
 
+
+function buildPlaceTraderEventId({ beforeState, actorIndex, observation, action }) {
+  const productKey = (action.payload?.productIds || []).map(sanitizeIdPart).join('_') || 'none';
+
+  return [
+    'LE',
+    'PLACE',
+    sanitizeIdPart(beforeState.round || 0),
+    sanitizeIdPart(actorIndex),
+    sanitizeIdPart(action.payload?.traderId),
+    sanitizeIdPart(action.payload?.sector),
+    sanitizeIdPart(productKey),
+    sanitizeIdPart(observation.self?.traders?.filter(trader => trader.location).length || 0),
+  ].join('-');
+}
+
 /**
  * Build a privacy-minimized learning sample for an accepted action.
  *
@@ -125,7 +202,11 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
     return null;
   }
 
-  if (action.type !== ACTION_TYPES.SELECT_TRADER && action.type !== ACTION_TYPES.BUY_PRODUCT) {
+  if (
+    action.type !== ACTION_TYPES.SELECT_TRADER &&
+    action.type !== ACTION_TYPES.BUY_PRODUCT &&
+    action.type !== ACTION_TYPES.PLACE_TRADER
+  ) {
     return null;
   }
 
@@ -176,10 +257,29 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
     };
   }
 
+  if (action.type === ACTION_TYPES.PLACE_TRADER) {
+    const traderId = action.payload?.traderId;
+    const sector = action.payload?.sector;
+    const productIds = Array.isArray(action.payload?.productIds) ? action.payload.productIds : [];
+
+    if (!traderId || !sector) {
+      return null;
+    }
+
+    eventId = buildPlaceTraderEventId({ beforeState, actorIndex, observation, action });
+    legalActions = getLegalPlaceTraderActions(observation);
+    selectedAction = {
+      type: ACTION_TYPES.PLACE_TRADER,
+      traderId,
+      sector,
+      productIds,
+    };
+  }
+
   const players = Array.isArray(beforeState.players) ? beforeState.players : [];
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     gameId: beforeState.gameId,
     eventId,
     gameVersion: appVersion?.version || 'dev',

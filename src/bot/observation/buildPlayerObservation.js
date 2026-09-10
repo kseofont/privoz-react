@@ -1,9 +1,27 @@
+import { getGameSectors, getSectorCapacity, getTraderPlacementCost, normalizeSectorKey } from '../../game/placeTraderRules';
+
 function normalizeProductSector(product) {
   return product?.sector || product?.product_sector || 'unknown';
 }
 
 function normalizeProductLegality(product) {
   return product?.legality === 'illegal' ? 'illegal' : 'legal';
+}
+
+function getEnglishField(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'object') {
+    return value.en || Object.values(value)[0] || null;
+  }
+
+  return null;
 }
 
 /**
@@ -14,9 +32,9 @@ function normalizeProductLegality(product) {
  * This function should expose only information that the represented
  * player is allowed to know.
  *
- * The whitelist is expanded action-by-action. SELECT_TRADER and
- * BUY_PRODUCT currently use only public market data plus the bot's own
- * inventory/balance.
+ * The whitelist is expanded action-by-action. SELECT_TRADER, BUY_PRODUCT
+ * and PLACE_TRADER use only public market data plus the represented
+ * player's own inventory/trader information.
  */
 export function buildPlayerObservation(gameState, playerId) {
   if (!gameState || !playerId || !Array.isArray(gameState.players)) {
@@ -40,7 +58,7 @@ export function buildPlayerObservation(gameState, playerId) {
   const playerProducts = Array.isArray(player.products) ? player.products : [];
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase: gameState.phase || null,
     round: Number(gameState.round || 0),
     currentTurnUserId: gameState.currentTurnUserId || null,
@@ -55,19 +73,39 @@ export function buildPlayerObservation(gameState, playerId) {
       tradersCount: Array.isArray(player.traders)
         ? player.traders.length
         : Number(player.tradersCount || 0),
+      placementCost: getTraderPlacementCost(player),
+      traders: (player.traders || []).map(trader => ({
+        traderId: trader?.traderId || null,
+        location: trader?.location || null,
+        favoriteSector:
+          getEnglishField(trader?.sector_favorite) ||
+          getEnglishField(trader?.best_sector) ||
+          null,
+        goodsCount: Array.isArray(trader?.goods) ? trader.goods.length : 0,
+      })),
       products: playerProducts
         .filter(product => product?.productId !== null && product?.productId !== undefined)
         .map(product => ({
           productId: product.productId,
-          quantity: Number(product.quantity_player_card || 0),
+          quantity: Number(product.quantity_player_card ?? 1),
           sector: normalizeProductSector(product),
           legality: normalizeProductLegality(product),
+          sellingPrice: Number(product.sellingPrice || 0),
+          profit: Number(product.profit || 0),
         })),
     },
 
     visibleTraders: traderList.map(trader => ({
       traderId: trader?.traderId || null,
       taken: trader?.taken === true,
+    })),
+
+    visibleSectors: getGameSectors(gameState).map(sector => ({
+      sector,
+      occupied: gameState.players
+        .flatMap(currentPlayer => currentPlayer.traders || [])
+        .filter(trader => normalizeSectorKey(trader?.location) === normalizeSectorKey(sector)).length,
+      capacity: getSectorCapacity(gameState),
     })),
 
     visibleProducts: productList

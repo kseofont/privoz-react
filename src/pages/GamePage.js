@@ -202,6 +202,7 @@ const GamePage = () => {
                     connection={connection}
                     myTurn={myTurn}
                     setGameState={setGameState}
+                    broadcastGameState={isHost ? broadcastGameState : undefined}
                     clickable={isAuthorized && myTurn}
                   />
                 </div>

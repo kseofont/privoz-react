@@ -1,9 +1,11 @@
 import { PHASES } from '../../game/phases';
-import policy from '../policies/policy-v002.json';
+import { MAX_TRADER_GOODS, normalizeSectorKey } from '../../game/placeTraderRules';
+import policy from '../policies/policy-v003.json';
 
 export const BOT_DECISION_TYPES = Object.freeze({
   SELECT_TRADER: 'select_trader',
   BUY_PRODUCT: 'buy_product',
+  PLACE_TRADER: 'place_trader',
 });
 
 export const BOT_BEHAVIOR_PROFILES = Object.freeze([
@@ -183,6 +185,179 @@ function decideProduct(observation, behaviorProfile) {
   };
 }
 
+
+function expandOwnedProductUnits(observation) {
+  return (observation.self?.products || []).flatMap(product =>
+    Array.from({ length: Math.max(0, Number(product?.quantity || 0)) }, (_, index) => ({
+      ...product,
+      unitIndex: index,
+    }))
+  );
+}
+
+function productAllowedInObservedSector(product, sector) {
+  return (
+    product?.legality === 'illegal' ||
+    normalizeSectorKey(product?.sector) === normalizeSectorKey(sector)
+  );
+}
+
+function rankPlacementGoods(goods, legalityMode) {
+  return [...goods].sort((a, b) => {
+    if (legalityMode === 'prefer_legal' && a.legality !== b.legality) {
+      return a.legality === 'legal' ? -1 : 1;
+    }
+
+    const aValue = Number(a.profit || 0) * 10 + Number(a.sellingPrice || 0);
+    const bValue = Number(b.profit || 0) * 10 + Number(b.sellingPrice || 0);
+
+    if (bValue !== aValue) {
+      return bValue - aValue;
+    }
+
+    return String(a.productId).localeCompare(String(b.productId), undefined, { numeric: true });
+  });
+}
+
+function filterPlacementGoodsByProfile(goods, legalityMode) {
+  if (legalityMode === 'legal_only') {
+    return goods.filter(product => product.legality !== 'illegal');
+  }
+
+  if (legalityMode === 'illegal_only') {
+    return goods.filter(product => product.legality === 'illegal');
+  }
+
+  return goods;
+}
+
+function scorePlacementCandidate({ sectorInfo, trader, goods, config, ownPlacedSectors }) {
+  const sector = sectorInfo.sector;
+  const normalizedSector = normalizeSectorKey(sector);
+  const normalizedFavorite = normalizeSectorKey(trader.favoriteSector);
+  const legalGoods = goods.filter(product => product.legality !== 'illegal');
+  const illegalGoods = goods.filter(product => product.legality === 'illegal');
+  const value = goods.reduce(
+    (sum, product) => sum + Number(product.profit || 0) * 10 + Number(product.sellingPrice || 0),
+    0
+  );
+
+  let score = value + goods.length * 25;
+
+  if (normalizedFavorite && normalizedFavorite === normalizedSector) {
+    score += config.sectorMode === 'favorite' ? 220 : 45;
+  }
+
+  if (config.sectorMode === 'max_goods') {
+    score += goods.length * 120;
+  } else if (config.sectorMode === 'focus') {
+    score += legalGoods.length * 140;
+  } else if (config.sectorMode === 'diversify') {
+    score += ownPlacedSectors.has(normalizedSector) ? -180 : 120;
+  }
+
+  if (config.legalityMode === 'illegal_only') {
+    score += illegalGoods.length * 100;
+  } else if (config.legalityMode === 'legal_only') {
+    score += legalGoods.length * 80;
+  } else if (config.legalityMode === 'prefer_legal') {
+    score += legalGoods.length * 60 - illegalGoods.length * 10;
+  }
+
+  score -= Number(sectorInfo.occupied || 0) * 2;
+
+  return score;
+}
+
+function decidePlacement(observation, behaviorProfile) {
+  if (observation.currentTurnUserId !== observation.self?.playerId) {
+    return null;
+  }
+
+  const profileId = normalizeBotBehaviorProfile(behaviorProfile);
+  const config =
+    policy.placeTrader?.profiles?.[profileId] ||
+    policy.placeTrader?.profiles?.[policy.defaultBehaviorProfile] ||
+    {};
+  const placementCost = Number(observation.self?.placementCost || 0);
+
+  if (Number(observation.self?.coins || 0) < placementCost) {
+    return null;
+  }
+
+  const trader = (observation.self?.traders || []).find(currentTrader => !currentTrader.location);
+
+  if (!trader?.traderId) {
+    return null;
+  }
+
+  const availableSectors = (observation.visibleSectors || []).filter(
+    sectorInfo => Number(sectorInfo.occupied || 0) < Number(sectorInfo.capacity || 0)
+  );
+
+  if (!availableSectors.length) {
+    return null;
+  }
+
+  const productUnits = expandOwnedProductUnits(observation);
+  const ownPlacedSectors = new Set(
+    (observation.self?.traders || [])
+      .map(currentTrader => normalizeSectorKey(currentTrader.location))
+      .filter(Boolean)
+  );
+  const maxGoods = Math.max(
+    0,
+    Math.min(MAX_TRADER_GOODS, Number(config.maxGoods ?? MAX_TRADER_GOODS))
+  );
+
+  const candidates = availableSectors.map(sectorInfo => {
+    const allowed = productUnits.filter(product =>
+      productAllowedInObservedSector(product, sectorInfo.sector)
+    );
+    const filtered = filterPlacementGoodsByProfile(allowed, config.legalityMode);
+    const goods = rankPlacementGoods(filtered, config.legalityMode).slice(0, maxGoods);
+
+    return {
+      sectorInfo,
+      goods,
+      score: scorePlacementCandidate({
+        sectorInfo,
+        trader,
+        goods,
+        config,
+        ownPlacedSectors,
+      }),
+    };
+  });
+
+  const candidatesWithRequiredGoods =
+    config.legalityMode === 'illegal_only' || config.legalityMode === 'legal_only'
+      ? candidates.filter(candidate => candidate.goods.length > 0)
+      : candidates;
+  const ranked = (candidatesWithRequiredGoods.length ? candidatesWithRequiredGoods : candidates)
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      return String(a.sectorInfo.sector).localeCompare(String(b.sectorInfo.sector));
+    });
+  const selected = ranked[0];
+
+  if (!selected) {
+    return null;
+  }
+
+  return {
+    type: BOT_DECISION_TYPES.PLACE_TRADER,
+    traderId: trader.traderId,
+    sector: selected.sectorInfo.sector,
+    productIds: selected.goods.map(product => product.productId),
+    behaviorProfile: profileId,
+    policyVersion: policy.version,
+  };
+}
+
 /**
  * Small deployable policy used by the website.
  *
@@ -197,6 +372,10 @@ export async function decideWithPolicy(observation, context = {}) {
 
   if (context.stage === 'wholesale') {
     return decideProduct(observation, context.behaviorProfile);
+  }
+
+  if (context.stage === 'placement') {
+    return decidePlacement(observation, context.behaviorProfile);
   }
 
   const legalTraderIds = getLegalTraderIds(observation);

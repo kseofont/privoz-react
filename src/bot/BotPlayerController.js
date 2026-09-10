@@ -13,6 +13,7 @@ const BOT_STAGES = Object.freeze({
   AWAITING_TURN: 'awaiting_turn',
   TRADER: 'trader',
   WHOLESALE: 'wholesale',
+  PLACEMENT: 'placement',
   DONE: 'done',
 });
 
@@ -75,7 +76,16 @@ function buildDecisionKey(observation, stage, action) {
     .sort()
     .join(',');
 
-  const target = action.payload?.traderId ?? action.payload?.productId ?? 'none';
+  const target =
+    action.type === 'PLACE_TRADER'
+      ? `${action.payload?.traderId || 'none'}:${action.payload?.sector || 'none'}:${(
+          action.payload?.productIds || []
+        ).join(',')}`
+      : action.payload?.traderId ?? action.payload?.productId ?? 'none';
+  const traderLocations = (observation.self?.traders || [])
+    .map(trader => `${trader.traderId}:${trader.location || 'hand'}`)
+    .sort()
+    .join(',');
 
   return [
     observation.round,
@@ -85,6 +95,7 @@ function buildDecisionKey(observation, stage, action) {
     observation.self?.coins ?? 0,
     observation.self?.tradersCount ?? 0,
     products,
+    traderLocations,
   ].join('|');
 }
 
@@ -121,6 +132,7 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       setBotStage(myUserId, BOT_STAGES.AWAITING_TURN);
       clearActionGuard(myUserId);
       writeStorage(myUserId, 'pending-trader', null);
+      writeStorage(myUserId, 'pending-placement', null);
 
       return undefined;
     }
@@ -151,6 +163,30 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       decisionInFlightRef.current = false;
     }
 
+    const pendingPlacement = readStorage(myUserId, 'pending-placement');
+
+    if (stage === BOT_STAGES.PLACEMENT && pendingPlacement) {
+      const [pendingPlacementTraderId] = pendingPlacement.split('|');
+      const placedTrader = player?.traders?.find(
+        trader => trader?.traderId === pendingPlacementTraderId && trader?.location
+      );
+
+      if (placedTrader) {
+        setBotStage(myUserId, BOT_STAGES.DONE);
+        writeStorage(myUserId, 'pending-placement', null);
+        clearActionGuard(myUserId);
+        decisionInFlightRef.current = false;
+
+        console.log('[BOT] placement complete:', {
+          traderId: placedTrader.traderId,
+          sector: placedTrader.location,
+          goodsCount: Array.isArray(placedTrader.goods) ? placedTrader.goods.length : 0,
+        });
+
+        return undefined;
+      }
+    }
+
     if (stage === BOT_STAGES.TRADER && !location.pathname.startsWith('/traders')) {
       navigateBotPage(navigate, `/traders/${myUserId}`, gameState, myUserId);
       return undefined;
@@ -158,6 +194,11 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
 
     if (stage === BOT_STAGES.WHOLESALE && !location.pathname.startsWith('/wholesale')) {
       navigateBotPage(navigate, `/wholesale/${myUserId}`, gameState, myUserId);
+      return undefined;
+    }
+
+    if (stage === BOT_STAGES.PLACEMENT && !location.pathname.startsWith('/game')) {
+      navigateBotPage(navigate, `/game/${myUserId}`, gameState, myUserId);
       return undefined;
     }
 
@@ -214,13 +255,23 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
          */
         if (!decision && stage === BOT_STAGES.WHOLESALE) {
           decisionInFlightRef.current = false;
-          setBotStage(myUserId, BOT_STAGES.DONE);
+          setBotStage(myUserId, BOT_STAGES.PLACEMENT);
+          clearActionGuard(myUserId);
 
           console.log('[BOT] wholesale complete:', {
             behaviorProfile,
             coinsLeft: observation.self?.coins,
           });
 
+          navigateBotPage(navigate, `/game/${myUserId}`, gameState, myUserId);
+          return;
+        }
+
+        if (!decision && stage === BOT_STAGES.PLACEMENT) {
+          decisionInFlightRef.current = false;
+          setBotStage(myUserId, BOT_STAGES.DONE);
+
+          console.log('[BOT] placement skipped: no legal placement decision');
           return;
         }
 
@@ -247,6 +298,14 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
 
         if (stage === BOT_STAGES.TRADER && action.payload?.traderId) {
           writeStorage(myUserId, 'pending-trader', action.payload.traderId);
+        }
+
+        if (stage === BOT_STAGES.PLACEMENT && action.payload?.traderId && action.payload?.sector) {
+          writeStorage(
+            myUserId,
+            'pending-placement',
+            `${action.payload.traderId}|${action.payload.sector}`
+          );
         }
 
         console.log('[BOT] sending decision:', {

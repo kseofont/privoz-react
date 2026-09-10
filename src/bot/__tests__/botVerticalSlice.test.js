@@ -69,7 +69,7 @@ function makeState(overrides = {}) {
         traders: [],
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v002',
+        botPolicyVersion: 'policy-v003',
         botBehaviorProfile: 'balanced',
       },
     ],
@@ -92,7 +92,7 @@ test('bot uses normal SELECT_TRADER action and reducer flow', async () => {
   expect(decision).toEqual({
     type: 'select_trader',
     traderId: 't1',
-    policyVersion: 'policy-v002',
+    policyVersion: 'policy-v003',
   });
   expect(action.type).toBe('SELECT_TRADER');
   expect(nextState).not.toBe(state);
@@ -122,7 +122,7 @@ test('learning sample contains gameplay data but no player identity', () => {
 
   expect(sample.eventId).toBe('LE-TRADER-1-1-0-t1');
   expect(sample.actorType).toBe('bot');
-  expect(sample.policyVersion).toBe('policy-v002');
+  expect(sample.policyVersion).toBe('policy-v003');
   expect(sample.behaviorProfile).toBe('balanced');
   expect(sample.legalActions).toHaveLength(2);
 
