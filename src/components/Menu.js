@@ -548,6 +548,21 @@ const Menu = ({
             }[lang] || 'View reports'}
           </a>
         </div>
+        <div>
+          <a
+            href="https://privoz.kotucheniy.com.ua/api/learning-admin.php"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-outline-secondary mb-2"
+          >
+            {{
+              ua: 'Навчальні дані',
+              ru: 'Данные обучения',
+              es: 'Datos de aprendizaje',
+              en: 'Learning data',
+            }[lang] || 'Learning data'}
+          </a>
+        </div>
       </div>
       <h3>Menu</h3>
       {/* Навигация */}

@@ -997,6 +997,30 @@ After a detailed log is deleted, a very small aggregate/statistical record may b
 
 Deletion should initially be an explicit/admin-controlled operation until the process has been proven safe.
 
+## Current learning inventory/admin status
+
+The first read-only Learning Data Admin slice is implemented.
+
+Backend page:
+
+api/learning-admin.php
+
+It reuses the existing feedback-admin-config.php password hash, but uses a separate admin session. No second production secret is required.
+
+Current Learning Data Admin capabilities are intentionally read-only:
+
+- total stored games;
+- unused / used / eligible-for-deletion counts;
+- total learning-log storage size;
+- total / human / bot decision counts;
+- games with attached outcomes;
+- policy-version usage by games and decisions;
+- per-game player counts, decision counts, useCount and status;
+- raw per-game JSON inspection;
+- warning when malformed learning JSON files are found.
+
+The UI does NOT yet export batches, mark logs as used, modify useCount or delete files. Those operations remain separate follow-up slices so inventory can be verified first.
+
 ## Admin / export workflow
 
 A future learning-data admin tool should allow the developer to inspect at least:
