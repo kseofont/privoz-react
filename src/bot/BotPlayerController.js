@@ -304,7 +304,13 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       );
 
       if (placedTrader) {
-        stage = BOT_STAGES.END_TURN;
+        /*
+         * A round may contain several owned traders. Keep the bot in the
+         * placement stage after each authoritative confirmation so the next
+         * unplaced trader can be handled on the updated state. END_TURN is
+         * selected only when the placement policy has no trader left to place.
+         */
+        stage = BOT_STAGES.PLACEMENT;
         setBotStage(myUserId, stage);
         writeStorage(myUserId, 'pending-placement', null);
         clearActionGuard(myUserId);
@@ -314,6 +320,9 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
           traderId: placedTrader.traderId,
           sector: placedTrader.location,
           goodsCount: Array.isArray(placedTrader.goods) ? placedTrader.goods.length : 0,
+          remainingUnplacedTraders: (player?.traders || []).filter(
+            trader => !trader?.location
+          ).length,
         });
       }
     }

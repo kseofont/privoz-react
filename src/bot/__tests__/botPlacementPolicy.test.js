@@ -88,7 +88,7 @@ function makeState({ profile = 'balanced', products = makeProducts(), extraPlaye
         products,
         eventCards: [],
         isBot: true,
-        botPolicyVersion: 'policy-v005',
+        botPolicyVersion: 'policy-v007',
         botBehaviorProfile: profile,
       },
       ...extraPlayers,
@@ -134,6 +134,37 @@ test('PLACE_TRADER reducer moves owned goods, places trader and awards host-sele
   expect(player.eventCards).toHaveLength(1);
   expect(player.eventCards[0].id).toBe('event-a');
   expect(nextState.eventcards[0].quantity_active).toBe(1);
+});
+
+test('PLACE_TRADER is free even when the player owns multiple traders and has zero coins', () => {
+  const state = makeState();
+  const zeroCoinState = {
+    ...state,
+    players: state.players.map(player =>
+      player.user_id === 'peer-bot'
+        ? {
+            ...player,
+            coins: 0,
+            traders: [makeTrader(), makeTrader({ traderId: 't2' })],
+            tradersCount: 2,
+          }
+        : player
+    ),
+  };
+  const action = placeTraderAction({
+    playerId: 'peer-bot',
+    traderId: 't1',
+    sector: 'Fruits',
+    productIds: [1],
+  });
+
+  expect(validatePlaceTrader(zeroCoinState, action.payload).ok).toBe(true);
+
+  const nextState = gameReducer(zeroCoinState, action);
+
+  expect(nextState).not.toBe(zeroCoinState);
+  expect(nextState.players[1].coins).toBe(0);
+  expect(nextState.players[1].traders[0].location).toBe('Fruits');
 });
 
 test('PLACE_TRADER rejects more than three goods and legal goods from a wrong sector', () => {
@@ -245,7 +276,7 @@ test('PLACE_TRADER learning sample is compact and identity-free', () => {
   });
 
   expect(sample.schemaVersion).toBe(4);
-  expect(sample.policyVersion).toBe('policy-v005');
+  expect(sample.policyVersion).toBe('policy-v007');
   expect(sample.behaviorProfile).toBe('smuggler');
   expect(sample.selectedAction).toEqual({
     type: 'PLACE_TRADER',
@@ -261,4 +292,56 @@ test('PLACE_TRADER learning sample is compact and identity-free', () => {
   expect(serialized).not.toContain('Private Bot');
   expect(serialized).not.toContain('peer-human');
   expect(serialized).not.toContain('peer-bot');
+});
+
+test('placement policy can place every owned trader before ending the turn', async () => {
+  let state = makeState({ products: [] });
+  state = {
+    ...state,
+    players: state.players.map(player =>
+      player.user_id === 'peer-bot'
+        ? {
+            ...player,
+            coins: 20,
+            tradersCount: 2,
+            traders: [
+              makeTrader({ traderId: 't1', sector_favorite: { en: 'Fruits' } }),
+              makeTrader({ traderId: 't2', sector_favorite: { en: 'Meat' } }),
+            ],
+          }
+        : player
+    ),
+  };
+
+  const first = await decidePlacement(state, 'balanced');
+  expect(first?.type).toBe('place_trader');
+
+  state = gameReducer(
+    state,
+    placeTraderAction({
+      playerId: 'peer-bot',
+      traderId: first.traderId,
+      sector: first.sector,
+      productIds: first.productIds,
+    })
+  );
+  expect(state.players[1].coins).toBe(10);
+
+  const second = await decidePlacement(state, 'balanced');
+  expect(second?.type).toBe('place_trader');
+  expect(second.traderId).not.toBe(first.traderId);
+
+  state = gameReducer(
+    state,
+    placeTraderAction({
+      playerId: 'peer-bot',
+      traderId: second.traderId,
+      sector: second.sector,
+      productIds: second.productIds,
+    })
+  );
+
+  expect(state.players[1].coins).toBe(0);
+  expect(state.players[1].traders.every(trader => !!trader.location)).toBe(true);
+  expect(await decidePlacement(state, 'balanced')).toBeNull();
 });

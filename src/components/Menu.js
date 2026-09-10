@@ -20,6 +20,7 @@ import OtherPlayersInfo from './OtherPlayersInfo';
 import FeedbackButton from './FeedbackButton';
 import BotPlayerController from '../bot/BotPlayerController';
 import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
+import { recordLearningOutcome } from '../learning/recordLearningOutcome';
 
 const getLearningAdminUrl = () => {
   const learningApiUrl = process.env.REACT_APP_LEARNING_API_URL;
@@ -70,6 +71,11 @@ const Menu = ({
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
   const otherUsers = gameState?.players?.filter(p => p.user_id !== myUserId) || [];
   const currentUserIsBot = currentUserData?.isBot === true;
+  const gameEnded = gameState?.phase === PHASES.GAME_END && !!gameState?.gameOutcome;
+  const finalRanking = Array.isArray(gameState?.gameOutcome?.ranking)
+    ? gameState.gameOutcome.ranking
+    : [];
+  const finalWinners = finalRanking.filter(entry => entry?.isWinner === true);
 
   // Для каких страниц показываем кнопку "Конец хода"
   const specialPages = ['/game', '/traders', '/wholesale', '/eventcards'];
@@ -85,6 +91,45 @@ const Menu = ({
   // вверху Menu:
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultsAcked, setResultsAcked] = useState(false);
+  const outcomeSaveRef = useRef({ key: null, inFlight: false, saved: false });
+
+  // HOST stores one privacy-safe final outcome in the learning log.
+  useEffect(() => {
+    if (!isHost || !gameEnded || !gameState?.gameOutcome || !gameState?.gameId) {
+      return;
+    }
+
+    const outcome = gameState.gameOutcome;
+    const outcomeKey = [
+      gameState.gameId,
+      outcome.completedRound,
+      outcome.maxCoins,
+      ...(outcome.winnerActorIndexes || []),
+    ].join(':');
+    const storageKey = `learningOutcomeSaved:${gameState.gameId}`;
+
+    if (sessionStorage.getItem(storageKey) === outcomeKey) {
+      return;
+    }
+
+    if (
+      outcomeSaveRef.current.key === outcomeKey &&
+      (outcomeSaveRef.current.inFlight || outcomeSaveRef.current.saved)
+    ) {
+      return;
+    }
+
+    outcomeSaveRef.current = { key: outcomeKey, inFlight: true, saved: false };
+
+    recordLearningOutcome(gameState).then(result => {
+      if (result?.saved) {
+        sessionStorage.setItem(storageKey, outcomeKey);
+        outcomeSaveRef.current = { key: outcomeKey, inFlight: false, saved: true };
+      } else {
+        outcomeSaveRef.current = { key: outcomeKey, inFlight: false, saved: false };
+      }
+    });
+  }, [isHost, gameEnded, gameState]);
 
   // открываем модалку, если у текущего игрока появились строки лога
   // Показываем модалку только когда есть логи И они ещё не подтверждены локально
@@ -585,8 +630,46 @@ const Menu = ({
         <Link to="/create">{t('menu_create')}</Link>
         <Link to="/JoinGamePage">{t('menu_join')}</Link>
       </nav>
-      {/* Кнопка конец хода/инфо о ходе */}
-      {isSpecialPage && myTurn ? (
+      {/* Финал игры / кнопка конец хода / инфо о ходе */}
+      {gameEnded ? (
+        <div className="alert alert-success mt-3">
+          <strong>
+            {{
+              ua: 'Гру завершено',
+              ru: 'Игра окончена',
+              es: 'Partida terminada',
+              en: 'Game over',
+            }[lang] || 'Game over'}
+          </strong>
+          <div>
+            {{
+              ua: 'Завершено раундів',
+              ru: 'Завершено раундов',
+              es: 'Rondas completadas',
+              en: 'Rounds completed',
+            }[lang] || 'Rounds completed'}: {gameState?.gameOutcome?.completedRound}
+          </div>
+          <div>
+            {{
+              ua: finalWinners.length > 1 ? 'Переможці' : 'Переможець',
+              ru: finalWinners.length > 1 ? 'Победители' : 'Победитель',
+              es: finalWinners.length > 1 ? 'Ganadores' : 'Ganador',
+              en: finalWinners.length > 1 ? 'Winners' : 'Winner',
+            }[lang] || 'Winner'}:{' '}
+            {finalWinners
+              .map(entry => gameState.players?.[entry.actorIndex]?.name || `#${entry.actorIndex + 1}`)
+              .join(', ')}{' '}
+            - {gameState?.gameOutcome?.maxCoins || 0}
+          </div>
+          <div className="mt-2">
+            {finalRanking.map(entry => (
+              <div key={entry.actorIndex}>
+                #{entry.place} {gameState.players?.[entry.actorIndex]?.name || `#${entry.actorIndex + 1}`}: {entry.coins}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : isSpecialPage && myTurn ? (
         <button className="btn btn-warning mt-3" onClick={handleEndTurn}>
           Закончить ход{isHost ? ' (Хост)' : ''}
         </button>
@@ -607,7 +690,7 @@ const Menu = ({
           <div className="mt-3">
             <div className="alert alert-info mb-2">Раунд: {gameState?.round || 1}</div>
 
-            {isHost && (
+            {isHost && !gameEnded && (
               <div>
                 <Button
                   variant="danger"

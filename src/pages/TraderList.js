@@ -18,6 +18,7 @@ import { selectTraderAction } from '../game/actions';
 import { gameReducer } from '../game/reducer';
 
 import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
+import { MAX_PLAYER_TRADERS } from '../game/placeTraderRules';
 
 const TraderList = () => {
   const { t, i18n } = useTranslation();
@@ -315,9 +316,10 @@ const TraderList = () => {
    * 2nd trader = 15
    * 3rd trader = 30
    */
-  const price = (player.traders?.length || 0) * 15;
-
-  const enoughCoins = Number(player.coins || 0) >= price;
+  const currentTradersCount = player.traders?.length || 0;
+  const price = currentTradersCount * 15;
+  const maxTradersReached = currentTradersCount >= MAX_PLAYER_TRADERS;
+  const enoughCoins = !maxTradersReached && Number(player.coins || 0) >= price;
 
   return (
     <div className="container-fluid">
@@ -341,7 +343,7 @@ const TraderList = () => {
                   key={trader.traderId}
                   className={`col-md-3 mb-4 ${isTaken ? 'opacity-50 pointer-events-none' : ''}`}
                   onClick={
-                    isTaken || !myTurn
+                    isTaken || !myTurn || maxTradersReached
                       ? undefined
                       : () => {
                           setSelectedTrader(trader);
@@ -350,7 +352,7 @@ const TraderList = () => {
                         }
                   }
                   style={{
-                    cursor: isTaken || !myTurn ? 'not-allowed' : 'pointer',
+                    cursor: isTaken || !myTurn || maxTradersReached ? 'not-allowed' : 'pointer',
 
                     position: 'relative',
                   }}
@@ -435,7 +437,9 @@ const TraderList = () => {
           {isAuthorized && !myTurn ? (
             <div className="text-danger">Сейчас не ваш ход. Выбор торговца невозможен.</div>
           ) : isAuthorized ? (
-            enoughCoins ? (
+            maxTradersReached ? (
+              <div className="text-warning">Максимум 3 торговца на игрока.</div>
+            ) : enoughCoins ? (
               <>
                 <div>Вы уверены, что хотите выбрать этого торговца?</div>
 
@@ -467,14 +471,20 @@ const TraderList = () => {
 
           <Button
             variant="primary"
-            disabled={!enoughCoins || !isAuthorized || !myTurn}
+            disabled={!enoughCoins || !isAuthorized || !myTurn || maxTradersReached}
             onClick={() => {
               if (selectedTrader) {
                 handleSelectTrader(selectedTrader);
               }
             }}
           >
-            {isAuthorized ? (enoughCoins ? 'Выбрать торговца' : 'Не хватает монет') : 'Недоступно'}
+            {isAuthorized
+              ? maxTradersReached
+                ? 'Лимит торговцев достигнут'
+                : enoughCoins
+                  ? 'Выбрать торговца'
+                  : 'Не хватает монет'
+              : 'Недоступно'}
           </Button>
         </Modal.Footer>
       </Modal>

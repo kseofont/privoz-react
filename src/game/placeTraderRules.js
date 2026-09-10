@@ -1,4 +1,5 @@
 export const MAX_TRADER_GOODS = 3;
+export const MAX_PLAYER_TRADERS = 3;
 
 export const DEFAULT_GAME_SECTORS = Object.freeze([
   'Fruits',
@@ -27,14 +28,6 @@ export function getGameSectors(gameState) {
   return Array.isArray(gameState?.sectors) && gameState.sectors.length
     ? gameState.sectors
     : DEFAULT_GAME_SECTORS;
-}
-
-export function getTraderPlacementCost(player) {
-  const tradersCount = Array.isArray(player?.traders)
-    ? player.traders.length
-    : Number(player?.tradersCount || 0);
-
-  return tradersCount <= 1 ? 0 : tradersCount * 5;
 }
 
 export function getSectorCapacity(gameState) {
@@ -108,12 +101,6 @@ export function validatePlaceTrader(gameState, payload = {}) {
     return { ok: false, reason: 'sector_full' };
   }
 
-  const placementCost = getTraderPlacementCost(player);
-
-  if (Number(player.coins || 0) < placementCost) {
-    return { ok: false, reason: 'not_enough_coins' };
-  }
-
   if (productIds.length > MAX_TRADER_GOODS) {
     return { ok: false, reason: 'too_many_products' };
   }
@@ -145,7 +132,6 @@ export function validatePlaceTrader(gameState, payload = {}) {
     trader,
     sector: matchedSector,
     productIds,
-    placementCost,
     capacity,
     occupied,
   };

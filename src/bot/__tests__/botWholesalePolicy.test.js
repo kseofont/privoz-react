@@ -69,7 +69,7 @@ function makeState({ coins = 10, products = [], behaviorProfile = 'balanced' } =
         traders: [{ traderId: 't1' }],
         products,
         isBot: true,
-        botPolicyVersion: 'policy-v005',
+        botPolicyVersion: 'policy-v007',
         botBehaviorProfile: behaviorProfile,
       },
     ],
@@ -218,7 +218,7 @@ test('BUY_PRODUCT learning sample is compact, attributed to profile and identity
   });
 
   expect(sample.actorType).toBe('bot');
-  expect(sample.policyVersion).toBe('policy-v005');
+  expect(sample.policyVersion).toBe('policy-v007');
   expect(sample.behaviorProfile).toBe('smuggler');
   expect(sample.selectedAction).toEqual({ type: 'BUY_PRODUCT', productId: 20 });
   expect(sample.legalActions).toHaveLength(4);
@@ -229,4 +229,35 @@ test('BUY_PRODUCT learning sample is compact, attributed to profile and identity
   expect(serialized).not.toContain('Bot Name');
   expect(serialized).not.toContain('peer-human');
   expect(serialized).not.toContain('peer-bot');
+});
+
+test('wholesale policy does not reserve coins for free trader placement', async () => {
+  let state = makeState({ coins: 25, behaviorProfile: 'all_in' });
+  state = {
+    ...state,
+    players: state.players.map(player =>
+      player.user_id === 'peer-bot'
+        ? {
+            ...player,
+            traders: [
+              { traderId: 't1', location: null },
+              { traderId: 't2', location: null },
+            ],
+            tradersCount: 2,
+          }
+        : player
+    ),
+  };
+
+  const first = await decideProduct(state, 'all_in');
+  expect(first.productId).toBe(20);
+
+  state = gameReducer(
+    state,
+    buyProductAction({ playerId: 'peer-bot', productId: first.productId })
+  );
+
+  // Placement is free, so all_in may continue spending the remaining coins.
+  expect(state.players[1].coins).toBe(20);
+  expect((await decideProduct(state, 'all_in')).productId).toBe(20);
 });

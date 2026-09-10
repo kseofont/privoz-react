@@ -69,7 +69,7 @@ function makeState(overrides = {}) {
         traders: [],
         products: [],
         isBot: true,
-        botPolicyVersion: 'policy-v005',
+        botPolicyVersion: 'policy-v007',
         botBehaviorProfile: 'balanced',
       },
     ],
@@ -92,7 +92,7 @@ test('bot uses normal SELECT_TRADER action and reducer flow', async () => {
   expect(decision).toEqual({
     type: 'select_trader',
     traderId: 't1',
-    policyVersion: 'policy-v005',
+    policyVersion: 'policy-v007',
   });
   expect(action.type).toBe('SELECT_TRADER');
   expect(nextState).not.toBe(state);
@@ -122,7 +122,7 @@ test('learning sample contains gameplay data but no player identity', () => {
 
   expect(sample.eventId).toBe('LE-TRADER-1-1-0-t1');
   expect(sample.actorType).toBe('bot');
-  expect(sample.policyVersion).toBe('policy-v005');
+  expect(sample.policyVersion).toBe('policy-v007');
   expect(sample.behaviorProfile).toBe('balanced');
   expect(sample.legalActions).toHaveLength(2);
 
@@ -132,4 +132,85 @@ test('learning sample contains gameplay data but no player identity', () => {
   expect(serialized).not.toContain('Secret Bot Name');
   expect(serialized).not.toContain('peer-human');
   expect(serialized).not.toContain('peer-bot');
+});
+
+test('bot may hire a trader when it can afford the acquisition price because placement is free', async () => {
+  const state = makeState({
+    players: [
+      {
+        user_id: 'peer-human',
+        name: 'Alice',
+        coins: 10,
+        traders: [],
+        products: [],
+        isBot: false,
+      },
+      {
+        user_id: 'peer-bot',
+        name: 'Secret Bot Name',
+        coins: 30,
+        traders: [{ traderId: 'owned-1', location: null }],
+        tradersCount: 1,
+        products: [],
+        isBot: true,
+        botPolicyVersion: 'policy-v007',
+        botBehaviorProfile: 'balanced',
+      },
+    ],
+    traderList: [
+      { traderId: 'owned-1', taken: true },
+      { traderId: 't2', taken: false },
+    ],
+  });
+
+  const observation = buildPlayerObservation(state, 'peer-bot');
+  const decision = await decideWithPolicy(observation, { stage: 'trader' });
+
+  // Second trader costs 15. Market placement of already-owned traders is free.
+  expect(decision).toEqual({
+    type: 'select_trader',
+    traderId: 't2',
+    policyVersion: 'policy-v007',
+  });
+});
+
+test('SELECT_TRADER reducer enforces the three-trader player limit', () => {
+  const owned = [
+    { traderId: 't1', location: null },
+    { traderId: 't2', location: null },
+    { traderId: 't3', location: null },
+  ];
+  const state = makeState({
+    players: [
+      {
+        user_id: 'peer-human',
+        name: 'Alice',
+        coins: 10,
+        traders: [],
+        products: [],
+        isBot: false,
+      },
+      {
+        user_id: 'peer-bot',
+        name: 'Secret Bot Name',
+        coins: 200,
+        traders: owned,
+        tradersCount: 3,
+        products: [],
+        isBot: true,
+        botPolicyVersion: 'policy-v007',
+        botBehaviorProfile: 'balanced',
+      },
+    ],
+    traderList: [
+      ...owned.map(trader => ({ traderId: trader.traderId, taken: true })),
+      { traderId: 't4', taken: false },
+    ],
+  });
+  const action = {
+    type: 'SELECT_TRADER',
+    payload: { playerId: 'peer-bot', traderId: 't4' },
+  };
+
+  expect(gameReducer(state, action)).toBe(state);
 });

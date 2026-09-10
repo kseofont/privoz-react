@@ -1654,3 +1654,129 @@ Required tests before commit:
 - manual Host + multiple bots test through round 1 → personal events → round 2.
 
 Stage 8B will separately define authoritative game completion and final outcome/ranking logging after the game-length/end condition is clarified.
+
+## Current game completion stage - 14-round outcome finalization (Stage 8B)
+
+Stage 8B defines the first explicit authoritative game-completion rule.
+
+Temporary/current game-length rule:
+
+- the game lasts 14 full rounds;
+- round 14 is the final round;
+- final Event Card effects are applied normally;
+- end-of-round sales are applied normally;
+- only AFTER those final sales is the winner calculated;
+- the player with the highest final coin balance wins.
+
+The implementation intentionally interprets "14 turns" as 14 complete gameState.round cycles because round is the existing authoritative full-round counter.
+
+No secondary tie-break rule is invented. If two or more players share the highest final coin balance, they are recorded as co-winners until a future explicit rule says otherwise.
+
+### Final round settlement
+
+Round settlement is extracted into a pure game rule helper.
+
+For rounds before 14:
+
+ROUND_END
+
+→ sell placed trader goods
+
+→ return sold traders to hand
+
+→ recalculate sectorsWithTraders
+
+→ round + 1
+
+→ TRADER_SELECTION
+
+For round 14:
+
+ROUND_END
+
+→ apply the same final sales
+
+→ return sold traders to hand
+
+→ recalculate sectorsWithTraders
+
+→ calculate ranking from final balances
+
+→ GAME_END
+
+The final state keeps round = 14 and clears currentTurnUserId so bots/players cannot start an accidental round 15.
+
+### Final game outcome
+
+gameState.gameOutcome is privacy-safe game result metadata containing:
+
+- rule: highest_coins;
+- completedRound;
+- maxRounds;
+- maxCoins;
+- winnerActorIndexes;
+- anonymous ranking entries by actorIndex;
+- actorType human/bot;
+- final coins;
+- place;
+- isWinner;
+- bot policyVersion / behaviorProfile where applicable.
+
+It must not contain player names or PeerJS IDs.
+
+Tied balances use shared places (for example 1, 1, 3) and every player sharing maxCoins is a winner.
+
+### Learning outcome finalization
+
+The HOST records one separate privacy-safe outcome record when authoritative state reaches GAME_END.
+
+The learning endpoint accepts:
+
+recordType: outcome
+
+with a deterministic event ID such as:
+
+LE-OUTCOME-14
+
+The backend stores the normalized outcome in the existing per-game learning JSON under:
+
+outcome
+
+It does NOT append outcome to the strategic decisions array.
+
+The outcome is idempotent. Re-sending the same outcome event does not duplicate data.
+
+If a game had already been included in a training batch before its final outcome was available, saving the outcome marks that game unused/pending again while preserving its existing useCount and training history. This ensures the final result can be included in a later training batch.
+
+Training export already carries the game outcome field, so completed games become directly useful for comparing decisions/policies against final results.
+
+### Game-end UI
+
+When phase = GAME_END:
+
+- END_TURN is no longer available;
+- host round-end controls are no longer available;
+- Menu displays final round, winner/co-winners and ranking by final coins;
+- player names may be shown in the live UI, but they are not written into learning outcome records.
+
+### Stage 8B validation
+
+Required tests before commit:
+
+- settling round 13 advances to round 14 and does not end the game;
+- settling round 14 applies sales before ranking;
+- round 14 stays round 14 rather than creating round 15;
+- phase becomes GAME_END;
+- currentTurnUserId becomes null;
+- highest final coin balance wins;
+- equal top balances produce co-winners without an invented tie-break;
+- final ranking contains no player names/PeerJS IDs in the learning record;
+- production/local learning backend stores outcome under game.outcome;
+- duplicate outcome submission is idempotent;
+- Learning Admin With outcome counter increases;
+- training export includes outcome;
+- npm run build;
+- git diff --check;
+- manual round-14 end test.
+
+Stage 8B does not change bot strategy policy-v005. Game completion is a game-core rule, not a new bot decision policy.

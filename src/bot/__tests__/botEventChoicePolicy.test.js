@@ -94,7 +94,7 @@ function makeState(overrides = {}) {
           },
         ],
         isBot: true,
-        botPolicyVersion: 'policy-v005',
+        botPolicyVersion: 'policy-v007',
         botBehaviorProfile: 'balanced',
       },
       {
@@ -132,7 +132,7 @@ function makeState(overrides = {}) {
         products: [],
         eventCards: [],
         isBot: true,
-        botPolicyVersion: 'policy-v005',
+        botPolicyVersion: 'policy-v007',
         botBehaviorProfile: 'smuggler',
       },
     ],
@@ -162,7 +162,7 @@ test('balanced bot uses Porters now and targets illegal vodka in Dairy with Fede
       ev_card_prtrs: { traderId: 't-bot' },
     },
     behaviorProfile: 'balanced',
-    policyVersion: 'policy-v005',
+    policyVersion: 'policy-v007',
   });
   expect(action).toEqual(
     submitEventChoicesAction({
@@ -242,7 +242,7 @@ test('event-choice learning sample is compact, strategic and identity-free', () 
   });
 
   expect(sample.schemaVersion).toBe(4);
-  expect(sample.policyVersion).toBe('policy-v005');
+  expect(sample.policyVersion).toBe('policy-v007');
   expect(sample.behaviorProfile).toBe('balanced');
   expect(sample.selectedAction).toEqual({
     type: 'SUBMIT_EVENT_CHOICES',

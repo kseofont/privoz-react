@@ -61,8 +61,6 @@ const PrivozSector = ({
 
   const [showMaxTradersModal, setShowMaxTradersModal] = useState(false);
 
-  const [showNotEnoughMoneyModal, setShowNotEnoughMoneyModal] = useState(false);
-
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [lastAddedEventCard, setLastAddedEventCard] = useState(null);
@@ -114,8 +112,6 @@ const PrivozSector = ({
   const showValidationError = reason => {
     if (reason === 'sector_full') {
       setShowMaxTradersModal(true);
-    } else if (reason === 'not_enough_coins') {
-      setShowNotEnoughMoneyModal(true);
     } else {
       console.warn('[PrivozSector] PLACE_TRADER validation failed:', reason);
     }
@@ -456,24 +452,6 @@ const PrivozSector = ({
 
         <Modal.Footer>
           <Button variant="primary" onClick={() => setShowMaxTradersModal(false)}>
-            OK
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Not enough money */}
-      <Modal show={showNotEnoughMoneyModal} onHide={() => setShowNotEnoughMoneyModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Not Enough Money</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          You do not have enough money to add a trader. Please acquire more coins before adding a
-          trader.
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowNotEnoughMoneyModal(false)}>
             OK
           </Button>
         </Modal.Footer>

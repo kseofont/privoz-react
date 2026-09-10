@@ -65,6 +65,15 @@ if (!is_string($eventId) || !learning_valid_event_id($eventId)) {
     learning_respond(400, ['saved' => false, 'error' => 'Invalid event ID']);
 }
 
+$normalizedOutcome = null;
+if (($event['recordType'] ?? null) === 'outcome') {
+    try {
+        $normalizedOutcome = learning_sanitize_outcome($event);
+    } catch (InvalidArgumentException $error) {
+        learning_respond(400, ['saved' => false, 'error' => $error->getMessage()]);
+    }
+}
+
 try {
     $storageDir = learning_ensure_storage();
     $filePath = learning_game_file_path($storageDir, $gameId);
@@ -113,6 +122,74 @@ try {
             'decisions' => [],
             'outcome' => null,
         ];
+    }
+
+    if (($event['recordType'] ?? null) === 'outcome') {
+        $existingOutcome = is_array($game['outcome'] ?? null) ? $game['outcome'] : null;
+
+        if (($existingOutcome['eventId'] ?? null) === $eventId) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+
+            learning_respond(200, [
+                'saved' => true,
+                'duplicate' => true,
+                'recordType' => 'outcome',
+                'gameId' => $gameId,
+                'eventId' => $eventId,
+            ]);
+        }
+
+        $game['outcome'] = $normalizedOutcome;
+        $game['updatedAt'] = gmdate('c');
+
+        if (!isset($game['gameVersion']) || $game['gameVersion'] === null) {
+            $game['gameVersion'] = $event['gameVersion'] ?? null;
+        }
+        if (!isset($game['gitCommit']) || $game['gitCommit'] === null) {
+            $game['gitCommit'] = $event['gitCommit'] ?? null;
+        }
+        if (!is_array($game['playerCounts'] ?? null) && is_array($event['playerCounts'] ?? null)) {
+            $game['playerCounts'] = $event['playerCounts'];
+        }
+
+        // A final outcome is new training data. If this game had already been
+        // exported before it finished, mark it pending again while keeping its
+        // previous useCount/training history.
+        if ((int)($game['useCount'] ?? 0) > 0) {
+            $game['status'] = 'unused';
+        }
+
+        $encoded = json_encode($game, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encoded === false) {
+            throw new RuntimeException('Could not encode learning log');
+        }
+        if (strlen($encoded) > PRIVOZ_LEARNING_MAX_GAME_BYTES) {
+            throw new RuntimeException('Learning log game size limit reached');
+        }
+
+        rewind($handle);
+        if (!ftruncate($handle, 0)) {
+            throw new RuntimeException('Could not truncate learning log');
+        }
+
+        $written = fwrite($handle, $encoded);
+        if ($written === false || $written < strlen($encoded)) {
+            throw new RuntimeException('Could not save learning log');
+        }
+
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        @chmod($filePath, 0600);
+
+        learning_respond(201, [
+            'saved' => true,
+            'duplicate' => false,
+            'recordType' => 'outcome',
+            'gameId' => $gameId,
+            'eventId' => $eventId,
+        ]);
     }
 
     $decisions = is_array($game['decisions'] ?? null) ? $game['decisions'] : [];

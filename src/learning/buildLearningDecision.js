@@ -1,6 +1,6 @@
 import { ACTION_TYPES } from '../game/actions';
 import { buildPlayerObservation } from '../bot/observation/buildPlayerObservation';
-import { MAX_TRADER_GOODS, normalizeSectorKey } from '../game/placeTraderRules';
+import { MAX_PLAYER_TRADERS, MAX_TRADER_GOODS, normalizeSectorKey } from '../game/placeTraderRules';
 import { EVENT_KEEP_COST, getValidEventTargets } from '../game/eventChoiceRules';
 
 function sanitizeIdPart(value) {
@@ -16,7 +16,13 @@ function getLegalSelectTraderActions(observation) {
     return [];
   }
 
-  const price = Number(observation.self?.tradersCount || 0) * 15;
+  const tradersCount = Number(observation.self?.tradersCount || 0);
+
+  if (tradersCount >= MAX_PLAYER_TRADERS) {
+    return [];
+  }
+
+  const price = tradersCount * 15;
 
   if (Number(observation.self?.coins || 0) < price) {
     return [];
@@ -60,10 +66,6 @@ function getLegalBuyProductActions(observation) {
 
 function getLegalPlaceTraderActions(observation) {
   if (!observation || observation.currentTurnUserId !== observation.self?.playerId) {
-    return [];
-  }
-
-  if (Number(observation.self?.coins || 0) < Number(observation.self?.placementCost || 0)) {
     return [];
   }
 
@@ -216,7 +218,6 @@ function buildCompactObservation(observation, actionType) {
       ...compact,
       self: {
         ...compact.self,
-        placementCost: observation.self.placementCost,
         traders: observation.self.traders,
         products: observation.self.products,
       },

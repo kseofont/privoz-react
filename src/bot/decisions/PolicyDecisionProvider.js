@@ -1,6 +1,10 @@
 import { PHASES } from '../../game/phases';
-import { MAX_TRADER_GOODS, normalizeSectorKey } from '../../game/placeTraderRules';
-import policy from '../policies/policy-v005.json';
+import {
+  MAX_PLAYER_TRADERS,
+  MAX_TRADER_GOODS,
+  normalizeSectorKey,
+} from '../../game/placeTraderRules';
+import policy from '../policies/policy-v007.json';
 
 export const BOT_DECISION_TYPES = Object.freeze({
   SELECT_TRADER: 'select_trader',
@@ -32,8 +36,18 @@ function getLegalTraderIds(observation) {
     return [];
   }
 
-  const traderPrice = Number(observation.self?.tradersCount || 0) * 15;
+  const tradersCount = Number(observation.self?.tradersCount || 0);
 
+  if (tradersCount >= MAX_PLAYER_TRADERS) {
+    return [];
+  }
+
+  const traderPrice = tradersCount * 15;
+
+  /*
+   * Hiring is the only trader-related coin cost. Placing an already-owned
+   * trader on the market is free.
+   */
   if (Number(observation.self?.coins || 0) < traderPrice) {
     return [];
   }
@@ -281,15 +295,11 @@ function decidePlacement(observation, behaviorProfile) {
     policy.placeTrader?.profiles?.[profileId] ||
     policy.placeTrader?.profiles?.[policy.defaultBehaviorProfile] ||
     {};
-  const placementCost = Number(observation.self?.placementCost || 0);
+  const unplacedTraders = (observation.self?.traders || []).filter(
+    currentTrader => currentTrader?.traderId && !currentTrader.location
+  );
 
-  if (Number(observation.self?.coins || 0) < placementCost) {
-    return null;
-  }
-
-  const trader = (observation.self?.traders || []).find(currentTrader => !currentTrader.location);
-
-  if (!trader?.traderId) {
+  if (!unplacedTraders.length) {
     return null;
   }
 
@@ -312,25 +322,28 @@ function decidePlacement(observation, behaviorProfile) {
     Math.min(MAX_TRADER_GOODS, Number(config.maxGoods ?? MAX_TRADER_GOODS))
   );
 
-  const candidates = availableSectors.map(sectorInfo => {
-    const allowed = productUnits.filter(product =>
-      productAllowedInObservedSector(product, sectorInfo.sector)
-    );
-    const filtered = filterPlacementGoodsByProfile(allowed, config.legalityMode);
-    const goods = rankPlacementGoods(filtered, config.legalityMode).slice(0, maxGoods);
+  const candidates = unplacedTraders.flatMap(trader =>
+    availableSectors.map(sectorInfo => {
+      const allowed = productUnits.filter(product =>
+        productAllowedInObservedSector(product, sectorInfo.sector)
+      );
+      const filtered = filterPlacementGoodsByProfile(allowed, config.legalityMode);
+      const goods = rankPlacementGoods(filtered, config.legalityMode).slice(0, maxGoods);
 
-    return {
-      sectorInfo,
-      goods,
-      score: scorePlacementCandidate({
-        sectorInfo,
+      return {
         trader,
+        sectorInfo,
         goods,
-        config,
-        ownPlacedSectors,
-      }),
-    };
-  });
+        score: scorePlacementCandidate({
+          sectorInfo,
+          trader,
+          goods,
+          config,
+          ownPlacedSectors,
+        }),
+      };
+    })
+  );
 
   const candidatesWithRequiredGoods =
     config.legalityMode === 'illegal_only' || config.legalityMode === 'legal_only'
@@ -352,7 +365,7 @@ function decidePlacement(observation, behaviorProfile) {
 
   return {
     type: BOT_DECISION_TYPES.PLACE_TRADER,
-    traderId: trader.traderId,
+    traderId: selected.trader.traderId,
     sector: selected.sectorInfo.sector,
     productIds: selected.goods.map(product => product.productId),
     behaviorProfile: profileId,

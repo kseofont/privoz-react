@@ -41,6 +41,105 @@ function learning_valid_event_id(string $eventId): bool
     return (bool)preg_match('/^LE-[A-Za-z0-9_-]{3,160}$/', $eventId);
 }
 
+
+function learning_sanitize_outcome(array $event): array
+{
+    $outcome = $event['outcome'] ?? null;
+    if (!is_array($outcome)) {
+        throw new InvalidArgumentException('Invalid game outcome');
+    }
+
+    if (!is_numeric($outcome['completedRound'] ?? null)
+        || !is_numeric($outcome['maxRounds'] ?? null)
+        || !is_numeric($outcome['maxCoins'] ?? null)) {
+        throw new InvalidArgumentException('Invalid outcome totals');
+    }
+
+    $completedRound = (int)$outcome['completedRound'];
+    $maxRounds = (int)$outcome['maxRounds'];
+    $maxCoins = (float)$outcome['maxCoins'];
+    $ranking = $outcome['ranking'] ?? null;
+    $winnerActorIndexes = $outcome['winnerActorIndexes'] ?? null;
+
+    if ($completedRound < 1 || $completedRound > 1000 || $maxRounds < 1 || $maxRounds > 1000) {
+        throw new InvalidArgumentException('Invalid outcome round');
+    }
+
+    if (!is_array($ranking) || count($ranking) < 1 || count($ranking) > 32) {
+        throw new InvalidArgumentException('Invalid outcome ranking');
+    }
+
+    if (!is_array($winnerActorIndexes) || count($winnerActorIndexes) < 1 || count($winnerActorIndexes) > 32) {
+        throw new InvalidArgumentException('Invalid outcome winners');
+    }
+
+    $normalizedRanking = [];
+    foreach ($ranking as $entry) {
+        if (!is_array($entry)) {
+            throw new InvalidArgumentException('Invalid outcome ranking entry');
+        }
+
+        if (!is_numeric($entry['actorIndex'] ?? null)
+            || !is_numeric($entry['coins'] ?? null)
+            || !is_numeric($entry['place'] ?? null)) {
+            throw new InvalidArgumentException('Invalid outcome ranking entry');
+        }
+
+        $actorIndex = (int)$entry['actorIndex'];
+        $actorType = $entry['actorType'] ?? null;
+        $coins = (float)$entry['coins'];
+        $place = (int)$entry['place'];
+
+        if ($actorIndex < 0 || $actorIndex > 31 || !in_array($actorType, ['human', 'bot'], true) || $place < 1 || $place > 32) {
+            throw new InvalidArgumentException('Invalid outcome ranking entry');
+        }
+
+        $normalized = [
+            'actorIndex' => $actorIndex,
+            'actorType' => $actorType,
+            'coins' => $coins,
+            'place' => $place,
+            'isWinner' => ($entry['isWinner'] ?? false) === true,
+            'policyVersion' => null,
+            'behaviorProfile' => null,
+        ];
+
+        if ($actorType === 'bot') {
+            $policyVersion = $entry['policyVersion'] ?? 'unknown';
+            $behaviorProfile = $entry['behaviorProfile'] ?? 'balanced';
+            $normalized['policyVersion'] = is_string($policyVersion) ? substr($policyVersion, 0, 80) : 'unknown';
+            $normalized['behaviorProfile'] = is_string($behaviorProfile) ? substr($behaviorProfile, 0, 80) : 'balanced';
+        }
+
+        $normalizedRanking[] = $normalized;
+    }
+
+    $normalizedWinners = [];
+    foreach ($winnerActorIndexes as $actorIndex) {
+        $actorIndex = (int)$actorIndex;
+        if ($actorIndex < 0 || $actorIndex > 31) {
+            throw new InvalidArgumentException('Invalid outcome winner index');
+        }
+        $normalizedWinners[$actorIndex] = true;
+    }
+
+    if (!$normalizedWinners) {
+        throw new InvalidArgumentException('Invalid outcome winners');
+    }
+
+    return [
+        'schemaVersion' => 1,
+        'eventId' => is_string($event['eventId'] ?? null) ? $event['eventId'] : null,
+        'rule' => 'highest_coins',
+        'completedRound' => $completedRound,
+        'maxRounds' => $maxRounds,
+        'maxCoins' => $maxCoins,
+        'winnerActorIndexes' => array_map('intval', array_keys($normalizedWinners)),
+        'ranking' => $normalizedRanking,
+        'serverReceivedAt' => gmdate('c'),
+    ];
+}
+
 function learning_game_file_path(string $storageDir, string $gameId): string
 {
     if (!learning_valid_game_id($gameId)) {

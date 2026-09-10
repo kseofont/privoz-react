@@ -1,6 +1,7 @@
 // logic.js
 import { PHASES } from '../game/phases';
 import { syncPlayerSectorsWithTraders } from '../game/playerDerivedState';
+import { settleRound } from '../game/roundEnd';
 // Конец раунда
 // Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {
@@ -10,63 +11,11 @@ export function handleEndRound(setGameState, isHost, broadcastGameState) {
   }
 
   setGameState(prev => {
-    if (!prev || !Array.isArray(prev.players)) return prev;
+    const newState = settleRound(prev);
 
-    const updatedPlayers = prev.players.map(player => {
-      let coinsEarned = 0;
-
-      // Обрабатываем всех трейдеров игрока
-      const updatedTraders = (player.traders || []).map(trader => {
-        // Проверка: торговец размещён в секторе и есть товары
-        if (
-          typeof trader.card_in_game === 'string' &&
-          trader.card_in_game.startsWith('sector_') &&
-          Array.isArray(trader.goods) &&
-          trader.goods.length > 0
-        ) {
-          // Считаем доход с каждого товара у этого торговца
-          trader.goods.forEach(product => {
-            const quantity = Number(product.quantity_player_card) || 0;
-            // Название цены может быть sellingPrice, retailPrice или что-то ещё
-            const sellingPrice =
-              Number(product.sellingPrice) ||
-              Number(product.retailPrice) ||
-              Number(product.profit) ||
-              0;
-            coinsEarned += quantity * sellingPrice;
-          });
-
-          // Очищаем товары (после продажи)
-          return {
-            ...trader,
-            goods: [],
-            card_in_game: `${player.user_id}_hand`, // <- ключевое изменение
-            location: null, // можно явно убрать сектор, если он был
-          };
-        }
-        // Если не размещён или нет товаров, ничего не меняем
-        return trader;
-      });
-
-      return syncPlayerSectorsWithTraders(
-        {
-          ...player,
-          coins: (player.coins || 0) + coinsEarned,
-        },
-        updatedTraders
-      );
-    });
-
-    const nextRound = (prev.round || 1) + 1;
-    const newState = {
-      ...prev,
-      round: nextRound,
-      players: updatedPlayers,
-      __roundProcessing: true, // временно блокируем повтор
-      phase: PHASES.TRADER_SELECTION,
-      eventCardPhase: undefined,
-      playerEventChoices: undefined, // или сохранять в историю
-    };
+    if (newState === prev) {
+      return prev;
+    }
 
     if (isHost && typeof broadcastGameState === 'function') {
       broadcastGameState(newState);

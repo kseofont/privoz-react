@@ -11,7 +11,7 @@ import localTradersData from '../data/TradersList.json';
 
 import { connectionsRef } from '../globals';
 
-import { handleHostEndTurn, getField } from '../logic/logic';
+import { getField } from '../logic/logic';
 
 import { selectTraderAction } from '../game/actions';
 
@@ -155,44 +155,6 @@ const TraderList = () => {
       }
     });
   };
-
-  /*
-   * HOST LEGACY endTurn LISTENER
-   *
-   * gameAction is intentionally NOT handled here anymore.
-   * It is handled by Menu, which remains mounted on all game pages.
-   *
-   * This page keeps only the legacy endTurn handler for now.
-   */
-  useEffect(() => {
-    if (!isHost) {
-      return undefined;
-    }
-
-    const endTurnHandler = handleHostEndTurn({
-      connectionsRef,
-      setGameState,
-    });
-
-    const subscriptions = connectionsRef.current.map(conn => {
-      const onData = data => {
-        endTurnHandler(data, conn);
-      };
-
-      conn.on('data', onData);
-
-      return {
-        conn,
-        onData,
-      };
-    });
-
-    return () => {
-      subscriptions.forEach(({ conn, onData }) => {
-        conn.off('data', onData);
-      });
-    };
-  }, [isHost]);
 
   /*
    * CLIENT NETWORK LISTENER

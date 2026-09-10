@@ -1,7 +1,7 @@
 import { ACTION_TYPES } from './actions';
 import { PHASES } from './phases';
 import { awardEventCardById } from './eventCards';
-import { validatePlaceTrader } from './placeTraderRules';
+import { MAX_PLAYER_TRADERS, validatePlaceTrader } from './placeTraderRules';
 import { syncPlayerSectorsWithTraders } from './playerDerivedState';
 import { validateAndNormalizeEventChoice } from './eventChoiceRules';
 
@@ -114,6 +114,10 @@ function reduceSelectTrader(gameState, payload = {}) {
    * We are NOT changing game rules during this refactor.
    */
   const tradersCount = player.traders?.length || 0;
+
+  if (tradersCount >= MAX_PLAYER_TRADERS) {
+    return gameState;
+  }
 
   const traderPrice = tradersCount * 15;
 
@@ -276,7 +280,7 @@ function reducePlaceTrader(gameState, payload = {}) {
     return gameState;
   }
 
-  const { player, trader, sector, productIds, placementCost } = validation;
+  const { player, trader, sector, productIds } = validation;
   const playerIndex = gameState.players.findIndex(currentPlayer => currentPlayer.user_id === payload.playerId);
   const remainingProducts = Array.isArray(player.products)
     ? player.products.map(product => ({ ...product }))
@@ -326,7 +330,7 @@ function reducePlaceTrader(gameState, payload = {}) {
     {
       ...player,
       products: remainingProducts,
-      coins: Number(player.coins || 0) - placementCost,
+      coins: Number(player.coins || 0),
     },
     updatedTraders
   );

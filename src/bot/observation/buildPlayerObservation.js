@@ -1,4 +1,4 @@
-import { getGameSectors, getSectorCapacity, getTraderPlacementCost, normalizeSectorKey } from '../../game/placeTraderRules';
+import { getGameSectors, getSectorCapacity, normalizeSectorKey } from '../../game/placeTraderRules';
 
 function normalizeProductSector(product) {
   return product?.sector || product?.product_sector || 'unknown';
@@ -73,7 +73,6 @@ export function buildPlayerObservation(gameState, playerId) {
       tradersCount: Array.isArray(player.traders)
         ? player.traders.length
         : Number(player.tradersCount || 0),
-      placementCost: getTraderPlacementCost(player),
       traders: (player.traders || []).map(trader => ({
         traderId: trader?.traderId || null,
         location: trader?.location || null,
