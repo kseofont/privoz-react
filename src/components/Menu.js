@@ -25,6 +25,20 @@ import FeedbackButton from './FeedbackButton';
 import BotPlayerController from '../bot/BotPlayerController';
 import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 
+const getLearningAdminUrl = () => {
+  const learningApiUrl = process.env.REACT_APP_LEARNING_API_URL;
+
+  if (learningApiUrl) {
+    return learningApiUrl.replace(/\/learning\.php(?:\?.*)?$/, '/learning-admin.php');
+  }
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api/learning-admin.php`;
+  }
+
+  return '/api/learning-admin.php';
+};
+
 const Menu = ({
   myUserId: propMyUserId,
   gameState: propGameState = null,
@@ -37,6 +51,7 @@ const Menu = ({
   const location = useLocation();
   const { peerId: urlPeerId } = useParams();
   const pathname = location.pathname;
+  const learningAdminUrl = getLearningAdminUrl();
 
   // --- Вычисляем myUserId и gameState (fallback из window, если нет в props)
   const gameState = propGameState || (typeof window !== 'undefined' && window.gameState) || null;
@@ -563,17 +578,17 @@ const Menu = ({
         </div>
         <div>
           <a
-            href="https://privoz.kotucheniy.com.ua/api/learning-admin.php"
+            href={learningAdminUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-outline-secondary mb-2"
           >
             {{
-              ua: 'Навчальні дані',
-              ru: 'Данные обучения',
-              es: 'Datos de aprendizaje',
-              en: 'Learning data',
-            }[lang] || 'Learning data'}
+              ua: 'Історія ігор',
+              ru: 'История игр',
+              es: 'Historial de partidas',
+              en: 'Game history',
+            }[lang] || 'Game history'}
           </a>
         </div>
       </div>
