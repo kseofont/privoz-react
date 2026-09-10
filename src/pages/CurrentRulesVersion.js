@@ -14,7 +14,10 @@ const COPY = {
       'These rules describe the mechanics that are currently implemented in the digital multiplayer prototype. Archived versions below may contain older or experimental mechanics that are not active now.',
     objectiveTitle: 'Goal and victory',
     objective: 'Earn more coins than the other players by hiring traders, buying goods, placing traders on the market and using Event Cards.',
-    winner: 'After the final sale of round {rounds}, the player with the most coins wins. If several players share the highest total, they are co-winners. There is currently no tie-breaker.',
+    winner: 'After the final sale of round {rounds}, the player with the most coins wins. If several players share the highest total, they are co-winners.',
+    tieBreakerTitle: 'What is a tie-breaker?',
+    tieBreaker:
+      'A tie-breaker is an additional rule used to choose one winner when two or more players finish with the same best result. Privoz currently has no tie-breaker: players tied for the highest final coin total are all co-winners.',
     setupTitle: 'Game setup',
     setupPlayers: '2-6 players can participate. Human and bot players use the same game rules.',
     setupCoins: 'Each player starts with 10 coins.',
@@ -27,7 +30,7 @@ const COPY = {
     wholesaleTitle: 'Wholesale market and goods',
     wholesaleBuy: 'During the wholesale step, a player may buy available goods while they have enough coins and the product is still available. The wholesale price is deducted immediately.',
     wholesaleFlow: 'After a purchase, the player may continue shopping or go to the market to place traders.',
-    goodsLimit: 'When placing a trader, up to {maxGoods} goods may be transferred to that trader.',
+    goodsLimit: 'Each trader may have at most {maxGoods} goods when placed on the market. You cannot assign more than {maxGoods} goods to one trader during placement.',
     legalGoods: 'Legal goods may be placed only in their matching sector.',
     illegalGoods: 'Illegal goods may be placed in any sector.',
     unassignedGoods: 'Goods that are not transferred to a trader remain in the player inventory and are not sold in that round.',
@@ -38,7 +41,7 @@ const COPY = {
     placementStep4: 'The trader is placed for 0 coins. The selected goods move from the player inventory to that trader.',
     placementStep5: 'Each successful trader placement awards one random Event Card from the active deck.',
     eventTitle: 'Event Cards',
-    eventIntro: 'After all players finish their turns, the game enters the personal Event Card phase. The current active deck contains {count} card types.',
+    eventIntro: 'After all players finish their turns, the game enters the personal Event Card phase. According to the current eventcards.json data, the active deck contains {cardTypes} active card types and {activeCopies} active card copies in total. These numbers are dynamic and may change when the deck is rebalanced.',
     positiveTitle: 'Positive cards',
     positiveRule: 'A positive card can be played immediately or kept for a future round. Keeping a positive card costs 5 coins. If the player cannot afford to keep it, the choice is normalized to playing it now.',
     negativeTitle: 'Negative cards',
@@ -83,7 +86,10 @@ const COPY = {
       'Эти правила описывают механику, которая прямо сейчас реализована в цифровом мультиплеерном прототипе. Архивные версии ниже могут содержать старые или экспериментальные механики, которые сейчас не действуют.',
     objectiveTitle: 'Цель игры и победа',
     objective: 'Заработать больше монет, чем соперники, нанимая продавцов, закупая товары, размещая продавцов на рынке и используя карты событий.',
-    winner: 'После финальной продажи {rounds}-го раунда побеждает игрок с наибольшим количеством монет. Если максимальная сумма одинаковая у нескольких игроков, все они считаются победителями. Тай-брейкера сейчас нет.',
+    winner: 'После финальной продажи {rounds}-го раунда побеждает игрок с наибольшим количеством монет. Если максимальная сумма одинаковая у нескольких игроков, все они считаются со-победителями.',
+    tieBreakerTitle: 'Что такое тай-брейкер?',
+    tieBreaker:
+      'Тай-брейкер - это дополнительное правило, которое при равном лучшем результате определяет одного победителя. Сейчас в «Привозе» тай-брейкера нет: если несколько игроков заканчивают игру с одинаковым максимальным количеством монет, все они считаются со-победителями.',
     setupTitle: 'Подготовка игры',
     setupPlayers: 'В игре участвуют от 2 до 6 игроков. Люди и боты играют по одним и тем же правилам.',
     setupCoins: 'Каждый игрок начинает с 10 монетами.',
@@ -96,7 +102,7 @@ const COPY = {
     wholesaleTitle: 'Оптовый рынок и товары',
     wholesaleBuy: 'На этапе опта игрок может покупать доступные товары, пока хватает монет и товар остаётся в наличии. Оптовая цена списывается сразу при покупке.',
     wholesaleFlow: 'После покупки можно продолжить закупки или перейти на рынок к размещению продавцов.',
-    goodsLimit: 'При размещении одному продавцу можно передать до {maxGoods} товаров.',
+    goodsLimit: 'У каждого продавца при размещении на базаре может быть максимум {maxGoods} товара. Назначить одному продавцу больше {maxGoods} товаров нельзя.',
     legalGoods: 'Легальный товар можно разместить только в соответствующем ему секторе.',
     illegalGoods: 'Нелегальный товар можно разместить в любом секторе.',
     unassignedGoods: 'Товары, которые не были переданы продавцу, остаются в инвентаре игрока и в этом раунде не продаются.',
@@ -107,7 +113,7 @@ const COPY = {
     placementStep4: 'Продавец размещается за 0 монет. Выбранные товары переходят из инвентаря игрока к этому продавцу.',
     placementStep5: 'За каждое успешное размещение продавца игрок получает одну случайную карту события из активной колоды.',
     eventTitle: 'Карты событий',
-    eventIntro: 'После того как все игроки закончили свои ходы, начинается фаза личных карт событий. В активной колоде сейчас {count} типов карт.',
+    eventIntro: 'После того как все игроки закончили свои ходы, начинается фаза личных карт событий. По текущим данным eventcards.json действующая колода содержит {cardTypes} активных типов карт и всего {activeCopies} активных экземпляров карт. Эти числа рассчитываются динамически и могут меняться при дальнейшем ребалансе колоды.',
     positiveTitle: 'Позитивные карты',
     positiveRule: 'Позитивную карту можно сыграть сразу или сохранить на будущий раунд. Сохранение позитивной карты стоит 5 монет. Если монет недостаточно, выбор автоматически приводится к использованию карты сейчас.',
     negativeTitle: 'Негативные карты',
@@ -152,7 +158,10 @@ const COPY = {
       'Ці правила описують механіку, яка зараз реалізована в цифровому мультиплеєрному прототипі. Архівні версії нижче можуть містити старі або експериментальні механіки, які зараз не діють.',
     objectiveTitle: 'Мета гри та перемога',
     objective: 'Заробити більше монет, ніж суперники, наймаючи продавців, купуючи товари, розміщуючи продавців на ринку та використовуючи карти подій.',
-    winner: 'Після фінального продажу {rounds}-го раунду перемагає гравець з найбільшою кількістю монет. Якщо максимальна сума однакова в кількох гравців, усі вони вважаються переможцями. Тай-брейкера зараз немає.',
+    winner: 'Після фінального продажу {rounds}-го раунду перемагає гравець з найбільшою кількістю монет. Якщо максимальна сума однакова у кількох гравців, усі вони вважаються співпереможцями.',
+    tieBreakerTitle: 'Що таке тай-брейкер?',
+    tieBreaker:
+      'Тай-брейкер - це додаткове правило, яке за однакового найкращого результату визначає одного переможця. Зараз у «Привозі» тай-брейкера немає: якщо кілька гравців завершують гру з однаковою максимальною кількістю монет, усі вони вважаються співпереможцями.',
     setupTitle: 'Підготовка гри',
     setupPlayers: 'У грі беруть участь від 2 до 6 гравців. Люди й боти грають за однаковими правилами.',
     setupCoins: 'Кожен гравець починає з 10 монетами.',
@@ -165,7 +174,7 @@ const COPY = {
     wholesaleTitle: 'Оптовий ринок і товари',
     wholesaleBuy: 'На етапі опту гравець може купувати доступні товари, доки вистачає монет і товар є в наявності. Оптова ціна списується одразу під час покупки.',
     wholesaleFlow: 'Після покупки можна продовжити закупівлі або перейти на ринок до розміщення продавців.',
-    goodsLimit: 'Під час розміщення одному продавцю можна передати до {maxGoods} товарів.',
+    goodsLimit: 'У кожного продавця під час розміщення на базарі може бути максимум {maxGoods} товари. Призначити одному продавцю більше {maxGoods} товарів не можна.',
     legalGoods: 'Легальний товар можна розмістити лише у відповідному йому секторі.',
     illegalGoods: 'Нелегальний товар можна розмістити в будь-якому секторі.',
     unassignedGoods: 'Товари, які не були передані продавцю, залишаються в інвентарі гравця і в цьому раунді не продаються.',
@@ -176,7 +185,7 @@ const COPY = {
     placementStep4: 'Продавець розміщується за 0 монет. Обрані товари переходять з інвентарю гравця до цього продавця.',
     placementStep5: 'За кожне успішне розміщення продавця гравець отримує одну випадкову карту події з активної колоди.',
     eventTitle: 'Карти подій',
-    eventIntro: 'Після того як усі гравці завершили свої ходи, починається фаза особистих карт подій. В активній колоді зараз {count} типів карт.',
+    eventIntro: 'Після того як усі гравці завершили свої ходи, починається фаза особистих карт подій. За поточними даними eventcards.json чинна колода містить {cardTypes} активних типів карт і загалом {activeCopies} активних екземплярів карт. Ці числа обчислюються динамічно й можуть змінюватися під час подальшого балансування колоди.',
     positiveTitle: 'Позитивні карти',
     positiveRule: 'Позитивну карту можна зіграти одразу або зберегти на майбутній раунд. Збереження позитивної карти коштує 5 монет. Якщо монет недостатньо, вибір автоматично нормалізується до використання карти зараз.',
     negativeTitle: 'Негативні карти',
@@ -221,7 +230,10 @@ const COPY = {
       'Estas reglas describen las mecánicas que están implementadas ahora mismo en el prototipo multijugador digital. Las versiones archivadas que aparecen más abajo pueden contener mecánicas antiguas o experimentales que ya no están activas.',
     objectiveTitle: 'Objetivo y victoria',
     objective: 'Ganar más monedas que los rivales contratando vendedores, comprando productos, colocando vendedores en el mercado y usando cartas de evento.',
-    winner: 'Después de la venta final de la ronda {rounds}, gana el jugador con más monedas. Si varios jugadores comparten la cantidad máxima, todos son co-ganadores. Actualmente no hay desempate.',
+    winner: 'Después de la venta final de la ronda {rounds}, gana el jugador con más monedas. Si varios jugadores comparten la cantidad máxima, todos son co-ganadores.',
+    tieBreakerTitle: '¿Qué es un desempate (tie-breaker)?',
+    tieBreaker:
+      'Un tie-breaker o regla de desempate es una regla adicional que elige a un único ganador cuando dos o más jugadores terminan con el mismo mejor resultado. Actualmente Privoz no tiene desempate: todos los jugadores empatados con la mayor cantidad final de monedas son co-ganadores.',
     setupTitle: 'Preparación de la partida',
     setupPlayers: 'Pueden participar de 2 a 6 jugadores. Los jugadores humanos y los bots utilizan las mismas reglas.',
     setupCoins: 'Cada jugador comienza con 10 monedas.',
@@ -234,7 +246,7 @@ const COPY = {
     wholesaleTitle: 'Mercado mayorista y productos',
     wholesaleBuy: 'Durante la fase mayorista, el jugador puede comprar productos disponibles mientras tenga suficientes monedas y quede stock. El precio mayorista se descuenta inmediatamente.',
     wholesaleFlow: 'Después de una compra se puede seguir comprando o pasar al mercado para colocar vendedores.',
-    goodsLimit: 'Al colocar un vendedor se le pueden entregar hasta {maxGoods} productos.',
+    goodsLimit: 'Cada vendedor puede tener como máximo {maxGoods} productos al colocarse en el mercado. No se pueden asignar más de {maxGoods} productos a un mismo vendedor durante la colocación.',
     legalGoods: 'Los productos legales solo pueden colocarse en su sector correspondiente.',
     illegalGoods: 'Los productos ilegales pueden colocarse en cualquier sector.',
     unassignedGoods: 'Los productos que no se entregan a un vendedor permanecen en el inventario del jugador y no se venden en esa ronda.',
@@ -245,7 +257,7 @@ const COPY = {
     placementStep4: 'El vendedor se coloca por 0 monedas. Los productos seleccionados pasan del inventario del jugador a ese vendedor.',
     placementStep5: 'Cada colocación correcta de un vendedor otorga una carta de evento aleatoria de la baraja activa.',
     eventTitle: 'Cartas de evento',
-    eventIntro: 'Cuando todos los jugadores han terminado sus turnos comienza la fase de cartas de evento personales. La baraja activa contiene actualmente {count} tipos de cartas.',
+    eventIntro: 'Cuando todos los jugadores han terminado sus turnos comienza la fase de cartas de evento personales. Según los datos actuales de eventcards.json, la baraja activa contiene {cardTypes} tipos de cartas activos y {activeCopies} copias activas en total. Estas cifras se calculan dinámicamente y pueden cambiar cuando se vuelva a equilibrar la baraja.',
     positiveTitle: 'Cartas positivas',
     positiveRule: 'Una carta positiva puede jugarse inmediatamente o guardarse para una ronda futura. Guardarla cuesta 5 monedas. Si el jugador no puede pagar, la elección se normaliza a jugarla ahora.',
     negativeTitle: 'Cartas negativas',
@@ -317,12 +329,21 @@ export default function CurrentRulesVersion() {
   const { i18n } = useTranslation();
   const lang = normalizeLanguage(i18n.language);
   const copy = COPY[lang];
+  const activeEventCards = eventcards.filter(
+    card => Number(card.quantity_active || 0) > 0
+  );
+  const activeEventCardCopies = activeEventCards.reduce(
+    (total, card) => total + Number(card.quantity_active || 0),
+    0
+  );
+
   const values = {
     rounds: DEFAULT_MAX_GAME_ROUNDS,
     nextRound: DEFAULT_MAX_GAME_ROUNDS + 1,
     maxTraders: MAX_PLAYER_TRADERS,
     maxGoods: MAX_TRADER_GOODS,
-    count: eventcards.length,
+    cardTypes: activeEventCards.length,
+    activeCopies: activeEventCardCopies,
   };
 
   const text = value => interpolate(value, values);
@@ -339,7 +360,10 @@ export default function CurrentRulesVersion() {
 
         <RuleSection title={copy.objectiveTitle}>
           <p>{copy.objective}</p>
-          <p className="mb-0">{text(copy.winner)}</p>
+          <p>{text(copy.winner)}</p>
+          <p className="mb-0">
+            <strong>{copy.tieBreakerTitle}</strong> {copy.tieBreaker}
+          </p>
         </RuleSection>
 
         <RuleSection title={copy.setupTitle}>
@@ -406,7 +430,7 @@ export default function CurrentRulesVersion() {
 
           <h5 className="h6 mt-3">{copy.deckTitle}</h5>
           <div className="row g-2">
-            {eventcards.map(card => (
+            {activeEventCards.map(card => (
               <div className="col-12 col-lg-6" key={card.id}>
                 <div className="border rounded p-2 h-100">
                   <div className="d-flex flex-wrap justify-content-between gap-2">
