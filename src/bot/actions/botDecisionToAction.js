@@ -1,4 +1,9 @@
-import { buyProductAction, placeTraderAction, selectTraderAction } from '../../game/actions';
+import {
+  buyProductAction,
+  endTurnAction,
+  placeTraderAction,
+  selectTraderAction,
+} from '../../game/actions';
 import { BOT_DECISION_TYPES } from '../decisions/PolicyDecisionProvider';
 
 /**
@@ -44,6 +49,9 @@ export function botDecisionToAction(decision, playerId) {
         sector: decision.sector,
         productIds: decision.productIds || [],
       });
+
+    case BOT_DECISION_TYPES.END_TURN:
+      return endTurnAction({ playerId });
 
     default:
       return null;

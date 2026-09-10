@@ -69,7 +69,7 @@ function makeState({ coins = 10, products = [], behaviorProfile = 'balanced' } =
         traders: [{ traderId: 't1' }],
         products,
         isBot: true,
-        botPolicyVersion: 'policy-v003',
+        botPolicyVersion: 'policy-v004',
         botBehaviorProfile: behaviorProfile,
       },
     ],
@@ -218,7 +218,7 @@ test('BUY_PRODUCT learning sample is compact, attributed to profile and identity
   });
 
   expect(sample.actorType).toBe('bot');
-  expect(sample.policyVersion).toBe('policy-v003');
+  expect(sample.policyVersion).toBe('policy-v004');
   expect(sample.behaviorProfile).toBe('smuggler');
   expect(sample.selectedAction).toEqual({ type: 'BUY_PRODUCT', productId: 20 });
   expect(sample.legalActions).toHaveLength(4);

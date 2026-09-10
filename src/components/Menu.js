@@ -4,7 +4,6 @@ import CoinsLog from './CoinsLog';
 
 import { useTranslation } from 'react-i18next';
 import {
-  endTurn,
   handleEndRound,
   getField,
   startEventChoicePhase,
@@ -16,7 +15,8 @@ import {
   clearEventLogForUser,
 } from '../logic/logic';
 import { connectionsRef } from '../globals';
-import { handleHostGameAction } from '../game/hostActionHandler';
+import { applyHostGameAction, handleHostGameAction } from '../game/hostActionHandler';
+import { endTurnAction } from '../game/actions';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { Modal, Button, Row, Col } from 'react-bootstrap';
 import CurrentPlayerInfo from './CurrentPlayerInfo';
@@ -211,16 +211,29 @@ const Menu = ({
   }, [pathname]);
 
   const handleEndTurn = () => {
-    //console.log('connection in menu', connection);
-    endTurn({
-      connection,
-      myTurn,
-      myUserId,
-      gameState,
-      setGameState,
-      broadcastGameState,
-      connectionsRef,
-    });
+    if (!myTurn || !myUserId) {
+      return;
+    }
+
+    const action = endTurnAction({ playerId: myUserId });
+
+    if (connection?.open) {
+      connection.send({
+        type: 'gameAction',
+        action,
+      });
+      return;
+    }
+
+    if (isHost) {
+      applyHostGameAction({
+        connectionsRef,
+        setGameState,
+        action,
+        actorId: myUserId,
+        onAcceptedAction: recordAcceptedLearningDecision,
+      });
+    }
   };
 
   // ...внутри компонента Menu:

@@ -2,6 +2,7 @@ export const ACTION_TYPES = Object.freeze({
   SELECT_TRADER: 'SELECT_TRADER',
   BUY_PRODUCT: 'BUY_PRODUCT',
   PLACE_TRADER: 'PLACE_TRADER',
+  END_TURN: 'END_TURN',
 });
 
 export function selectTraderAction({ playerId, traderId }) {
@@ -36,6 +37,17 @@ export function placeTraderAction({ playerId, traderId, sector, productIds = [] 
       traderId,
       sector,
       productIds: Array.isArray(productIds) ? productIds : [],
+    },
+  };
+}
+
+
+export function endTurnAction({ playerId }) {
+  return {
+    type: ACTION_TYPES.END_TURN,
+
+    payload: {
+      playerId,
     },
   };
 }

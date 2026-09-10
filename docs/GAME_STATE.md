@@ -98,13 +98,18 @@ src/components/Menu.js
 
 This is intentional for now because Menu exists across the gameplay pages and keeps the host listener alive while navigating between pages.
 
-Some gameplay flows are still legacy.
+Some gameplay flows are still legacy, but the main per-turn bot path is now host-authoritative.
 
-In particular END\_TURN has NOT yet been fully converted to host-authoritative architecture.
+Currently migrated through the shared gameAction flow:
 
-BUY\_PRODUCT and other gameplay actions must be inspected individually before assuming they are host-authoritative.
+- SELECT\_TRADER;
+- BUY\_PRODUCT;
+- PLACE\_TRADER;
+- END\_TURN.
 
-Do not refactor END\_TURN or unrelated game rules accidentally while implementing the bot.
+END\_TURN intentionally preserves the current prototype semantics: it only advances currentTurnUserId to the next player and clears waitingForHost. It does NOT implicitly change round or phase.
+
+Event resolution, round-end processing and other remaining gameplay flows must still be inspected individually before assuming they are host-authoritative.
 
 **# Feedback / Debug Reporting**
 
@@ -548,13 +553,11 @@ Randomness or strategy can be introduced later.
 
 **# Future game-core work**
 
-Still pending:
+END\_TURN host-authoritative migration is completed in Bot Player Stage 7.
 
-END\_TURN host-authoritative refactor
+Still pending is the gradual conversion of remaining legacy gameplay/event/round mutations and actions.
 
-and conversion of remaining legacy gameplay mutations/actions.
-
-These tasks remain important, but they should not be mixed accidentally into the first bot infrastructure slice.
+These tasks remain important and should continue as small, separately tested vertical slices.
 
 **# Starting a new development session**
 
@@ -898,6 +901,8 @@ policy-v001
 policy-v002
 
 policy-v003
+
+policy-v004
 
 The version used by a bot must be included in learning records.
 
@@ -1415,3 +1420,96 @@ PLACE_TRADER learning records use schemaVersion 3 and contain:
 The random event-card ID is not part of the player's selected action in learning data because it is not a player decision.
 
 Stage 6 intentionally does NOT automate END_TURN or refactor unrelated event-resolution/end-round flows.
+
+## Current Bot Player stage - automatic END_TURN (policy-v004)
+
+Stage 7 completes the current per-player bot turn by migrating END_TURN to the same host-authoritative gameAction architecture used by SELECT_TRADER, BUY_PRODUCT and PLACE_TRADER.
+
+Current bot turn flow:
+
+awaiting_turn
+
+→ trader
+
+→ wholesale
+
+→ placement
+
+→ end_turn
+
+→ HOST advances currentTurnUserId
+
+→ bot receives authoritative state showing that its turn ended
+
+→ awaiting_turn
+
+END_TURN now follows:
+
+human or bot intent
+
+→ END_TURN action
+
+→ HOST assigns authoritative playerId
+
+→ reducer validation
+
+→ authoritative gameState
+
+→ broadcast
+
+The reducer accepts END_TURN only from the current player. Client-provided playerId is never trusted. The host's own End Turn button also uses the same applyHostGameAction() path instead of a separate local mutation path.
+
+The old client message containing:
+
+endTurn + client gameState
+
+is removed from the active gameplay flow. Clients no longer send their copy of gameState to advance the turn.
+
+Legacy page-level END_TURN listeners are removed from TraderList, Wholesale and GamePage. The shared Menu listener remains the single host gameplay listener for remote gameAction messages.
+
+END_TURN preserves existing prototype behavior only:
+
+- currentTurnUserId advances to the next player;
+- waitingForHost is cleared;
+- round is unchanged;
+- phase is unchanged.
+
+Round progression remains owned by the existing round/end-event flow and is NOT silently moved into END_TURN in this slice.
+
+Bot policy-v004 keeps the policy-v003 trader/wholesale/placement strategy families and adds deterministic end-turn behavior. A bot sends END_TURN only after its current turn work is complete, including the case where no legal trader or placement action exists.
+
+After a successful PLACE_TRADER authoritative broadcast the bot observes the placed trader, marks placement complete, changes its lifecycle stage to end_turn and sends the normal END_TURN action. When the next authoritative broadcast shows another currentTurnUserId, the bot resets its lifecycle to awaiting_turn.
+
+END_TURN is not currently stored as a learning decision because the present policy has no strategic choice at that point. This avoids adding repetitive low-value records to learning storage. If future rules introduce meaningful choices about when/how to finish a turn, the learning schema can be extended then.
+
+### sectorsWithTraders consistency fix
+
+sectorsWithTraders is treated as a derived compatibility field and must match real trader.location values.
+
+A shared player-derived-state helper now recalculates the field from the player's traders.
+
+This is applied when:
+
+- PLACE_TRADER updates trader locations;
+- an event effect returns/confiscates a trader to the player's hand;
+- end-round processing returns sold-out traders to hand.
+
+Therefore a player must not retain a stale sector such as "Dairy" after the last trader in that sector has location = null.
+
+### Stage 7 validation
+
+Required tests before commit:
+
+- non-current players cannot END_TURN;
+- HOST overwrites spoofed END_TURN playerId;
+- host UI and remote clients use the authoritative reducer/broadcast path;
+- policy-v004 emits a normal END_TURN action;
+- bot placement completion is followed automatically by END_TURN;
+- the next bot starts only after authoritative currentTurnUserId changes;
+- sectorsWithTraders is cleared/recalculated when traders return to hand;
+- existing SELECT_TRADER / BUY_PRODUCT / PLACE_TRADER tests remain green;
+- npm run build;
+- git diff --check;
+- manual Host + multiple bots test.
+
+Stage 7 does NOT migrate the full round-end/event-choice system. That remains separate follow-up work.

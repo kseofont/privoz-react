@@ -10,7 +10,7 @@ import localProductsData from '../data/products.json';
 
 import { connectionsRef } from '../globals';
 
-import { handleHostEndTurn, getField } from '../logic/logic';
+import { getField } from '../logic/logic';
 import { buyProductAction } from '../game/actions';
 import { gameReducer } from '../game/reducer';
 import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
@@ -110,48 +110,6 @@ const Wholesale = () => {
       }
     });
   };
-
-  /*
-   * HOST DATA LISTENERS
-   *
-   * Previously Wholesale added:
-   *
-   * conn.on('data', ...)
-   *
-   * on every mount but never removed it.
-   *
-   * After multiple rounds the host could therefore accumulate several
-   * Wholesale listeners on the same connection.
-   */
-  useEffect(() => {
-    if (!isHost) {
-      return undefined;
-    }
-
-    const handler = handleHostEndTurn({
-      connectionsRef,
-      setGameState,
-    });
-
-    const subscriptions = connectionsRef.current.map(conn => {
-      const onData = data => {
-        handler(data, conn);
-      };
-
-      conn.on('data', onData);
-
-      return {
-        conn,
-        onData,
-      };
-    });
-
-    return () => {
-      subscriptions.forEach(({ conn, onData }) => {
-        conn.off('data', onData);
-      });
-    };
-  }, [isHost]);
 
   /*
    * CLIENT DATA LISTENER

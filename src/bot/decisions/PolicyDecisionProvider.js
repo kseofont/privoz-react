@@ -1,11 +1,12 @@
 import { PHASES } from '../../game/phases';
 import { MAX_TRADER_GOODS, normalizeSectorKey } from '../../game/placeTraderRules';
-import policy from '../policies/policy-v003.json';
+import policy from '../policies/policy-v004.json';
 
 export const BOT_DECISION_TYPES = Object.freeze({
   SELECT_TRADER: 'select_trader',
   BUY_PRODUCT: 'buy_product',
   PLACE_TRADER: 'place_trader',
+  END_TURN: 'end_turn',
 });
 
 export const BOT_BEHAVIOR_PROFILES = Object.freeze([
@@ -376,6 +377,20 @@ export async function decideWithPolicy(observation, context = {}) {
 
   if (context.stage === 'placement') {
     return decidePlacement(observation, context.behaviorProfile);
+  }
+
+  if (context.stage === 'end_turn') {
+    if (
+      observation.currentTurnUserId !== observation.self?.playerId ||
+      policy.endTurn?.strategy !== 'after_turn_work_complete'
+    ) {
+      return null;
+    }
+
+    return {
+      type: BOT_DECISION_TYPES.END_TURN,
+      policyVersion: policy.version,
+    };
   }
 
   const legalTraderIds = getLegalTraderIds(observation);

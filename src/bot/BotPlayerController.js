@@ -14,7 +14,7 @@ const BOT_STAGES = Object.freeze({
   TRADER: 'trader',
   WHOLESALE: 'wholesale',
   PLACEMENT: 'placement',
-  DONE: 'done',
+  END_TURN: 'end_turn',
 });
 
 function getStorageKey(playerId, suffix) {
@@ -111,7 +111,7 @@ function buildDecisionKey(observation, stage, action) {
  *
  * It never calls gameReducer() or setGameState() itself.
  *
- * END_TURN intentionally remains manual in this slice.
+ * END_TURN is also sent through the same host-authoritative action flow.
  */
 const BotPlayerController = ({ gameState, myUserId, connection }) => {
   const decisionInFlightRef = useRef(false);
@@ -128,6 +128,12 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
     }
 
     if (!myTurn) {
+      if (getBotStage(myUserId) === BOT_STAGES.END_TURN) {
+        console.log('[BOT] turn complete:', {
+          nextPlayerId: gameState?.currentTurnUserId || null,
+        });
+      }
+
       decisionInFlightRef.current = false;
       setBotStage(myUserId, BOT_STAGES.AWAITING_TURN);
       clearActionGuard(myUserId);
@@ -172,7 +178,8 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       );
 
       if (placedTrader) {
-        setBotStage(myUserId, BOT_STAGES.DONE);
+        stage = BOT_STAGES.END_TURN;
+        setBotStage(myUserId, stage);
         writeStorage(myUserId, 'pending-placement', null);
         clearActionGuard(myUserId);
         decisionInFlightRef.current = false;
@@ -182,8 +189,6 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
           sector: placedTrader.location,
           goodsCount: Array.isArray(placedTrader.goods) ? placedTrader.goods.length : 0,
         });
-
-        return undefined;
       }
     }
 
@@ -202,7 +207,7 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       return undefined;
     }
 
-    if (stage === BOT_STAGES.DONE || !connection?.open || decisionInFlightRef.current) {
+    if (!connection?.open || decisionInFlightRef.current) {
       return undefined;
     }
 
@@ -221,7 +226,7 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
 
     const decideAndSend = async () => {
       try {
-        const decision = await decideWithPolicy(observation, {
+        let decision = await decideWithPolicy(observation, {
           stage,
           behaviorProfile,
         });
@@ -235,17 +240,21 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
          * later turn. If it already owns one, continue to wholesale.
          */
         if (!decision && stage === BOT_STAGES.TRADER) {
-          decisionInFlightRef.current = false;
-
           if ((player?.traders || []).length > 0) {
+            decisionInFlightRef.current = false;
             setBotStage(myUserId, BOT_STAGES.WHOLESALE);
             clearActionGuard(myUserId);
             navigateBotPage(navigate, `/wholesale/${myUserId}`, gameState, myUserId);
-          } else {
-            setBotStage(myUserId, BOT_STAGES.DONE);
+            return;
           }
 
-          return;
+          stage = BOT_STAGES.END_TURN;
+          setBotStage(myUserId, stage);
+          clearActionGuard(myUserId);
+          decision = await decideWithPolicy(observation, {
+            stage,
+            behaviorProfile,
+          });
         }
 
         /*
@@ -268,11 +277,16 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
         }
 
         if (!decision && stage === BOT_STAGES.PLACEMENT) {
-          decisionInFlightRef.current = false;
-          setBotStage(myUserId, BOT_STAGES.DONE);
+          stage = BOT_STAGES.END_TURN;
+          setBotStage(myUserId, stage);
+          clearActionGuard(myUserId);
 
           console.log('[BOT] placement skipped: no legal placement decision');
-          return;
+
+          decision = await decideWithPolicy(observation, {
+            stage,
+            behaviorProfile,
+          });
         }
 
         if (!decision) {

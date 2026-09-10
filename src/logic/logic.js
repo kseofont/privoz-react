@@ -1,88 +1,6 @@
 // logic.js
 import { PHASES } from '../game/phases';
-export function endTurn({ connection, myTurn, myUserId, gameState, setGameState, connectionsRef }) {
-  console.log(' endTurn + gameState ', gameState);
-  // console.log(' connection ', connection);
-  // console.log(' setGameState ', setGameState);
-  if (connection && myTurn) {
-    // Только на клиенте
-    console.log('[CLIENT] Отправляю endTurn + gameState хосту');
-    connection.send({
-      type: 'endTurn',
-      playerId: myUserId,
-      gameState,
-    });
-    // Optimistic UI, если хочешь:
-    if (setGameState) {
-      setGameState(prev => ({ ...prev, waitingForHost: true }));
-    }
-    return;
-  }
-  // Хосту: обновление состояния (только если setGameState передан)
-  if (!connection && myTurn && typeof setGameState === 'function') {
-    // !!! conn и data тут не определены, это должно быть внутри обработчика on('data')
-    // Но если вызывается так — ты должен передать gameState как аргумент!
-    setGameState(prev => {
-      const incomingState = gameState;
-      const currentIndex = incomingState.players.findIndex(
-        p => p.user_id === incomingState.currentTurnUserId
-      );
-      const nextIndex = (currentIndex + 1) % incomingState.players.length;
-      const nextUserId = incomingState.players[nextIndex].user_id;
-      const updatedGameState = {
-        ...incomingState,
-        currentTurnUserId: nextUserId,
-        waitingForHost: false,
-      };
-      console.log('[HOST] Рассылаю updatedGameState всем:', updatedGameState);
-      connectionsRef.current.forEach(c => {
-        c.send({ type: 'gameState', gameState: updatedGameState });
-      });
-      return updatedGameState;
-    });
-  }
-}
-
-// Обработка endTurn на стороне хоста
-export function handleHostEndTurn({ connectionsRef, setGameState }) {
-  // Верни функцию, которую будешь использовать как обработчик данных
-  return function onHostData(data, conn) {
-    // console.log('[HOST] Получил g');
-    if (data.type === 'endTurn') {
-      console.log(`[HOST] Получил endTurn от ${conn.peer}`, data);
-
-      setGameState(prev => {
-        // Используем gameState от клиента, если доверяешь, или только свой prev (лучше prev!)
-        const incomingState = data.gameState || prev;
-        // Тут можно вставить валидацию!
-
-        // Вычисляем следующего игрока
-        const currentIndex = incomingState.players.findIndex(
-          p => p.user_id === incomingState.currentTurnUserId
-        );
-        const nextIndex = (currentIndex + 1) % incomingState.players.length;
-        const nextUserId = incomingState.players[nextIndex].user_id;
-
-        const updatedGameState = {
-          ...incomingState,
-          currentTurnUserId: nextUserId,
-          waitingForHost: false,
-        };
-
-        // Рассылаем новый gameState всем клиентам
-        if (connectionsRef && Array.isArray(connectionsRef.current)) {
-          connectionsRef.current.forEach(c => {
-            c.send({ type: 'gameState', gameState: updatedGameState });
-          });
-        }
-
-        console.log('[HOST] Рассылаю updatedGameState всем:', updatedGameState);
-        return updatedGameState;
-      });
-    }
-  };
-}
-
+import { syncPlayerSectorsWithTraders } from '../game/playerDerivedState';
 // Конец раунда
 // Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {
@@ -130,11 +48,13 @@ export function handleEndRound(setGameState, isHost, broadcastGameState) {
         return trader;
       });
 
-      return {
-        ...player,
-        coins: (player.coins || 0) + coinsEarned,
-        traders: updatedTraders,
-      };
+      return syncPlayerSectorsWithTraders(
+        {
+          ...player,
+          coins: (player.coins || 0) + coinsEarned,
+        },
+        updatedTraders
+      );
     });
 
     const nextRound = (prev.round || 1) + 1;
@@ -591,7 +511,7 @@ function replaceTrader(player, traderId, newTraderObj) {
   const idx = list.findIndex(t => t.traderId === traderId);
   if (idx === -1) return player;
   list[idx] = newTraderObj;
-  return { ...player, traders: list };
+  return syncPlayerSectorsWithTraders(player, list);
 }
 
 // применить штраф к игроку (не уходим в минус)

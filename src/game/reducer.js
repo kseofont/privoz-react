@@ -2,6 +2,7 @@ import { ACTION_TYPES } from './actions';
 import { PHASES } from './phases';
 import { awardEventCardById } from './eventCards';
 import { validatePlaceTrader } from './placeTraderRules';
+import { syncPlayerSectorsWithTraders } from './playerDerivedState';
 
 /**
  * Pure game-state reducer.
@@ -28,6 +29,9 @@ export function gameReducer(gameState, action) {
 
     case ACTION_TYPES.PLACE_TRADER:
       return reducePlaceTrader(gameState, action.payload);
+
+    case ACTION_TYPES.END_TURN:
+      return reduceEndTurn(gameState, action.payload);
 
     default:
       return gameState;
@@ -310,18 +314,15 @@ function reducePlaceTrader(gameState, payload = {}) {
       : currentTrader
   );
 
-  const sectorsWithTraders = [
-    ...new Set(updatedTraders.map(currentTrader => currentTrader.location).filter(Boolean)),
-  ];
-
   const updatedPlayers = [...gameState.players];
-  updatedPlayers[playerIndex] = {
-    ...player,
-    traders: updatedTraders,
-    products: remainingProducts,
-    coins: Number(player.coins || 0) - placementCost,
-    sectorsWithTraders,
-  };
+  updatedPlayers[playerIndex] = syncPlayerSectorsWithTraders(
+    {
+      ...player,
+      products: remainingProducts,
+      coins: Number(player.coins || 0) - placementCost,
+    },
+    updatedTraders
+  );
 
   let nextState = {
     ...gameState,
@@ -333,4 +334,42 @@ function reducePlaceTrader(gameState, payload = {}) {
   }
 
   return nextState;
+}
+
+
+function reduceEndTurn(gameState, payload = {}) {
+  const { playerId } = payload;
+
+  if (!playerId || !Array.isArray(gameState.players) || gameState.players.length === 0) {
+    return gameState;
+  }
+
+  /*
+   * Preserve the current prototype END_TURN semantics exactly:
+   * only the authoritative current player may advance the turn, and
+   * advancing the turn only changes currentTurnUserId/waitingForHost.
+   * Round/phase progression remains in the existing round flow.
+   */
+  if (gameState.currentTurnUserId !== playerId) {
+    return gameState;
+  }
+
+  const currentIndex = gameState.players.findIndex(player => player.user_id === playerId);
+
+  if (currentIndex === -1) {
+    return gameState;
+  }
+
+  const nextIndex = (currentIndex + 1) % gameState.players.length;
+  const nextUserId = gameState.players[nextIndex]?.user_id;
+
+  if (!nextUserId) {
+    return gameState;
+  }
+
+  return {
+    ...gameState,
+    currentTurnUserId: nextUserId,
+    waitingForHost: false,
+  };
 }
