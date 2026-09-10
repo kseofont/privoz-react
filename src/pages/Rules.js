@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import Menu from '../components/Menu';
 import rulesTranslations from '../data/rulesTranslations';
 
+import CurrentRulesVersion from './CurrentRulesVersion';
 const Rules = () => {
   const [showOldRules, setShowOldRules] = useState(false);
   const { t, i18n } = useTranslation();
@@ -20,6 +21,7 @@ const Rules = () => {
       <div className="row flex-column flex-sm-row">
         <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
           <h2 className="mb-4">{r.pageTitle}</h2>
+          <CurrentRulesVersion />
 
           <div className="card mb-4 text-start w-100">
             <div className="card-body">

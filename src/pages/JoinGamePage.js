@@ -25,6 +25,8 @@ const JoinGamePage = () => {
 
   const [gameState, setGameState] = useState(null);
 
+  const [myUserId, setMyUserId] = useState(null);
+
   const [logs, setLogs] = useState([]);
 
   /*
@@ -196,6 +198,7 @@ const JoinGamePage = () => {
         /*
          * This is the client's own PeerJS ID.
          */
+        setMyUserId(id);
         window.myUserId = id;
 
         const conn = newPeer.connect(peerId);
@@ -246,7 +249,7 @@ const JoinGamePage = () => {
           setConnected(false);
           setConnection(null);
 
-          setErrorMessage('Disconnected unexpectedly from the host. Please try reconnecting.');
+          setErrorMessage(t('join_error_disconnected'));
 
           addLog('[CLIENT] Disconnected from host.');
 
@@ -277,25 +280,49 @@ const JoinGamePage = () => {
           }
 
           if (data.type === 'colorTaken') {
-            setErrorMessage('This color is already taken. Please choose a different color.');
+            if (data.gameState) {
+              setGameState(data.gameState);
+            }
+
+            setErrorMessage(t('join_error_color_taken'));
 
             return;
           }
 
           if (data.type === 'nameTaken') {
-            setErrorMessage('This name is already taken. Please choose a different name.');
+            if (data.gameState) {
+              setGameState(data.gameState);
+            }
+
+            setErrorMessage(t('join_error_name_taken'));
+
+            return;
+          }
+
+          if (data.type === 'joinAccepted') {
+            if (data.gameState) {
+              setGameState(data.gameState);
+            }
+
+            if (data.myUserId) {
+              setMyUserId(data.myUserId);
+              window.myUserId = data.myUserId;
+            }
+
+            setErrorMessage('');
+            addLog('[CLIENT] Lobby join accepted by host.');
 
             return;
           }
 
           if (data.type === 'connectionDenied') {
-            setErrorMessage(data.message || 'Connection denied by host.');
+            setErrorMessage(t('join_error_connection_denied'));
 
             return;
           }
 
           if (data.type === 'alreadyJoined') {
-            setErrorMessage(data.message || 'You are already in the game.');
+            setErrorMessage(t('join_error_already_joined'));
 
             return;
           }
@@ -378,7 +405,7 @@ const JoinGamePage = () => {
 
       newPeer.on('error', handlePeerError);
     },
-    [addLog, detachLobbyListeners, navigate]
+    [addLog, detachLobbyListeners, navigate, t]
   );
 
   /*
@@ -436,7 +463,7 @@ const JoinGamePage = () => {
    */
   const validateJoin = ({ userName: name, selectedColor: color, gameState: state }) => {
     if (!name || name.length < 2 || name.length > 16) {
-      return 'Name must be between 2 and 16 characters.';
+      return t('join_error_name_length');
     }
 
     if (
@@ -444,11 +471,11 @@ const JoinGamePage = () => {
       Array.isArray(state.players) &&
       state.players.some(player => player.name?.toLowerCase() === name.toLowerCase())
     ) {
-      return 'This name is already taken. Please choose another.';
+      return t('join_error_name_taken');
     }
 
     if (!color) {
-      return 'Please select a color.';
+      return t('join_error_select_color');
     }
 
     return null;
@@ -459,7 +486,7 @@ const JoinGamePage = () => {
    */
   const handleJoinGame = () => {
     if (!hostPeerId || !userName || !selectedColor) {
-      alert('Please fill in all the fields to join the game.');
+      setErrorMessage(t('join_error_fill_fields'));
 
       return;
     }
@@ -476,6 +503,28 @@ const JoinGamePage = () => {
       return;
     }
 
+    setErrorMessage('');
+
+    /*
+     * A rejected lobby join (for example nameTaken/colorTaken) does not
+     * mean the PeerJS transport is broken. Reuse the already-open
+     * DataConnection and submit the corrected lobby data again.
+     *
+     * This avoids creating ghost Peer/DataConnection instances and keeps
+     * the retry path identical for invitation URLs and manual joins.
+     */
+    if (connectionRef.current?.open) {
+      connectionRef.current.send({
+        type: 'join',
+        playerName: userName,
+        color: selectedColor,
+      });
+
+      addLog(`[CLIENT] Retrying lobby join as "${userName}" with color "${selectedColor}".`);
+
+      return;
+    }
+
     connectToHost({
       peerId: hostPeerId,
       name: userName,
@@ -483,6 +532,10 @@ const JoinGamePage = () => {
       auto: false,
     });
   };
+
+  const joinedCurrentLobby = Boolean(
+    myUserId && gameState?.players?.some(player => player.user_id === myUserId)
+  );
 
   return (
     <div className="container-fluid">
@@ -500,7 +553,10 @@ const JoinGamePage = () => {
               className="form-control"
               id="userName"
               value={userName}
-              onChange={event => setUserName(event.target.value)}
+              onChange={event => {
+                setUserName(event.target.value);
+                setErrorMessage('');
+              }}
               required
             />
           </div>
@@ -514,7 +570,10 @@ const JoinGamePage = () => {
               className="form-select"
               id="colorSelect"
               value={selectedColor}
-              onChange={event => setSelectedColor(event.target.value)}
+              onChange={event => {
+                setSelectedColor(event.target.value);
+                setErrorMessage('');
+              }}
               required
             >
               <option value="" disabled>
@@ -541,27 +600,33 @@ const JoinGamePage = () => {
               className="form-control"
               id="hostPeerId"
               value={hostPeerId}
-              onChange={event => setHostPeerId(event.target.value)}
+              onChange={event => {
+                setHostPeerId(event.target.value);
+                setErrorMessage('');
+              }}
               required
             />
           </div>
 
-          {!connected && (
+          {!joinedCurrentLobby && (
             <button
               className="btn btn-success"
               onClick={handleJoinGame}
               disabled={connectingRef.current}
             >
-              {t('join_game_button')}
+              {connected ? t('join_retry_button') : t('join_game_button')}
             </button>
           )}
 
-          {connected && (
-            <div className="mt-3">
-              <p>Successfully connected to the game! Please wait for the game to start...</p>
+          {connected && !joinedCurrentLobby && !errorMessage && (
+            <div className="mt-3 alert alert-info">{t('join_connected_waiting')}</div>
+          )}
 
-              <p>
-                <strong>Connected to Host Peer ID:</strong> {hostPeerId}
+          {connected && joinedCurrentLobby && (
+            <div className="mt-3 alert alert-success">
+              <p className="mb-1">{t('join_accepted_waiting_start')}</p>
+              <p className="mb-0">
+                <strong>{t('join_connected_host')}:</strong> {hostPeerId}
               </p>
             </div>
           )}
@@ -570,11 +635,11 @@ const JoinGamePage = () => {
             <div className="mt-3">
               <h5>Logs:</h5>
 
-              <ul className="list-unstyled">
+              {/* <ul className="list-unstyled">
                 {logs.map((log, index) => (
                   <li key={index}>{log}</li>
                 ))}
-              </ul>
+              </ul> */}
             </div>
           )}
 

@@ -1890,3 +1890,163 @@ Required Stage 10B validation:
 - learning samples remain identity-free and report `policy-v008` for fresh v008 bots;
 - existing wholesale/placement/end-turn/event tests remain green;
 - `git diff --check` and production build pass.
+
+<!-- CURRENT_STATE_2026-09-10 -->
+
+# LATEST CURRENT STATE - 2026-09-10
+
+This section is the authoritative current snapshot. Older stage sections elsewhere in this file are historical and must not override this snapshot.
+
+## Production baseline
+
+Production:
+
+https://privoz.kotucheniy.com.ua/
+
+Current production status:
+
+- playable React + PeerJS multiplayer prototype is deployed;
+- host-authoritative action flow is the architectural baseline;
+- bot gameplay through policy-v008 is deployed;
+- the full active Event Card data set (13 card definitions) is deployed;
+- current test game length is 7 rounds;
+- round 7 performs final settlement before GAME_END;
+- winner is determined by highest final coin balance;
+- tied players with the same maximum balance are co-winners; no tie-breaker is implemented yet;
+- detailed debug Menu / local history is deployed;
+- learning decisions for humans and bots are stored server-side;
+- completed-game outcome/ranking storage is implemented and has been verified with a full 7-round game;
+- feedback/debug reporting and admin viewer are deployed;
+- learning admin, batch export, explicit use tracking and cleanup history are implemented.
+
+Current bot architecture remains:
+
+Bot decision
+→ same ACTION path as human UI
+→ HOST
+→ validation / rules
+→ reducer
+→ authoritative gameState
+→ broadcast
+→ clients
+
+Bots must never directly mutate authoritative gameState.
+
+## Verified current gameplay
+
+Verified in a complete local 7-round game:
+
+- human + two bots can progress through all rounds;
+- multi-round bot trader lifecycle continues after round 1;
+- bots can place all owned traders before ending turn;
+- trader placement itself is free;
+- trader acquisition cost is separate from placement;
+- wholesale purchases are logged as individual learning decisions;
+- Event Card choices are automated for bots;
+- full Event Card effect classes are covered by tests;
+- GAME_END occurs after round 7 rather than starting round 8;
+- final sales happen before winner calculation;
+- Learning Admin records outcome=yes for completed games;
+- policy-v008 decisions are visible in Learning Admin.
+
+## Current development status by area
+
+### COMPLETE / DEPLOYED
+
+- PeerJS lifecycle stabilization.
+- Host-authoritative SELECT_TRADER.
+- Host-authoritative BUY_PRODUCT.
+- Host-authoritative PLACE_TRADER.
+- Host-authoritative END_TURN.
+- Host-authoritative Event Card choice submission and result acknowledgement.
+- Bot player lifecycle and behavior profiles.
+- Multi-round bot placement/end-turn flow.
+- policy-v008 card-aware bot targeting.
+- Seven-round test game.
+- Full active Event Card definitions.
+- Game outcome / ranking logging.
+- Detailed debug Menu.
+- Coin/action/Event Card history for testing.
+- Learning persistence, admin viewer, batch export, use tracking and controlled cleanup.
+- Feedback reporting/admin infrastructure.
+
+### IN PROGRESS / NEXT SMALL TASKS
+
+1. JoinGamePage retry UX.
+   - A PeerJS transport connection must not be treated as successful lobby acceptance.
+   - nameTaken/colorTaken and other lobby validation failures must leave an obvious retry path.
+   - corrected name/color should be resubmitted over the existing open DataConnection when possible.
+   - no extra ghost PeerJS clients should be created for ordinary validation retries.
+
+2. Current multilingual Rules v4.
+   - keep old rule versions as history;
+   - current rules must describe only implemented behavior;
+   - support RU / UA / EN / ES.
+
+### RULES V4 REQUIRED FOLLOW-UP ITEMS
+
+Before Rules v4 is considered final, explicitly document in all four languages:
+
+- each trader may have at most 3 goods assigned when being placed on the market;
+- Event Card deck statistics must be derived from src/data/eventcards.json rather than hardcoded:
+  - number of card definitions/types;
+  - total currently active card copies (sum of quantity_active);
+  - wording should make clear that these values may change as the deck is rebalanced;
+- explain the current tie rule in plain language:
+  - a "tie-breaker" is an additional rule used to choose one winner when scores are equal;
+  - Privoz currently has no tie-breaker;
+  - if several players share the highest final coin total, they are co-winners.
+
+### PENDING GAMEPLAY EDGE CASE
+
+Stage 10C - duplicate Event Card copies in one player's hand.
+
+Current data can merge equal card types through quantity_active/card.id semantics. Before the Event Card system is considered fully finished:
+
+- allow multiple copies of the same Event Card to be represented independently;
+- allow use/keep choice per copy;
+- consume only the selected copy;
+- support human UI and bot policy;
+- preserve correct debug and learning history;
+- add regression tests.
+
+### PLANNED LEARNING / BOT WORK
+
+After Stage 10C and more completed games:
+
+- collect multiple outcome=yes games;
+- prepare the first meaningful training batch;
+- analyze games locally with Qwen;
+- compare behavior profiles by win rate, average place, final coins and decision patterns;
+- use observed data rather than intuition alone for the next strategy revision;
+- produce a later policy version based on measured results;
+- build a local bot-vs-bot simulation runner so many complete games can be generated without manual clicking;
+- consider adding aggregate strategy statistics to Learning Admin.
+
+### DEFERRED / CONFIGURABLE LATER
+
+- Returning game length from 7 to 14 rounds.
+  Seven rounds are currently intentional for faster development/testing.
+  Long-term, round count should preferably become a game/lobby setting rather than another hardcoded rewrite.
+
+- Further balance changes to Event Card quantities/weights.
+  The deck is expected to evolve after gameplay and learning-data analysis.
+
+- Further bot strategy changes.
+  policy-v008 is a tested baseline, not a final AI strategy.
+
+## Today's implementation order
+
+Current intended order for the remainder of this development cycle:
+
+1. finish and test JoinGamePage retry/recovery UX;
+2. finalize Rules v4 including the queued clarifications above;
+3. run join tests for duplicate name, duplicate color, invalid form data, full lobby and successful retry;
+4. build + git diff --check + commit;
+5. deploy the small UX/rules update;
+6. continue with Stage 10C duplicate Event Card copies;
+7. then begin accumulating completed games for the first real learning analysis.
+
+This roadmap is intentionally provisional.
+
+If repository inspection, gameplay tests, user feedback, learning data or new rules information reveal a better implementation order, update this section and prefer the newly verified information over this plan.

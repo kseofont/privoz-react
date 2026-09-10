@@ -298,8 +298,9 @@ const CreateServerPage = () => {
               // Peer already joined.
               if (prev.players.some(player => player.user_id === conn.peer)) {
                 sendToConnection(conn, {
-                  type: 'alreadyJoined',
-                  message: 'You are already in the game.',
+                  type: 'joinAccepted',
+                  myUserId: conn.peer,
+                  gameState: prev,
                 });
 
                 return prev;
@@ -310,6 +311,7 @@ const CreateServerPage = () => {
                 sendToConnection(conn, {
                   type: 'nameTaken',
                   message: 'This name is already taken.',
+                  gameState: prev,
                 });
 
                 return prev;
@@ -320,6 +322,7 @@ const CreateServerPage = () => {
                 sendToConnection(conn, {
                   type: 'colorTaken',
                   message: 'This color is already taken.',
+                  gameState: prev,
                 });
 
                 return prev;
@@ -345,10 +348,18 @@ const CreateServerPage = () => {
                   data.isBot === true ? normalizeBotBehaviorProfile(data.botBehaviorProfile) : null,
               };
 
-              return {
+              const nextState = {
                 ...prev,
                 players: [...prev.players, newPlayer],
               };
+
+              sendToConnection(conn, {
+                type: 'joinAccepted',
+                myUserId: conn.peer,
+                gameState: nextState,
+              });
+
+              return nextState;
             });
           };
 
@@ -662,11 +673,11 @@ const CreateServerPage = () => {
             <div className="mt-3">
               <h5>Logs:</h5>
 
-              <ul className="list-unstyled">
+              {/* <ul className="list-unstyled">
                 {logs.map((log, index) => (
                   <li key={index}>{log}</li>
                 ))}
-              </ul>
+              </ul> */}
             </div>
           )}
         </div>
