@@ -1,4 +1,4 @@
-export const DEFAULT_MAX_GAME_ROUNDS = 14;
+export const DEFAULT_MAX_GAME_ROUNDS = 7;
 
 function toCoins(value) {
   const coins = Number(value);

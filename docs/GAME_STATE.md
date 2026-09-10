@@ -1852,3 +1852,41 @@ Coin history entry IDs are deterministic per authoritative transition so the syn
 Server learning decisions remain action-based. Every accepted SELECT_TRADER / BUY_PRODUCT / PLACE_TRADER / SUBMIT_EVENT_CHOICES decision is built from beforeState + accepted action + afterState. Consecutive purchases of the same product have distinct event IDs because the BUY event ID includes the pre-action owned quantity and coin balance.
 
 Learning POST delivery now has a small browser-local retry outbox for transient network / 5xx / 408 / 429 failures. Backend eventId deduplication makes retries idempotent. Permanent 4xx validation failures are not retried forever. Final outcome records use the same reliable delivery path.
+
+# Stage 10 - Full Event Deck Test Mode
+
+Current test configuration uses `DEFAULT_MAX_GAME_ROUNDS = 7` so complete games finish faster while the full Event Card deck is being validated. The final settlement rule is unchanged: round 7 sales/effects complete before `GAME_END` ranking is calculated from final coins.
+
+The active deck is `src/data/eventcards.json` and contains all 13 configured Event Card types. `eventcards_old.json` remains an archive/reference file and is not imported by the runtime.
+
+## Stage 10B - Card-aware bot event policy
+
+`policy-v008` keeps the existing behavior profiles but makes personal-event targeting aware of the actual card effect instead of applying one generic sector score to every negative card.
+
+Negative cards:
+
+- confiscation cards prioritize the real first victim's unprotected goods value, number of goods, trader disruption and configured fine;
+- fine-only cards prioritize sectors where the real first victim has more unprotected traders;
+- `price_fine` cards prioritize sectors with more unprotected goods and scale the score by the configured price penalty;
+- protected traders/goods are discounted because the authoritative event engine skips them;
+- sector evaluation mirrors `findVictimBySector`: later opponents in the same sector are not incorrectly added to the score when the engine would actually hit an earlier opponent.
+
+Positive cards:
+
+- Underworld Protection prefers an exposed trader, especially one carrying illegal/mismatched goods;
+- Regular Customer prefers the trader whose goods gain the largest useful single-trader price buff;
+- Transport and Porters require a legal trader target for submission and prefer a trader already carrying goods, even though their current authoritative effects may apply more broadly;
+- the smuggler profile saves protection when it has no illegal exposure, but still uses useful economic positive cards rather than hoarding them for an unrelated legality condition.
+
+Required Stage 10B validation:
+
+- all 13 active card types are present;
+- all negative cards receive a legal sector target when a useful target exists;
+- confiscation/fine/price-penalty cards can choose different sectors based on their actual effect;
+- all four positive cards receive a use/keep choice;
+- trader-target positive cards receive a legal own-trader target when used;
+- Underworld Protection prefers exposed illegal inventory;
+- target scoring matches the first victim the authoritative engine will actually affect;
+- learning samples remain identity-free and report `policy-v008` for fresh v008 bots;
+- existing wholesale/placement/end-turn/event tests remain green;
+- `git diff --check` and production build pass.
