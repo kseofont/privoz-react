@@ -1,3 +1,4 @@
+import { expandEventCardInstances, getEventCardInstanceKey } from '../game/eventCardInstances';
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -269,18 +270,17 @@ export function buildEventHistoryEntries(beforeState, afterState) {
 
     const cards = [];
     const positiveChoices = choices.positiveChoices || {};
-    const effectTargets = choices.effectTargets || {};
-
-    asArray(player.eventCards).forEach((card, index) => {
+    const effectTargets = choices.effectTargets || {};    expandEventCardInstances(player.eventCards).forEach((card, index) => {
       const cardId = card?.id ?? String(index);
-      const positiveChoice = positiveChoices[cardId];
-      const target = effectTargets[cardId];
+      const instanceId = getEventCardInstanceKey(card, index);
+      const positiveChoice = positiveChoices[instanceId] ?? positiveChoices[cardId];
+      const target = effectTargets[instanceId] || effectTargets[cardId];
       if (!positiveChoice && !target && card?.fortune !== 'negative') return;
       if (card?.fortune === 'negative' && !target) return;
-
       cards.push({
         cardId,
-        title: card?.title,
+        instanceId,
+title: card?.title,
         description: card?.description,
         fortune: card?.fortune,
         effect: card?.effect,
@@ -472,8 +472,8 @@ export function buildPlayerActivityEntries(beforeState, afterState) {
       }
     });
 
-    const beforeEventCount = asArray(beforePlayer.eventCards).length;
-    const afterEventCount = asArray(afterPlayer.eventCards).length;
+    const beforeEventCount = expandEventCardInstances(beforePlayer.eventCards).length;
+    const afterEventCount = expandEventCardInstances(afterPlayer.eventCards).length;
     if (beforeEventCount !== afterEventCount) {
       entries.push({
         id: `activity:event-count:${afterState.gameId}:${afterState.round}:${playerId}:${beforeEventCount}:${afterEventCount}:${afterState.eventResultNonce || 0}`,

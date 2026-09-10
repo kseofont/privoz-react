@@ -733,31 +733,48 @@ function decideEventChoices(observation, behaviorProfile) {
     observation.self?.eventChoicePending !== true
   ) {
     return null;
-  }
-
-  const { id: profileId, config } = getEventProfile(behaviorProfile);
+  }  const { id: profileId, config } = getEventProfile(behaviorProfile);
   const positiveChoices = {};
   const effectTargets = {};
+  const keepCost = Math.max(0, Number(policy.eventChoice?.keepCost || 5));
+  let remainingCoins = Math.max(0, Number(observation.self?.coins || 0));
 
   (observation.self?.eventCards || []).forEach(card => {
     if (!card?.cardId) {
       return;
     }
 
+    const cardKey = card.instanceId || card.cardId;
+
     if (card.fortune === 'positive') {
-      const choice = choosePositiveEventAction(card, observation, config);
-      positiveChoices[card.cardId] = choice;
+      const budgetObservation = {
+        ...observation,
+        self: {
+          ...observation.self,
+          coins: remainingCoins,
+        },
+      };
+      let choice = choosePositiveEventAction(card, budgetObservation, config);
+
+      if (choice === 'keep') {
+        if (remainingCoins >= keepCost) {
+          remainingCoins -= keepCost;
+        } else {
+          choice = 'use';
+        }
+      }
+
+      positiveChoices[cardKey] = choice;
 
       if (choice === 'use' && card.goalAction === 'trader') {
         const traderId = choosePositiveTraderTarget(observation, card);
         if (traderId) {
-          effectTargets[card.cardId] = { traderId };
+          effectTargets[cardKey] = { traderId };
         }
       }
 
       return;
     }
-
     if (card.fortune === 'negative' && card.goalAction === 'sector') {
       const sector = chooseNegativeSectorTarget(
         observation,
@@ -766,12 +783,11 @@ function decideEventChoices(observation, behaviorProfile) {
       );
 
       if (sector) {
-        effectTargets[card.cardId] = { sector };
+        effectTargets[cardKey] = { sector };
       }
     }
   });
-
-  return {
+return {
     type: BOT_DECISION_TYPES.SUBMIT_EVENT_CHOICES,
     positiveChoices,
     effectTargets,

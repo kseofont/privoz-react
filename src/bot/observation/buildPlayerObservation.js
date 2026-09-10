@@ -1,4 +1,5 @@
 import { getGameSectors, getSectorCapacity, normalizeSectorKey } from '../../game/placeTraderRules';
+import { expandEventCardInstances, getEventCardInstanceKey } from '../../game/eventCardInstances';
 
 function normalizeProductSector(product) {
   return product?.sector || product?.product_sector || 'unknown';
@@ -58,7 +59,7 @@ export function buildPlayerObservation(gameState, playerId) {
   const playerProducts = Array.isArray(player.products) ? player.products : [];
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: gameState.phase || null,
     round: Number(gameState.round || 0),
     currentTurnUserId: gameState.currentTurnUserId || null,
@@ -92,8 +93,9 @@ export function buildPlayerObservation(gameState, playerId) {
         protectedFromIllegalInspection: !!(trader?.Illigal_protection || trader?.illegal_protection),
         traderAction: trader?.trader_action || null,
       })),
-      eventCards: (player.eventCards || []).map(card => ({
+      eventCards: expandEventCardInstances(player.eventCards).map((card, index) => ({
         cardId: card?.id || null,
+        instanceId: getEventCardInstanceKey(card, index),
         fortune: card?.fortune || null,
         goalAction: card?.goal_action || null,
         goalItem: card?.goal_item || null,

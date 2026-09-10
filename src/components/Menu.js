@@ -31,6 +31,7 @@ import {
   mergeHistoryEntries,
 } from '../debug/gameDebugHistory';
 import { DEBUG_HISTORY_EVENT, readDebugHistories } from '../debug/debugHistoryStorage';
+import { expandEventCardInstances, getEventCardInstanceKey } from '../game/eventCardInstances';
 
 const getLearningAdminUrl = () => {
   const learningApiUrl = process.env.REACT_APP_LEARNING_API_URL;
@@ -308,22 +309,33 @@ const Menu = ({
   };
 
   // 1) Хелпер: финализируем выборы с дефолтами
-  function finalizePositiveChoicesForSubmit(player, lang, rawChoices) {
-    const result = { ...(rawChoices || {}) };
-    const cards = Array.isArray(player?.eventCards) ? player.eventCards : [];
-    const coins = Number(player?.coins || 0);
+  function finalizePositiveChoicesForSubmit(player, lang, rawChoices) {    const result = { ...(rawChoices || {}) };
+    const cards = expandEventCardInstances(player?.eventCards);
+    let remainingCoins = Number(player?.coins || 0);
 
     cards.forEach((card, idx) => {
       if (card?.fortune !== 'positive') return;
-      const key = card.id ?? idx;
-      if (result[key]) return; // уже выбран
+      const key = getEventCardInstanceKey(card, idx);
+      const existingChoice = result[key];
 
-      const canKeep = coins >= 5;
-      // дефолт: если можем заплатить — 'keep', иначе — 'use'
+      if (existingChoice === 'keep') {
+        if (remainingCoins >= 5) {
+          remainingCoins -= 5;
+        } else {
+          result[key] = 'use';
+        }
+        return;
+      }
+
+      if (existingChoice === 'use') return;
+
+      const canKeep = remainingCoins >= 5;
       result[key] = canKeep ? 'keep' : 'use';
+      if (result[key] === 'keep') {
+        remainingCoins -= 5;
+      }
     });
-
-    return result;
+return result;
   }
 
   // «Готово» в модалке — тот же host-authoritative action для человека и бота.
@@ -360,18 +372,29 @@ const Menu = ({
   useEffect(() => {
     if (!showEventModal || !currentUserData) return;
 
-    setPositiveChoices(prev => {
-      const next = { ...prev };
-      const coins = Number(currentUserData.coins || 0);
-
-      (currentUserData.eventCards || []).forEach((card, idx) => {
+    setPositiveChoices(prev => {      const next = { ...prev };
+      let remainingCoins = Number(currentUserData.coins || 0);
+      expandEventCardInstances(currentUserData.eventCards).forEach((card, idx) => {
         if (card.fortune !== 'positive') return;
-        const key = card.id ?? idx;
-        if (next[key]) return;
-        next[key] = coins >= 5 ? 'keep' : 'use';
-      });
+        const key = getEventCardInstanceKey(card, idx);
 
-      return next;
+        if (next[key] === 'keep') {
+          if (remainingCoins >= 5) {
+            remainingCoins -= 5;
+          } else {
+            next[key] = 'use';
+          }
+          return;
+        }
+
+        if (next[key] === 'use') return;
+
+        next[key] = remainingCoins >= 5 ? 'keep' : 'use';
+        if (next[key] === 'keep') {
+          remainingCoins -= 5;
+        }
+      });
+return next;
     });
   }, [showEventModal, currentUserData]);
 
@@ -784,10 +807,10 @@ const Menu = ({
             <Col md={6}>
               <h6>Негативные карты</h6>
               <ul>
-                {(currentUserData?.eventCards || [])
+                {expandEventCardInstances(currentUserData?.eventCards || [])
                   .filter(card => card.fortune === 'negative')
                   .map((card, idx) => (
-                    <li key={card.id || idx} className="mb-2 border p-2">
+                    <li key={getEventCardInstanceKey(card, idx)} className="mb-2 border p-2">
                       <strong>{getField(card, 'title', lang)}</strong>
                       <div>{getField(card, 'description', lang)}</div>
                       <div>Fortune: {card.fortune}</div>
@@ -797,7 +820,7 @@ const Menu = ({
                         size="sm"
                         variant="outline-secondary"
                         onClick={() =>
-                          setEffectTargets(prev => ({ ...prev, [card.id]: undefined }))
+                          setEffectTargets(prev => ({ ...prev, [getEventCardInstanceKey(card, idx)]: undefined }))
                         }
                       >
                         Сбросить карту
@@ -813,7 +836,7 @@ const Menu = ({
                             <Button
                               key={user.user_id}
                               variant={
-                                effectTargets[card.id]?.playerId === user.user_id
+                                effectTargets[getEventCardInstanceKey(card, idx)]?.playerId === user.user_id
                                   ? 'primary'
                                   : 'outline-primary'
                               }
@@ -822,7 +845,7 @@ const Menu = ({
                               onClick={() =>
                                 setEffectTargets(prev => ({
                                   ...prev,
-                                  [card.id]: { ...prev[card.id], playerId: user.user_id },
+                                  [getEventCardInstanceKey(card, idx)]: { ...prev[getEventCardInstanceKey(card, idx)], playerId: user.user_id },
                                 }))
                               }
                             >
@@ -847,7 +870,7 @@ const Menu = ({
                             <Button
                               key={sector}
                               variant={
-                                effectTargets[card.id]?.sector === sector
+                                effectTargets[getEventCardInstanceKey(card, idx)]?.sector === sector
                                   ? 'primary'
                                   : 'outline-primary'
                               }
@@ -856,7 +879,7 @@ const Menu = ({
                               onClick={() =>
                                 setEffectTargets(prev => ({
                                   ...prev,
-                                  [card.id]: { ...prev[card.id], sector },
+                                  [getEventCardInstanceKey(card, idx)]: { ...prev[getEventCardInstanceKey(card, idx)], sector },
                                 }))
                               }
                             >
@@ -877,7 +900,7 @@ const Menu = ({
                               <Button
                                 key={trader.traderId}
                                 variant={
-                                  effectTargets[card.id]?.traderId === trader.traderId
+                                  effectTargets[getEventCardInstanceKey(card, idx)]?.traderId === trader.traderId
                                     ? 'primary'
                                     : 'outline-primary'
                                 }
@@ -886,7 +909,7 @@ const Menu = ({
                                 onClick={() =>
                                   setEffectTargets(prev => ({
                                     ...prev,
-                                    [card.id]: { ...prev[card.id], traderId: trader.traderId },
+                                    [getEventCardInstanceKey(card, idx)]: { ...prev[getEventCardInstanceKey(card, idx)], traderId: trader.traderId },
                                   }))
                                 }
                               >
@@ -897,23 +920,23 @@ const Menu = ({
                       )}
 
                       {/* Можно добавить отображение текущего выбора */}
-                      {effectTargets[card.id] && (
+                      {effectTargets[getEventCardInstanceKey(card, idx)] && (
                         <div className="mt-2 text-muted small">
-                          {effectTargets[card.id].playerId && (
+                          {effectTargets[getEventCardInstanceKey(card, idx)].playerId && (
                             <>
                               Цель: Игрок{' '}
                               {
                                 gameState.players.find(
-                                  u => u.user_id === effectTargets[card.id].playerId
+                                  u => u.user_id === effectTargets[getEventCardInstanceKey(card, idx)].playerId
                                 )?.name
                               }
                             </>
                           )}
-                          {effectTargets[card.id].sector && (
-                            <>Цель: Сектор {effectTargets[card.id].sector}</>
+                          {effectTargets[getEventCardInstanceKey(card, idx)].sector && (
+                            <>Цель: Сектор {effectTargets[getEventCardInstanceKey(card, idx)].sector}</>
                           )}
-                          {effectTargets[card.id].traderId && (
-                            <>Цель: Торговец {effectTargets[card.id].traderId}</>
+                          {effectTargets[getEventCardInstanceKey(card, idx)].traderId && (
+                            <>Цель: Торговец {effectTargets[getEventCardInstanceKey(card, idx)].traderId}</>
                           )}
                         </div>
                       )}
@@ -925,26 +948,26 @@ const Menu = ({
             <Col md={6}>
               <h6>Позитивные карты</h6>
               <ul>
-                {(currentUserData?.eventCards || [])
+                {expandEventCardInstances(currentUserData?.eventCards || [])
                   .filter(card => card.fortune === 'positive')
                   .map((card, idx) => {
                     const canKeep = (currentUserData.coins || 0) >= 5;
-                    const selected = positiveChoices[card.id || idx];
+                    const selected = positiveChoices[getEventCardInstanceKey(card, idx)];
                     return (
-                      <li key={card.id || idx} className="mb-2">
+                      <li key={getEventCardInstanceKey(card, idx)} className="mb-2">
                         <strong>{getField(card, 'title', lang)}</strong>
                         <div>{getField(card, 'description', lang)}</div>
                         <div>
                           <label>
                             <input
                               type="radio"
-                              name={`pos_${card.id || idx}`}
+                              name={`pos_${getEventCardInstanceKey(card, idx)}`}
                               checked={selected !== 'use'}
                               disabled={!canKeep}
                               onChange={() =>
                                 setPositiveChoices(prev => ({
                                   ...prev,
-                                  [card.id || idx]: 'keep',
+                                  [getEventCardInstanceKey(card, idx)]: 'keep',
                                 }))
                               }
                             />{' '}
@@ -956,12 +979,12 @@ const Menu = ({
                           <label className="ms-3">
                             <input
                               type="radio"
-                              name={`pos_${card.id || idx}`}
+                              name={`pos_${getEventCardInstanceKey(card, idx)}`}
                               checked={selected === 'use'}
                               onChange={() =>
                                 setPositiveChoices(prev => ({
                                   ...prev,
-                                  [card.id || idx]: 'use',
+                                  [getEventCardInstanceKey(card, idx)]: 'use',
                                 }))
                               }
                             />{' '}

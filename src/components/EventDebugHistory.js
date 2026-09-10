@@ -49,8 +49,11 @@ export default function EventDebugHistory({ entries = [], lang, playerId = null,
                       </span>
                     )}
                     {(entry.cards || []).map(card => (
-                      <div key={`${entry.id}:${card.cardId}`} className="mt-2 ps-2 border-start">
+                      <div key={`${entry.id}:${card.instanceId || card.cardId}`} className="mt-2 ps-2 border-start">
                         <div><strong>🃏 {localizeDebugValue(card.title, lang) || card.cardId}</strong></div>
+                        {card.instanceId && card.instanceId !== card.cardId && (
+                          <div className="small text-muted">copy: {card.instanceId}</div>
+                        )}
                         <div className="small">{localizeDebugValue(card.description, lang) || '—'}</div>
                         <div className="small"><strong>{debugText(lang, 'choice')}:</strong> {debugText(lang, card.choice === 'keep' ? 'keep' : 'use')}</div>
                         {card.target?.playerName && <div className="small"><strong>{debugText(lang, 'targetPlayer')}:</strong> {card.target.playerName}</div>}

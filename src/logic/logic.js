@@ -2,6 +2,12 @@
 import { PHASES } from '../game/phases';
 import { syncPlayerSectorsWithTraders } from '../game/playerDerivedState';
 import { settleRound } from '../game/roundEnd';
+import {
+  createEventCardInstanceId,
+  expandEventCardInstances,
+  getEventCardInstanceKey,
+  getNextEventCardInstanceSequence,
+} from '../game/eventCardInstances';
 // Конец раунда
 // Конец раунда: продаём все товары у всех трейдеров всех игроков
 export function handleEndRound(setGameState, isHost, broadcastGameState) {
@@ -105,12 +111,11 @@ export function player_add_event(gameState, playerId) {
     ...updatedEventCards[eventCardIndex],
 
     quantity_active: Math.max(0, Number(updatedEventCards[eventCardIndex].quantity_active) - 1),
-  };
-
-  // Копия карты для руки игрока.
+  };  // Копия карты для руки игрока. Каждая физическая копия имеет свой instanceId.
+  const eventCardInstanceSequence = getNextEventCardInstanceSequence(gameState);
   const cardForPlayer = {
     ...chosenCard,
-
+    instanceId: createEventCardInstanceId(chosenCard.id, eventCardInstanceSequence),
     position_in_game: `hand_${playerId}`,
     quantity_active: 1,
   };
@@ -118,36 +123,21 @@ export function player_add_event(gameState, playerId) {
   const player = players[playerIdx];
 
   const playerEventCards = Array.isArray(player.eventCards) ? [...player.eventCards] : [];
-
-  const existingCardIndex = playerEventCards.findIndex(card => card.id === chosenCard.id);
-
-  if (existingCardIndex !== -1) {
-    playerEventCards[existingCardIndex] = {
-      ...playerEventCards[existingCardIndex],
-
-      quantity_active: Number(playerEventCards[existingCardIndex].quantity_active) + 1,
-    };
-  } else {
-    playerEventCards.push(cardForPlayer);
-  }
-
-  const updatedPlayer = {
+  playerEventCards.push(cardForPlayer);
+const updatedPlayer = {
     ...player,
     eventCards: playerEventCards,
   };
 
   const updatedPlayers = [...players];
 
-  updatedPlayers[playerIdx] = updatedPlayer;
-
-  const updatedGameState = {
+  updatedPlayers[playerIdx] = updatedPlayer;  const updatedGameState = {
     ...gameState,
-
+    eventCardInstanceSequence,
     eventcards: updatedEventCards,
     players: updatedPlayers,
   };
-
-  return [updatedGameState, cardForPlayer];
+return [updatedGameState, cardForPlayer];
 }
 // end round from menu
 // logic/logic.js
@@ -552,15 +542,15 @@ export function applyEventChoicesToGameState(prevGameState) {
     const effectTargets = userChoices.effectTargets || {};
     let updated = { ...player };
 
-    const cards = Array.isArray(player.eventCards) ? [...player.eventCards] : [];
+    const cards = expandEventCardInstances(player.eventCards);
     const nextCards = [];
 
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i];
-      const key = card.id ?? i;
+      const key = getEventCardInstanceKey(card, i);
 
       if (card.fortune === 'positive') {
-        const choice = positiveCh[key];
+        const choice = positiveCh[key] ?? positiveCh[card.id];
 
         if (choice === 'keep') {
           const cost = 5;
@@ -588,7 +578,7 @@ export function applyEventChoicesToGameState(prevGameState) {
           updated[`effect_${roundNum}`] = card.effect ?? true;
 
           const effects = Array.isArray(card.effect) ? card.effect : [];
-          const target = effectTargets[card.id] || effectTargets[key] || {};
+          const target = effectTargets[key] || effectTargets[card.id] || {};
 
           // --- EXTRA PRODUCT: добавляем к занятым трейдерам (goods+location), не с руки
           const extraProdItem = effects.find(e => e && e.extra_product);
@@ -763,7 +753,7 @@ export function applyEventChoicesToGameState(prevGameState) {
       // === NEGATIVE CARDS ===
       if (card.fortune === 'negative') {
         // 1) нормализуем цель
-        const tgtRaw = effectTargets[card.id] || effectTargets[key] || {};
+        const tgtRaw = effectTargets[key] || effectTargets[card.id] || {};
         const sector = typeof tgtRaw.sector === 'string' ? tgtRaw.sector.trim() : undefined;
         const effects = Array.isArray(card.effect) ? card.effect : [];
         const goalAction = card.goal_action; // "sector"|"player"|"trader"

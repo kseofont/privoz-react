@@ -3,6 +3,7 @@ import DebugValue from './DebugValue';
 import ProductDebugCard from './ProductDebugCard';
 import TraderDebugCard from './TraderDebugCard';
 import { debugText, localizeDebugValue } from '../debug/debugTranslations';
+import { expandEventCardInstances } from '../game/eventCardInstances';
 
 const PLAYER_MAIN_KEYS = new Set([
   'user_id',
@@ -28,7 +29,10 @@ function EventCardInfo({ card, lang }) {
       </div>
       {description && <div className="mt-1">{description}</div>}
       <div className="small text-muted mt-2">
-        {debugText(lang, 'id')}: {card?.id || '—'} · {debugText(lang, 'goal')}: {card?.goal_action || '—'} / {card?.goal_item || '—'}
+        {debugText(lang, 'id')}: {card?.id || '—'}
+        {card?.instanceId ? ` · copy: ${card.instanceId}` : ''}
+        {' · '}
+        {debugText(lang, 'goal')}: {card?.goal_action || '—'} / {card?.goal_item || '—'}
       </div>
       {Array.isArray(card?.effect) && card.effect.length > 0 && (
         <details className="mt-2">
@@ -48,7 +52,7 @@ const CurrentPlayerInfo = ({ player, lang }) => {
     .sort(([a], [b]) => a.localeCompare(b));
   const traders = Array.isArray(player.traders) ? player.traders : [];
   const products = Array.isArray(player.products) ? player.products : [];
-  const eventCards = Array.isArray(player.eventCards) ? player.eventCards : [];
+  const eventCards = expandEventCardInstances(player.eventCards);
 
   return (
     <section className="user-info mt-5 border rounded p-3 bg-white">
@@ -102,7 +106,9 @@ const CurrentPlayerInfo = ({ player, lang }) => {
 
       <h5 className="mt-4">🎴 {debugText(lang, 'eventCards')} ({eventCards.length})</h5>
       {eventCards.length ? (
-        eventCards.map((card, index) => <EventCardInfo key={card.id || index} card={card} lang={lang} />)
+        eventCards.map((card, index) => (
+          <EventCardInfo key={card.instanceId || card.id || index} card={card} lang={lang} />
+        ))
       ) : (
         <p className="text-muted">{debugText(lang, 'noEventCards')}</p>
       )}
