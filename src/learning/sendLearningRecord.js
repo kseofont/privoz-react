@@ -23,7 +23,9 @@ export async function sendLearningRecord(record) {
   }
 
   if (!response.ok || !payload?.saved) {
-    throw new Error(payload?.error || `Learning log request failed (${response.status})`);
+    const error = new Error(payload?.error || `Learning log request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
 
   return payload;

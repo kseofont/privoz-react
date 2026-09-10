@@ -261,3 +261,32 @@ test('wholesale policy does not reserve coins for free trader placement', async 
   expect(state.players[1].coins).toBe(20);
   expect((await decideProduct(state, 'all_in')).productId).toBe(20);
 });
+
+test('consecutive purchases of the same product produce distinct learning event ids', () => {
+  const before = makeState({ coins: 30, behaviorProfile: 'balanced' });
+  const firstAction = buyProductAction({ playerId: 'peer-bot', productId: 20 });
+  const afterFirst = gameReducer(before, firstAction);
+  const firstSample = buildLearningDecision({
+    beforeState: before,
+    afterState: afterFirst,
+    action: firstAction,
+    actorId: 'peer-bot',
+    appVersion: { version: 'test', gitCommit: 'abc123' },
+  });
+
+  const secondAction = buyProductAction({ playerId: 'peer-bot', productId: 20 });
+  const afterSecond = gameReducer(afterFirst, secondAction);
+  const secondSample = buildLearningDecision({
+    beforeState: afterFirst,
+    afterState: afterSecond,
+    action: secondAction,
+    actorId: 'peer-bot',
+    appVersion: { version: 'test', gitCommit: 'abc123' },
+  });
+
+  expect(firstSample).not.toBeNull();
+  expect(secondSample).not.toBeNull();
+  expect(firstSample.selectedAction).toEqual({ type: 'BUY_PRODUCT', productId: 20 });
+  expect(secondSample.selectedAction).toEqual({ type: 'BUY_PRODUCT', productId: 20 });
+  expect(firstSample.eventId).not.toBe(secondSample.eventId);
+});

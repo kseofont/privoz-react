@@ -6,6 +6,16 @@ function playerById(state, playerId) {
   return asArray(state?.players).find(player => player?.user_id === playerId) || null;
 }
 
+function hashString(value) {
+  let hash = 2166136261;
+  const text = String(value || '');
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function productQuantityMap(player) {
   const result = new Map();
   asArray(player?.products).forEach(product => {
@@ -46,7 +56,7 @@ function collectSoldGoods(beforePlayer, afterPlayer) {
   const afterTraderMap = new Map(
     asArray(afterPlayer?.traders).map(trader => [String(trader?.traderId), trader])
   );
-  const sold = [];
+  const soldByKey = new Map();
 
   asArray(beforePlayer?.traders).forEach(beforeTrader => {
     const beforeGoods = asArray(beforeTrader?.goods);
@@ -58,7 +68,16 @@ function collectSoldGoods(beforePlayer, afterPlayer) {
     beforeGoods.forEach(product => {
       const quantity = Number(product?.quantity_player_card || 0);
       const unitPrice = Number(product?.sellingPrice || product?.retailPrice || product?.profit || 0);
-      sold.push({
+      const key = [beforeTrader?.traderId, product?.productId, unitPrice].join(':');
+      const current = soldByKey.get(key);
+
+      if (current) {
+        current.quantity += quantity;
+        current.total += quantity * unitPrice;
+        return;
+      }
+
+      soldByKey.set(key, {
         traderId: beforeTrader?.traderId,
         traderName: beforeTrader?.name,
         productId: product?.productId,
@@ -70,7 +89,7 @@ function collectSoldGoods(beforePlayer, afterPlayer) {
     });
   });
 
-  return sold;
+  return [...soldByKey.values()];
 }
 
 function newEventMessages(beforeState, afterState, playerId) {
@@ -135,11 +154,15 @@ export function buildCoinChangeEntries(beforeState, afterState) {
     const soldGoods = collectSoldGoods(beforePlayer, afterPlayer);
 
     let reasonType = delta > 0 ? 'income' : 'expense';
+    const beforeRound = Number(beforeState.round || 1);
+    const afterRound = Number(afterState.round || beforeRound);
+    const roundAdvanced = afterRound > beforeRound;
     const context = {
-      round: afterState.round || beforeState.round || 1,
-      phase: afterState.phase || null,
+      round: soldGoods.length && roundAdvanced ? beforeRound : afterRound,
+      phase: soldGoods.length && roundAdvanced ? 'round_end' : afterState.phase || null,
       eventMessages,
     };
+    if (roundAdvanced) context.nextRound = afterRound;
 
     // Preserve every observable contributor to the same authoritative state
     // transition. End-of-round sales and event-card effects can happen close
@@ -171,7 +194,9 @@ export function buildCoinChangeEntries(beforeState, afterState) {
     }
 
     entries.push({
-      id: `coin:${afterState.gameId}:${playerId}:${now}:${before}:${after}:${reasonType}`,
+      id: `coin:${afterState.gameId}:${playerId}:${hashString(
+        `${buildDebugStateSignature(beforeState)}=>${buildDebugStateSignature(afterState)}`
+      )}`,
       ts: now,
       playerId,
       playerIndex,

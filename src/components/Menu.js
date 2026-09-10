@@ -30,6 +30,7 @@ import {
   buildPlayerActivityEntries,
   mergeHistoryEntries,
 } from '../debug/gameDebugHistory';
+import { DEBUG_HISTORY_EVENT, readDebugHistories } from '../debug/debugHistoryStorage';
 
 const getLearningAdminUrl = () => {
   const learningApiUrl = process.env.REACT_APP_LEARNING_API_URL;
@@ -164,6 +165,19 @@ const Menu = ({
     debugStateSignatureRef.current = buildDebugStateSignature(gameState);
     // The history baseline intentionally resets only when gameId changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
+
+  useEffect(() => {
+    const refreshFromStorage = event => {
+      if (event?.detail?.gameId && event.detail.gameId !== gameId) return;
+      const restored = readDebugHistories(gameId);
+      setCoinHistoryByPlayer(restored.coins);
+      setEventHistory(restored.events);
+      setActivityHistory(restored.activity);
+    };
+
+    window.addEventListener(DEBUG_HISTORY_EVENT, refreshFromStorage);
+    return () => window.removeEventListener(DEBUG_HISTORY_EVENT, refreshFromStorage);
   }, [gameId]);
 
   useEffect(() => {

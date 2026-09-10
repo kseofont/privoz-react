@@ -1835,3 +1835,20 @@ Event history should capture:
 - exact eventResultLog output after application.
 
 The local debug history is capped to prevent uncontrolled sessionStorage growth.
+
+## Debug / Learning Log Reliability Hardening
+
+Stage 9.1 hardens the two diagnostic paths before expanding the full Event Card deck.
+
+Local Menu debug history now has two sources:
+
+- synchronous accepted-action persistence through the host accepted-action observer;
+- authoritative state-diff fallback for automatic transitions such as round settlement and Event Card resolution.
+
+This prevents a BUY_PRODUCT transition from disappearing when React navigation/unmounting or batched state updates happen before Menu's effect observes the intermediate state.
+
+Coin history entry IDs are deterministic per authoritative transition so the synchronous path and state-diff fallback deduplicate cleanly. Repeated identical product lines sold by one trader are aggregated for display, and a sale that advances the round is attributed to the completed round (`round_end`) rather than the newly started round.
+
+Server learning decisions remain action-based. Every accepted SELECT_TRADER / BUY_PRODUCT / PLACE_TRADER / SUBMIT_EVENT_CHOICES decision is built from beforeState + accepted action + afterState. Consecutive purchases of the same product have distinct event IDs because the BUY event ID includes the pre-action owned quantity and coin balance.
+
+Learning POST delivery now has a small browser-local retry outbox for transient network / 5xx / 408 / 429 failures. Backend eventId deduplication makes retries idempotent. Permanent 4xx validation failures are not retried forever. Final outcome records use the same reliable delivery path.

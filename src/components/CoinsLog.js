@@ -46,6 +46,7 @@ function CoinChangeDetails({ entry, lang }) {
   }
   if (context.phase) rows.push(`🧭 ${debugText(lang, 'phase')}: ${context.phase}`);
   if (context.round !== undefined) rows.push(`🔄 ${debugText(lang, 'round')}: ${context.round}`);
+  if (context.nextRound !== undefined) rows.push(`➡️ ${debugText(lang, 'nextRound')}: ${context.nextRound}`);
 
   if (!rows.length) return null;
 

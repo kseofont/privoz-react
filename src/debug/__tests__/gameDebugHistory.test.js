@@ -202,3 +202,66 @@ test('coin diagnostics retain event messages and observed sales together', () =>
   expect(entry.context.soldGoods).toHaveLength(1);
   expect(entry.context.saleGross).toBe(9);
 });
+
+test('aggregates duplicate sold goods and attributes the sale to the completed round', () => {
+  const before = baseState();
+  before.round = 2;
+  before.phase = 'personal_events';
+  before.players[0].coins = 1;
+  before.players[0].traders = [
+    {
+      traderId: 't1',
+      name: { en: 'Gypsy Aza' },
+      location: 'Household',
+      goods: [
+        {
+          productId: 16,
+          productName: { en: 'Gloves' },
+          quantity_player_card: 1,
+          sellingPrice: 12,
+        },
+        {
+          productId: 16,
+          productName: { en: 'Gloves' },
+          quantity_player_card: 1,
+          sellingPrice: 12,
+        },
+      ],
+    },
+  ];
+
+  const after = JSON.parse(JSON.stringify(before));
+  after.round = 3;
+  after.phase = 'trader_selection';
+  after.players[0].coins = 25;
+  after.players[0].traders[0].location = null;
+  after.players[0].traders[0].goods = [];
+
+  const [entry] = buildCoinChangeEntries(before, after);
+  expect(entry.reasonType).toBe('round_sale');
+  expect(entry.context.soldGoods).toHaveLength(1);
+  expect(entry.context.soldGoods[0]).toMatchObject({ productId: 16, quantity: 2, total: 24 });
+  expect(entry.context.round).toBe(2);
+  expect(entry.context.phase).toBe('round_end');
+  expect(entry.context.nextRound).toBe(3);
+});
+
+test('coin entry id is stable for the same authoritative transition', () => {
+  const before = baseState();
+  const after = JSON.parse(JSON.stringify(before));
+  after.players[0].coins = 13;
+  after.players[0].products = [
+    {
+      productId: 16,
+      productName: { en: 'Gloves' },
+      quantity_player_card: 1,
+      wholesalePrice: 7,
+      sellingPrice: 12,
+      sector: 'household',
+    },
+  ];
+
+  const first = buildCoinChangeEntries(before, after)[0];
+  const second = buildCoinChangeEntries(before, after)[0];
+  expect(first.id).toBe(second.id);
+});
