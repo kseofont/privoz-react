@@ -1,149 +1,112 @@
-// src/components/CurrentPlayerInfo.js
 import React from 'react';
-import { getField } from '../logic/logic';
+import DebugValue from './DebugValue';
+import ProductDebugCard from './ProductDebugCard';
+import TraderDebugCard from './TraderDebugCard';
+import { debugText, localizeDebugValue } from '../debug/debugTranslations';
+
+const PLAYER_MAIN_KEYS = new Set([
+  'user_id',
+  'name',
+  'color',
+  'coins',
+  'tradersCount',
+  'traders',
+  'products',
+  'eventCards',
+]);
+
+function EventCardInfo({ card, lang }) {
+  const title = localizeDebugValue(card?.title, lang) || card?.id || 'Event card';
+  const description = localizeDebugValue(card?.description, lang);
+  return (
+    <div className={`border rounded p-2 mb-2 ${card?.fortune === 'negative' ? 'border-danger' : 'border-success'}`}>
+      <div className="d-flex justify-content-between gap-2">
+        <strong>🎴 {title}</strong>
+        <span className={`badge ${card?.fortune === 'negative' ? 'bg-danger' : 'bg-success'}`}>
+          {card?.fortune || '—'}
+        </span>
+      </div>
+      {description && <div className="mt-1">{description}</div>}
+      <div className="small text-muted mt-2">
+        {debugText(lang, 'id')}: {card?.id || '—'} · {debugText(lang, 'goal')}: {card?.goal_action || '—'} / {card?.goal_item || '—'}
+      </div>
+      {Array.isArray(card?.effect) && card.effect.length > 0 && (
+        <details className="mt-2">
+          <summary>effect</summary>
+          <DebugValue fieldKey="effect" value={card.effect} lang={lang} showDescription={false} />
+        </details>
+      )}
+    </div>
+  );
+}
 
 const CurrentPlayerInfo = ({ player, lang }) => {
   if (!player) return null;
 
-  const user_color = player.color || 'red';
-  const userBackgroundColorClass = `bg-${user_color}`;
-  const uniqueSectors = [...new Set(player?.traders?.map(trader => trader.location) || [])];
-  // Список "ключ: значение" для всех полей, кроме уже явно выведенных:
-  const mainKeys = [
-    'user_id',
-    'name',
-    'color',
-    'coins',
-    'tradersCount',
-    'traders',
-    'products',
-    'eventCards',
-  ];
   const extraFields = Object.entries(player)
-    .filter(([key]) => !mainKeys.includes(key))
+    .filter(([key]) => !PLAYER_MAIN_KEYS.has(key))
     .sort(([a], [b]) => a.localeCompare(b));
+  const traders = Array.isArray(player.traders) ? player.traders : [];
+  const products = Array.isArray(player.products) ? player.products : [];
+  const eventCards = Array.isArray(player.eventCards) ? player.eventCards : [];
 
   return (
-    <div className={`user-info mt-5 ${userBackgroundColorClass}`}>
-      <p>Id: {player.user_id}</p>
-      <p>Name: {player.name}</p>
-      <p className={user_color}>Color: {player.color}</p>
-      <p>Coins: {player.coins}</p>
-      <p>Traders Count: {player.tradersCount}</p>
-
-      {/* Все остальные поля динамически */}
-      <div className="mb-2">
-        <p>
-          <b>All player fields (debug):</b>
-        </p>
-        <ul style={{ fontSize: '0.95em', color: '#888' }}>
-          {extraFields.map(([key, value]) => (
-            <li key={key}>
-              <b>{key}:</b>{' '}
-              {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-            </li>
-          ))}
-        </ul>
+    <section className="user-info mt-5 border rounded p-3 bg-white">
+      <div className="d-flex flex-wrap justify-content-between gap-2 align-items-start mb-3">
+        <div>
+          <h4 className="mb-1">👤 {debugText(lang, 'currentPlayer')}: {player.name || '—'}</h4>
+          <div className="small text-muted">🆔 {debugText(lang, 'id')}: {player.user_id}</div>
+        </div>
+        <div className="d-flex flex-wrap gap-2">
+          <span className="badge bg-warning text-dark">🪙 {player.coins ?? 0}</span>
+          <span className="badge bg-secondary">🧑‍🌾 {traders.length}</span>
+          <span className="badge bg-secondary">📦 {products.length}</span>
+          <span className="badge bg-secondary">🎴 {eventCards.length}</span>
+          {player.isBot && (
+            <span className="badge bg-dark">🤖 {player.botBehaviorProfile || 'bot'} · {player.botPolicyVersion || '—'}</span>
+          )}
+        </div>
       </div>
 
-      {player.traders && player.traders.length > 0 ? (
-        <>
-          <p>Ваши торговцы:</p>
-          <ul style={{ fontSize: '0.95em', color: '#888' }}>
-            {player.traders.map((trader, traderIndex) => (
-              <li key={traderIndex} className="mb-2 p-2 border rounded">
-                <div>
-                  <b>Trader #{traderIndex + 1}</b>
-                  <ul>
-                    {Object.entries(trader).map(([key, value]) => (
-                      <li key={key}>
-                        <b>{key}:</b>{' '}
-                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p>Ваши торговцы:</p>
+      <div className="row g-2 mb-3">
+        <div className="col-md-6"><strong>🎨 {debugText(lang, 'color')}:</strong> {player.color || '—'}</div>
+        <div className="col-md-6"><strong>📍 {debugText(lang, 'sectors')}:</strong> {(player.sectorsWithTraders || []).filter(Boolean).join(', ') || '—'}</div>
+      </div>
 
-          <ul className="list-unstyled">
-            {player.traders.map((trader, traderIndex) => (
-              <li key={traderIndex} className="mb-2 p-2 border rounded">
-                <p>
-                  Торговец: {trader.traderName || getField(trader, 'name', lang) || 'Без имени'}
-                </p>
-                <p>Избранный сектор: {getField(trader, 'sector_favorite', lang) || 'неизвестно'}</p>
-                {trader.goods && trader.goods.length > 0 && (
-                  <div>
-                    <p>Товары:</p>
-                    <ul className="list-unstyled">
-                      {trader.goods.map((goods, productIndex) => (
-                        <li key={productIndex} className="mb-1">
-                          <p>Название: {getField(goods, 'productName', lang)}</p>
-                          {goods.sellingPrice && <p>Price: {goods.sellingPrice} </p>}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <p>У вас пока нет торговцев</p>
-      )}
-
-      <p>Sectors with Traders:</p>
-      <ul>
-        {uniqueSectors.map((sector, index) => (
-          <li key={index}>{sector}</li>
-        ))}
-      </ul>
-
-      {player.products && player.products.length > 0 && (
-        <div>
-          <p>Ваши товары:</p>
-          <ul className="list-unstyled">
-            {player.products.map((product, productIndex) => (
-              <li key={productIndex} className="mb-1">
-                <p>
-                  Название: {getField(product, 'productName', lang)}{' '}
-                  {product.quantity_player_card && <span> X {product.quantity_player_card}</span>}
-                </p>
-                {product.description && <p>Описание: {getField(product, 'description', lang)} </p>}
-              </li>
-            ))}
-          </ul>
+      <details className="mb-4">
+        <summary><strong>🛠️ {debugText(lang, 'playerDebugFields')}</strong></summary>
+        <div className="mt-2 border rounded p-2 bg-light">
+          {extraFields.length ? extraFields.map(([key, value]) => (
+            <DebugValue key={key} fieldKey={key} value={value} lang={lang} />
+          )) : <div className="text-muted">—</div>}
         </div>
+      </details>
+
+      <h5>🧑‍🌾 {debugText(lang, 'traders')} ({traders.length})</h5>
+      {traders.length ? (
+        traders.map((trader, index) => (
+          <TraderDebugCard key={trader.traderId || index} trader={trader} lang={lang} index={index} />
+        ))
+      ) : (
+        <p className="text-muted">{debugText(lang, 'noTraders')}</p>
       )}
 
-      <p>Event Cards Count: {player.eventCards ? player.eventCards.length : 0}</p>
-      <p>Event Cards:</p>
-      {player.eventCards && player.eventCards.length > 0 ? (
-        <ul className="list-unstyled">
-          {player.eventCards.map((card, index) => (
-            <li
-              key={index}
-              className={`event-card ${card.fortune === 'negative' ? 'bg-danger' : 'bg-success'}`}
-            >
-              <p>Title: {getField(card, 'title', lang)}</p>
-              <p>Description: {getField(card, 'description', lang)}</p>
-              <p>Fortune: {card.fortune}</p>
-              <p>Quantity In Game: {card.quantity_ingame}</p>
-              <p>Quantity Active: {card.quantity_active}</p>
-              <p>Position In Game: {card.position_in_game}</p>
-              <p>Goal Action: {card.goal_action}</p>
-              <p>Goal Item: {card.goal_item}</p>
-            </li>
-          ))}
-        </ul>
+      <h5 className="mt-4">📦 {debugText(lang, 'productsInHand')} ({products.length})</h5>
+      {products.length ? (
+        products.map((product, index) => (
+          <ProductDebugCard key={`${product.productId || index}-${index}`} product={product} lang={lang} />
+        ))
       ) : (
-        <p>No Event Cards.</p>
+        <p className="text-muted">{debugText(lang, 'noProducts')}</p>
       )}
-    </div>
+
+      <h5 className="mt-4">🎴 {debugText(lang, 'eventCards')} ({eventCards.length})</h5>
+      {eventCards.length ? (
+        eventCards.map((card, index) => <EventCardInfo key={card.id || index} card={card} lang={lang} />)
+      ) : (
+        <p className="text-muted">{debugText(lang, 'noEventCards')}</p>
+      )}
+    </section>
   );
 };
 

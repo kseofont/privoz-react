@@ -1780,3 +1780,58 @@ Required tests before commit:
 - manual round-14 end test.
 
 Stage 8B does not change bot strategy policy-v005. Game completion is a game-core rule, not a new bot decision policy.
+
+# Debug Menu / Local Test History
+
+During active multiplayer/bot testing, Menu should expose a human-readable diagnostic view instead of dumping raw arrays/objects wherever possible.
+
+The debug UI is intentionally separate from server learning data.
+
+Local debug history:
+
+- lives in browser sessionStorage;
+- is keyed by gameId;
+- is not sent to /api/learning.php;
+- may contain live player names/technical IDs because it is a local testing aid;
+- should not be treated as training data.
+
+The current player debug view should show:
+
+- summary: coins, traders, products, Event Cards, bot policy/profile;
+- every available trader field using localized field labels and descriptions;
+- trader image, location/status and assigned goods;
+- product fields in structured cards;
+- private Event Cards owned by that current player;
+- observed player-state history;
+- detailed coin history;
+- Event Card decisions/results involving that player.
+
+Other-player debug views should show the public/previously-visible game information used for testing:
+
+- name/color/current coins;
+- bot profile/policy when applicable;
+- traders and their public card fields/location/goods;
+- currently visible player products according to the existing prototype state;
+- observed state-change history;
+- coin history behind a collapsed control;
+- played Event Card/effect history behind a collapsed control.
+
+Do not expose another player's currently held private Event Cards merely for the debug UI.
+
+Coin history should be derived from authoritative state transitions for ALL observed players and explain useful causes where they can be inferred, including:
+
+- trader acquisition;
+- wholesale product purchase;
+- round-end sales with trader/product/quantity/value details;
+- Event Card effects/fines using the exact engine result messages when available;
+- fallback income/expense entries for otherwise unknown changes.
+
+Event history should capture:
+
+- submitted played-card decision;
+- use/keep choice where applicable;
+- target player/sector/trader when visible;
+- localized card title/description and configured effect;
+- exact eventResultLog output after application.
+
+The local debug history is capped to prevent uncontrolled sessionStorage growth.

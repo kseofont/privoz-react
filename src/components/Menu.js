@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PHASES } from '../game/phases';
 import CoinsLog from './CoinsLog';
+import EventDebugHistory from './EventDebugHistory';
+import PlayerActivityHistory from './PlayerActivityHistory';
 
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,6 +23,13 @@ import FeedbackButton from './FeedbackButton';
 import BotPlayerController from '../bot/BotPlayerController';
 import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 import { recordLearningOutcome } from '../learning/recordLearningOutcome';
+import {
+  buildCoinChangeEntries,
+  buildDebugStateSignature,
+  buildEventHistoryEntries,
+  buildPlayerActivityEntries,
+  mergeHistoryEntries,
+} from '../debug/gameDebugHistory';
 
 const getLearningAdminUrl = () => {
   const learningApiUrl = process.env.REACT_APP_LEARNING_API_URL;
@@ -65,7 +74,9 @@ const Menu = ({
     gameState.players.some(p => p.user_id === myUserId);
 
   const gameId = gameState?.gameId || 'defaultGame';
-  const STORAGE_KEY = `coinsLog:${gameId}:${myUserId}`;
+  const COIN_HISTORY_STORAGE_KEY = `debugCoinHistory:${gameId}`;
+  const EVENT_HISTORY_STORAGE_KEY = `debugEventHistory:${gameId}`;
+  const ACTIVITY_HISTORY_STORAGE_KEY = `debugActivityHistory:${gameId}`;
 
   // Текущий игрок и другие игроки
   const currentUserData = gameState?.players?.find(p => p.user_id === myUserId) || null;
@@ -84,6 +95,132 @@ const Menu = ({
   const myTurn = gameState?.currentTurnUserId === myUserId;
   const isHost = !connection; // у хоста нет connection
   const [hadProducts, setHadProducts] = useState(false);
+
+  // Local debug histories. These are session-only diagnostics and are never sent
+  // to learning storage. We keep histories for all observed players so the menu
+  // can explain balance changes and event-card interactions while testing.
+  const [coinHistoryByPlayer, setCoinHistoryByPlayer] = useState({});
+  const [eventHistory, setEventHistory] = useState([]);
+  const [activityHistory, setActivityHistory] = useState([]);
+  const debugPrevStateRef = useRef(null);
+  const debugStateSignatureRef = useRef('');
+
+  useEffect(() => {
+    let restoredCoins = {};
+    let restoredEvents = [];
+    let restoredActivity = [];
+
+    try {
+      const parsedCoins = JSON.parse(sessionStorage.getItem(COIN_HISTORY_STORAGE_KEY) || '{}');
+      if (parsedCoins && typeof parsedCoins === 'object' && !Array.isArray(parsedCoins)) {
+        restoredCoins = parsedCoins;
+      }
+    } catch {}
+
+    try {
+      const parsedEvents = JSON.parse(sessionStorage.getItem(EVENT_HISTORY_STORAGE_KEY) || '[]');
+      if (Array.isArray(parsedEvents)) {
+        restoredEvents = parsedEvents;
+      }
+    } catch {}
+
+    try {
+      const parsedActivity = JSON.parse(sessionStorage.getItem(ACTIVITY_HISTORY_STORAGE_KEY) || '[]');
+      if (Array.isArray(parsedActivity)) {
+        restoredActivity = parsedActivity;
+      }
+    } catch {}
+
+    if (gameState?.players && Object.keys(restoredCoins).length === 0) {
+      const ts = Date.now();
+      restoredCoins = Object.fromEntries(
+        gameState.players.map((player, playerIndex) => [
+          player.user_id,
+          [
+            {
+              id: `coin-init:${gameId}:${player.user_id}`,
+              ts,
+              playerId: player.user_id,
+              playerIndex,
+              playerName: player.name || `#${playerIndex + 1}`,
+              before: Number(player.coins || 0),
+              after: Number(player.coins || 0),
+              delta: 0,
+              reasonType: 'initial',
+              context: { round: gameState.round || 1 },
+            },
+          ],
+        ])
+      );
+    }
+
+    setCoinHistoryByPlayer(restoredCoins);
+    setEventHistory(restoredEvents);
+    setActivityHistory(restoredActivity);
+    try {
+      sessionStorage.setItem(COIN_HISTORY_STORAGE_KEY, JSON.stringify(restoredCoins));
+    } catch {}
+    debugPrevStateRef.current = gameState;
+    debugStateSignatureRef.current = buildDebugStateSignature(gameState);
+    // The history baseline intentionally resets only when gameId changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
+
+  useEffect(() => {
+    if (!gameState?.gameId || gameState.gameId !== gameId) return;
+
+    const nextSignature = buildDebugStateSignature(gameState);
+    if (nextSignature === debugStateSignatureRef.current) return;
+
+    const beforeState = debugPrevStateRef.current;
+    if (beforeState?.gameId === gameState.gameId) {
+      const coinEntries = buildCoinChangeEntries(beforeState, gameState);
+      const eventEntries = buildEventHistoryEntries(beforeState, gameState);
+      const activityEntries = buildPlayerActivityEntries(beforeState, gameState);
+
+      if (coinEntries.length) {
+        setCoinHistoryByPlayer(current => {
+          const next = { ...current };
+          coinEntries.forEach(entry => {
+            next[entry.playerId] = mergeHistoryEntries(next[entry.playerId] || [], [entry], 300);
+          });
+          try {
+            sessionStorage.setItem(COIN_HISTORY_STORAGE_KEY, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+
+      if (eventEntries.length) {
+        setEventHistory(current => {
+          const next = mergeHistoryEntries(current, eventEntries, 300);
+          try {
+            sessionStorage.setItem(EVENT_HISTORY_STORAGE_KEY, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+
+      if (activityEntries.length) {
+        setActivityHistory(current => {
+          const next = mergeHistoryEntries(current, activityEntries, 500);
+          try {
+            sessionStorage.setItem(ACTIVITY_HISTORY_STORAGE_KEY, JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+    }
+
+    debugPrevStateRef.current = gameState;
+    debugStateSignatureRef.current = nextSignature;
+  }, [
+    gameState,
+    gameId,
+    COIN_HISTORY_STORAGE_KEY,
+    EVENT_HISTORY_STORAGE_KEY,
+    ACTIVITY_HISTORY_STORAGE_KEY,
+  ]);
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [positiveChoices, setPositiveChoices] = useState({}); // { cardId: "keep" | "use" }
@@ -444,119 +581,6 @@ const Menu = ({
     };
   }, [showResultModal, currentNonce, connection, myUserId, setGameState, isHost, currentUserIsBot]);
 
-  // log of coins
-  // Внутри Menu
-  const [coinsLog, setCoinsLog] = useState([]); // только локально у клиента
-  const prevCoinsRef = useRef(undefined);
-  useEffect(() => {
-    // читаем сохранённый лог
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
-      if (Array.isArray(saved) && saved.length) {
-        setCoinsLog(saved);
-        // примем последнюю известную сумму как "предыдущее"
-        prevCoinsRef.current = saved[0]?.after;
-      } else {
-        // если в storage пусто — создадим инициализацию от текущих монет
-        const now = Number(currentUserData?.coins ?? 0);
-        const init = {
-          id: (crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}_${Math.random()}`,
-          ts: Date.now(),
-          before: now,
-          delta: 0,
-          after: now,
-          reason: 'инициализация баланса',
-          source: 'system',
-          context: {},
-        };
-        setCoinsLog([init]);
-        prevCoinsRef.current = now;
-      }
-    } catch {
-      // в крайнем случае — просто инициализируйтесь от текущих монет
-      const now = Number(currentUserData?.coins ?? 0);
-      const init = {
-        id: (crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}_${Math.random()}`,
-        ts: Date.now(),
-        before: now,
-        delta: 0,
-        after: now,
-        reason: 'инициализация баланса',
-        source: 'system',
-        context: {},
-      };
-      setCoinsLog([init]);
-      prevCoinsRef.current = now;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [STORAGE_KEY]); // меняется при смене игрока/игры
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(coinsLog));
-    } catch {}
-  }, [coinsLog, STORAGE_KEY]);
-
-  useEffect(() => {
-    if (!currentUserData) return;
-
-    const now = Number(currentUserData.coins ?? 0);
-    const prev = prevCoinsRef.current;
-
-    const last = gameState?.lastAction || gameState?.lastEvent || {};
-    const mkId = () =>
-      (crypto?.randomUUID && crypto.randomUUID()) ||
-      `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-    if (prev === undefined) {
-      // если пришёл новый игрок/ключ, но лог уже восстановлен из storage — prev должен быть уже задан
-      // если нет — создадим инициализацию на лету (на случай гонок)
-      prevCoinsRef.current = now;
-      if (!coinsLog.length) {
-        setCoinsLog(l =>
-          [
-            {
-              id: mkId(),
-              ts: Date.now(),
-              before: now,
-              delta: 0,
-              after: now,
-              reason: 'инициализация баланса',
-              source: 'system',
-              context: {},
-            },
-            ...l,
-          ].slice(0, 200)
-        );
-      }
-      return;
-    }
-
-    if (prev !== now) {
-      const delta = now - prev;
-      const entry = {
-        id: mkId(),
-        ts: Date.now(),
-        before: prev,
-        delta,
-        after: now,
-        reason: last.note || last.reason || last.type || 'изменение монет',
-        source: last.type,
-        cardId: last.cardId,
-        sectorId: last.sectorId,
-        context: last.context || {},
-      };
-      setCoinsLog(l => [entry, ...l].slice(0, 200));
-      prevCoinsRef.current = now;
-    }
-  }, [
-    currentUserData?.coins,
-    gameState?.lastAction,
-    gameState?.lastEvent,
-    currentUserData?.user_id,
-  ]);
-
-  // end log of coins
 
   return (
     <div className="col">
@@ -710,9 +734,32 @@ const Menu = ({
       )} */}
       {/* Информация о текущем игроке */}
       <CurrentPlayerInfo player={currentUserData} lang={lang} />
+      <PlayerActivityHistory
+        entries={activityHistory}
+        lang={lang}
+        playerId={myUserId}
+        defaultOpen
+      />
+      <CoinsLog
+        entries={coinHistoryByPlayer[myUserId] || []}
+        lang={lang}
+        defaultOpen
+        limit={300}
+      />
+      <EventDebugHistory
+        entries={eventHistory}
+        lang={lang}
+        playerId={myUserId}
+        defaultOpen
+      />
       {/* Информация о других игроках */}
-      <OtherPlayersInfo otherUsers={otherUsers} lang={lang} />
-      <CoinsLog gameState={gameState} myUserId={myUserId} limit={100} coinsLog={coinsLog} />
+      <OtherPlayersInfo
+        otherUsers={otherUsers}
+        lang={lang}
+        coinHistoryByPlayer={coinHistoryByPlayer}
+        eventHistory={eventHistory}
+        activityHistory={activityHistory}
+      />
       <Modal show={showEventModal} onHide={() => setShowEventModal(false)} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>Карты событий перед концом раунда</Modal.Title>
