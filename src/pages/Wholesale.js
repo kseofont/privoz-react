@@ -11,6 +11,9 @@ import localProductsData from '../data/products.json';
 import { connectionsRef } from '../globals';
 
 import { handleHostEndTurn, getField } from '../logic/logic';
+import { buyProductAction } from '../game/actions';
+import { gameReducer } from '../game/reducer';
+import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 
 const Wholesale = () => {
   const { t, i18n } = useTranslation();
@@ -226,146 +229,62 @@ const Wholesale = () => {
   /*
    * Confirm wholesale purchase.
    *
-   * Gameplay intentionally stays exactly as it was before the
-   * PeerJS lifecycle stabilization.
+   * HOST:
+   * applies its own BUY_PRODUCT action through the same reducer used for
+   * client actions, records learning data, then broadcasts the result.
+   *
+   * CLIENT:
+   * sends only an intent and waits for authoritative gameState.
    */
   const handleConfirmProduct = () => {
-    if (!selectedProduct || !isAuthorized || !gameState) {
+    if (!selectedProduct || !isAuthorized || !gameState || !myTurn) {
       return;
     }
 
-    setGameState(prev => {
-      if (!prev) {
-        return prev;
+    const action = buyProductAction({
+      playerId: myUserId,
+      productId: selectedProduct.productId,
+    });
+
+    if (isHost) {
+      const nextState = gameReducer(gameState, action);
+
+      if (nextState === gameState) {
+        console.warn('[Wholesale] Host BUY_PRODUCT rejected:', action);
+        return;
       }
 
-      /*
-       * Resolve the latest product object from current gameState.
-       */
-      const productList = Array.isArray(prev.products)
-        ? prev.products
-        : Array.isArray(prev.products?.products)
-          ? prev.products.products
-          : [];
-
-      const productIndex = productList.findIndex(
-        product => product.productId === selectedProduct.productId
-      );
-
-      if (productIndex === -1) {
-        return prev;
-      }
-
-      const product = productList[productIndex];
-
-      /*
-       * No free cards left.
-       */
-      if ((product.quantity_free_card || 0) <= 0) {
-        return prev;
-      }
-
-      const playerIndex = prev.players.findIndex(player => player.user_id === myUserId);
-
-      if (playerIndex === -1) {
-        return prev;
-      }
-
-      const player = prev.players[playerIndex];
-
-      /*
-       * Not enough money.
-       */
-      if ((player.coins || 0) < (product.wholesalePrice || 0)) {
-        return prev;
-      }
-
-      /*
-       * Reduce available wholesale quantity.
-       */
-      const updatedProduct = {
-        ...product,
-
-        quantity_free_card: Math.max(0, (product.quantity_free_card || 0) - 1),
-      };
-
-      const updatedProductList = [...productList];
-
-      updatedProductList[productIndex] = updatedProduct;
-
-      /*
-       * Add purchased card to player's inventory.
-       */
-      const playerProducts = Array.isArray(player.products) ? [...player.products] : [];
-
-      const existingPlayerProductIndex = playerProducts.findIndex(
-        playerProduct => playerProduct.productId === updatedProduct.productId
-      );
-
-      if (existingPlayerProductIndex !== -1) {
-        playerProducts[existingPlayerProductIndex] = {
-          ...playerProducts[existingPlayerProductIndex],
-          ...updatedProduct,
-
-          quantity_player_card:
-            (playerProducts[existingPlayerProductIndex].quantity_player_card || 1) + 1,
-        };
-      } else {
-        playerProducts.push({
-          ...updatedProduct,
-          quantity_player_card: 1,
-        });
-      }
-
-      /*
-       * Charge the player.
-       */
-      const newCoins = Math.max(0, (player.coins || 0) - (product.wholesalePrice || 0));
-
-      const updatedPlayer = {
-        ...player,
-        products: playerProducts,
-        coins: newCoins,
-      };
-
-      const updatedPlayers = [...prev.players];
-
-      updatedPlayers[playerIndex] = updatedPlayer;
-
-      /*
-       * Preserve the existing shape of gameState.products.
-       *
-       * The project currently supports both:
-       *
-       * products: [...]
-       *
-       * and:
-       *
-       * products: {
-       *   products: [...]
-       * }
-       */
-      let newProducts;
-
-      if (Array.isArray(prev.products)) {
-        newProducts = updatedProductList;
-      } else if (prev.products && Array.isArray(prev.products.products)) {
-        newProducts = {
-          ...prev.products,
-          products: updatedProductList,
-        };
-      } else {
-        newProducts = prev.products;
-      }
+      recordAcceptedLearningDecision({
+        beforeState: gameState,
+        afterState: nextState,
+        action,
+        actorId: myUserId,
+      });
 
       setShowModal(false);
+      setSelectedProduct(null);
+      setGameState(nextState);
+      broadcastGameState(nextState);
 
-      return {
-        ...prev,
-        players: updatedPlayers,
-        products: newProducts,
-      };
-    });
+      return;
+    }
+
+    if (!connection?.open) {
+      console.error('[Wholesale] Cannot send BUY_PRODUCT: connection is not open.');
+      return;
+    }
+
+    try {
+      connection.send({
+        type: 'gameAction',
+        action,
+      });
+
+      setShowModal(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error('[Wholesale] Failed to send BUY_PRODUCT:', error);
+    }
   };
 
   const currentPlayer = gameState?.players?.find(player => player.user_id === myUserId) || {};
@@ -379,7 +298,7 @@ const Wholesale = () => {
   return (
     <div className="container-fluid">
       <div className="row flex-column flex-sm-row">
-        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column  align-items-center text-center">
           <div className="row flex-column flex-sm-row">
             <h2>Wholesale Marketplace</h2>
 

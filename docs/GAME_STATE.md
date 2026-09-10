@@ -1213,6 +1213,77 @@ Recommended safe sequence:
 
 Do NOT use this roadmap as justification to refactor END_TURN, BUY_PRODUCT or unrelated legacy flows during the initial bot work.
 
+## Current Bot Player stage - wholesale behavior (policy-v002)
+
+The next bot slice expands the already stable SELECT_TRADER flow into wholesale purchasing without changing END_TURN.
+
+BUY_PRODUCT is now intended to follow the same host-authoritative rule as SELECT_TRADER:
+
+human or bot decision
+
+→ BUY_PRODUCT action
+
+→ HOST
+
+→ reducer validation
+
+→ authoritative gameState
+
+→ broadcast
+
+→ learning decision
+
+Wholesale previously mutated local gameState directly. This slice migrates only BUY_PRODUCT to the reducer/action path. END_TURN remains legacy and manual for bots.
+
+Bot runtime now has a temporary lifecycle stage separate from gameState.phase:
+
+awaiting_turn
+
+→ trader
+
+→ wholesale
+
+→ done
+
+This lifecycle is necessary because the prototype currently keeps trader selection and wholesale inside the broader trader_selection game phase. It is a UI/controller compatibility layer, not a replacement for authoritative phases.
+
+After authoritative SELECT_TRADER confirmation, a bot navigates to Wholesale and may send multiple BUY_PRODUCT actions. Duplicate protection is state/decision based rather than one-action-per-turn, so the same purchase cannot be resent before authoritative confirmation while a confirmed purchase can lead to another decision.
+
+END_TURN is still manual. When the authoritative turn moves away, the bot lifecycle resets for its next turn.
+
+The active deployable policy is now:
+
+policy-v002
+
+Bot behavior profiles are explicit metadata and should be stored with the bot player and learning samples:
+
+- balanced - keeps a small reserve and prefers legal/value purchases;
+- all_in - tries to spend as much available money as possible;
+- saver - keeps a larger reserve and buys only legal goods;
+- specialist - prefers repeatedly buying within a sector already represented in its inventory;
+- diversifier - prefers sectors not yet represented in its inventory;
+- smuggler - buys only illegal goods and keeps a minimal reserve.
+
+These profiles are intentionally deterministic for reproducible testing. They are not claims about optimal play. Their purpose is to generate different strategy families that can later be compared using real game outcomes, simulations and offline Qwen analysis.
+
+The host can choose a bot behavior profile before adding each bot. The selected profile travels through the normal bot join flow and is stored as botBehaviorProfile. Learning records for bot decisions include both policyVersion and behaviorProfile.
+
+buildPlayerObservation() schema version 2 adds only the public wholesale product information needed for purchasing plus the represented player's own product inventory. It still must not expose hidden/private information.
+
+BUY_PRODUCT learning samples should contain:
+
+- anonymous actorIndex / actorType;
+- policyVersion and behaviorProfile for bots;
+- player coins and own compact product holdings;
+- public available products with price/profit/sector/legality/free quantity;
+- all game-legal affordable BUY_PRODUCT actions;
+- the selected product;
+- accepted result.
+
+Policy restrictions such as reserve money or legal-only behavior are NOT game legal-action restrictions. The learning log's legalActions must describe what the rules allowed, while behaviorProfile explains why a bot may intentionally ignore some legal choices.
+
+This slice must not refactor trader placement, END_TURN, event handling or unrelated rules.
+
 ## Validation workflow
 
 After each substantial implementation slice:

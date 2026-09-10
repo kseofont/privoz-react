@@ -12,6 +12,10 @@ import products from '../data/products.json';
 import eventcards from '../data/eventcards.json';
 import { PHASES } from '../game/phases';
 import { createGameId } from '../game/gameId';
+import {
+  BOT_BEHAVIOR_PROFILES,
+  normalizeBotBehaviorProfile,
+} from '../bot/decisions/PolicyDecisionProvider';
 
 /**
  * Add a PeerJS connection only once.
@@ -64,6 +68,7 @@ const CreateServerPage = () => {
   const [userName, setUserName] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [numberOfPlayers, setNumberOfPlayers] = useState(3);
+  const [botBehaviorProfile, setBotBehaviorProfile] = useState('balanced');
 
   const [serverStarted, setServerStarted] = useState(false);
   const [peerId, setPeerId] = useState('');
@@ -95,9 +100,7 @@ const CreateServerPage = () => {
   // Обычное приглашение для реального игрока.
   // Имя и цвет игрок выбирает самостоятельно.
   const joinGameUrl =
-    peerId && appOrigin
-      ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(peerId)}`
-      : '';
+    peerId && appOrigin ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(peerId)}` : '';
 
   // Для виртуального игрока автоматически выбираем первый свободный цвет
   // и уникальное тестовое имя.
@@ -106,17 +109,14 @@ const CreateServerPage = () => {
   );
 
   const nextVirtualColor =
-    ['red', 'green', 'blue', 'orange', 'purple', 'brown'].find(
-      color => !usedColors.has(color)
-    ) || '';
+    ['red', 'green', 'blue', 'orange', 'purple', 'brown'].find(color => !usedColors.has(color)) ||
+    '';
 
   const nextVirtualPlayerNumber = (gameState?.players?.length || 0) + 1;
 
   const virtualPlayerUrl =
     peerId && appOrigin && nextVirtualColor
-      ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(
-          peerId
-        )}&name=${encodeURIComponent(
+      ? `${appOrigin}/JoinGamePage?peer_id=${encodeURIComponent(peerId)}&name=${encodeURIComponent(
           `virtual-${nextVirtualPlayerNumber}`
         )}&color=${encodeURIComponent(nextVirtualColor)}`
       : '';
@@ -127,7 +127,7 @@ const CreateServerPage = () => {
           peerId
         )}&name=${encodeURIComponent(`bot-${nextVirtualPlayerNumber}`)}&color=${encodeURIComponent(
           nextVirtualColor
-        )}&bot=1`
+        )}&bot=1&bot_profile=${encodeURIComponent(botBehaviorProfile)}`
       : '';
 
   const addLog = message => {
@@ -341,6 +341,8 @@ const CreateServerPage = () => {
                   data.isBot === true && typeof data.botPolicyVersion === 'string'
                     ? data.botPolicyVersion
                     : null,
+                botBehaviorProfile:
+                  data.isBot === true ? normalizeBotBehaviorProfile(data.botBehaviorProfile) : null,
               };
 
               return {
@@ -470,7 +472,7 @@ const CreateServerPage = () => {
   return (
     <div className="container-fluid">
       <div className="row flex-column flex-sm-row">
-        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column align-items-center text-center">
           <h1>{t('create_game_as_host')}</h1>
 
           <div className="mb-3">
@@ -554,31 +556,35 @@ const CreateServerPage = () => {
               <button
                 type="button"
                 className="btn btn-outline-primary mb-3"
-                disabled={
-                  !virtualPlayerUrl ||
-                  (gameState?.players?.length || 0) >= numberOfPlayers
-                }
-                onClick={() =>
-                  window.open(
-                    virtualPlayerUrl,
-                    '_blank',
-                    'noopener,noreferrer'
-                  )
-                }
+                disabled={!virtualPlayerUrl || (gameState?.players?.length || 0) >= numberOfPlayers}
+                onClick={() => window.open(virtualPlayerUrl, '_blank', 'noopener,noreferrer')}
               >
                 {t('add_virtual_player')}
               </button>
 
+              <div className="mb-2" style={{ minWidth: 240 }}>
+                <label htmlFor="bot-behavior-profile" className="form-label mb-1">
+                  {t('bot_behavior_profile')}
+                </label>
+                <select
+                  id="bot-behavior-profile"
+                  className="form-select"
+                  value={botBehaviorProfile}
+                  onChange={event => setBotBehaviorProfile(event.target.value)}
+                >
+                  {BOT_BEHAVIOR_PROFILES.map(profile => (
+                    <option key={profile} value={profile}>
+                      {t(`bot_profile_${profile}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 className="btn btn-outline-success mb-3"
-                disabled={
-                  !botPlayerUrl ||
-                  (gameState?.players?.length || 0) >= numberOfPlayers
-                }
-                onClick={() =>
-                  window.open(botPlayerUrl, '_blank', 'noopener,noreferrer')
-                }
+                disabled={!botPlayerUrl || (gameState?.players?.length || 0) >= numberOfPlayers}
+                onClick={() => window.open(botPlayerUrl, '_blank', 'noopener,noreferrer')}
               >
                 {t('add_bot_player')}
               </button>
@@ -587,12 +593,7 @@ const CreateServerPage = () => {
                 <strong>{t('join_game')}:</strong>
               </p>
 
-              <a
-                href={joinGameUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mb-4 text-break"
-              >
+              <a href={joinGameUrl} target="_blank" rel="noreferrer" className="mb-4 text-break">
                 {joinGameUrl}
               </a>
 
@@ -636,7 +637,9 @@ const CreateServerPage = () => {
                   <li key={player.user_id} className="list-group-item">
                     {player.isHost
                       ? `${player.name} (Host - Game for ${numberOfPlayers} players)`
-                      : `${player.name}${player.isBot ? ' (Bot)' : ''}`}{' '}
+                      : `${player.name}${
+                          player.isBot ? ` (Bot: ${player.botBehaviorProfile || 'balanced'})` : ''
+                        }`}{' '}
                     - <span style={{ color: player.color }}>{player.color}</span>{' '}
                     {player.disconnected ? '(Temporarily Disconnected)' : ''}
                   </li>

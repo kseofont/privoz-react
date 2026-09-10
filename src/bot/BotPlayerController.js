@@ -1,33 +1,91 @@
 import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { buildPlayerObservation } from './observation/buildPlayerObservation';
-import { decideWithPolicy } from './decisions/PolicyDecisionProvider';
+import {
+  decideWithPolicy,
+  getDefaultBotBehaviorProfile,
+  normalizeBotBehaviorProfile,
+} from './decisions/PolicyDecisionProvider';
 import { botDecisionToAction } from './actions/botDecisionToAction';
 
-function getTurnLockKey(playerId) {
-  return `privoz:bot:turn-lock:${playerId}`;
+const BOT_STAGES = Object.freeze({
+  AWAITING_TURN: 'awaiting_turn',
+  TRADER: 'trader',
+  WHOLESALE: 'wholesale',
+  DONE: 'done',
+});
+
+function getStorageKey(playerId, suffix) {
+  return `privoz:bot:${suffix}:${playerId}`;
 }
 
-function readTurnLock(playerId) {
+function readStorage(playerId, suffix) {
   try {
-    return sessionStorage.getItem(getTurnLockKey(playerId)) === '1';
+    return sessionStorage.getItem(getStorageKey(playerId, suffix));
   } catch {
-    return false;
+    return null;
   }
 }
 
-function writeTurnLock(playerId, locked) {
+function writeStorage(playerId, suffix, value) {
   try {
-    const key = getTurnLockKey(playerId);
+    const key = getStorageKey(playerId, suffix);
 
-    if (locked) {
-      sessionStorage.setItem(key, '1');
-    } else {
+    if (value === null || value === undefined || value === '') {
       sessionStorage.removeItem(key);
+    } else {
+      sessionStorage.setItem(key, String(value));
     }
   } catch {
-    // sessionStorage is only a duplicate-action guard, not game authority.
+    // Bot lifecycle storage is only a duplicate/navigation guard.
   }
+}
+
+function getBotStage(playerId) {
+  return readStorage(playerId, 'stage') || BOT_STAGES.AWAITING_TURN;
+}
+
+function setBotStage(playerId, stage) {
+  writeStorage(playerId, 'stage', stage);
+}
+
+function clearActionGuard(playerId) {
+  writeStorage(playerId, 'last-decision', null);
+}
+
+
+function navigateBotPage(navigate, path, gameState, myUserId) {
+  if (typeof window !== 'undefined') {
+    window.gameState = gameState;
+    window.myUserId = myUserId;
+  }
+
+  navigate(path, {
+    state: {
+      gameState,
+      myUserId,
+    },
+  });
+}
+
+function buildDecisionKey(observation, stage, action) {
+  const products = (observation.self?.products || [])
+    .map(product => `${product.productId}:${product.quantity}`)
+    .sort()
+    .join(',');
+
+  const target = action.payload?.traderId ?? action.payload?.productId ?? 'none';
+
+  return [
+    observation.round,
+    stage,
+    action.type,
+    target,
+    observation.self?.coins ?? 0,
+    observation.self?.tradersCount ?? 0,
+    products,
+  ].join('|');
 }
 
 /**
@@ -41,9 +99,13 @@ function writeTurnLock(playerId, locked) {
  * -> broadcast
  *
  * It never calls gameReducer() or setGameState() itself.
+ *
+ * END_TURN intentionally remains manual in this slice.
  */
 const BotPlayerController = ({ gameState, myUserId, connection }) => {
   const decisionInFlightRef = useRef(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const player = gameState?.players?.find(currentPlayer => currentPlayer.user_id === myUserId);
@@ -54,19 +116,52 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       return undefined;
     }
 
-    /*
-     * Re-arm only after the authoritative turn moves away from this bot.
-     * sessionStorage makes the lock survive page/Menu remounts during the
-     * same turn.
-     */
     if (!myTurn) {
       decisionInFlightRef.current = false;
-      writeTurnLock(myUserId, false);
+      setBotStage(myUserId, BOT_STAGES.AWAITING_TURN);
+      clearActionGuard(myUserId);
+      writeStorage(myUserId, 'pending-trader', null);
 
       return undefined;
     }
 
-    if (!connection?.open || decisionInFlightRef.current || readTurnLock(myUserId)) {
+    let stage = getBotStage(myUserId);
+
+    if (stage === BOT_STAGES.AWAITING_TURN) {
+      stage = BOT_STAGES.TRADER;
+      setBotStage(myUserId, stage);
+      clearActionGuard(myUserId);
+    }
+
+    /*
+     * A SELECT_TRADER sent on the previous state is considered complete
+     * only after authoritative state confirms ownership.
+     */
+    const pendingTraderId = readStorage(myUserId, 'pending-trader');
+
+    if (
+      stage === BOT_STAGES.TRADER &&
+      pendingTraderId &&
+      player?.traders?.some(trader => trader?.traderId === pendingTraderId)
+    ) {
+      stage = BOT_STAGES.WHOLESALE;
+      setBotStage(myUserId, stage);
+      writeStorage(myUserId, 'pending-trader', null);
+      clearActionGuard(myUserId);
+      decisionInFlightRef.current = false;
+    }
+
+    if (stage === BOT_STAGES.TRADER && !location.pathname.startsWith('/traders')) {
+      navigateBotPage(navigate, `/traders/${myUserId}`, gameState, myUserId);
+      return undefined;
+    }
+
+    if (stage === BOT_STAGES.WHOLESALE && !location.pathname.startsWith('/wholesale')) {
+      navigateBotPage(navigate, `/wholesale/${myUserId}`, gameState, myUserId);
+      return undefined;
+    }
+
+    if (stage === BOT_STAGES.DONE || !connection?.open || decisionInFlightRef.current) {
       return undefined;
     }
 
@@ -76,15 +171,60 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
       return undefined;
     }
 
-    let cancelled = false;
+    const behaviorProfile = normalizeBotBehaviorProfile(
+      player?.botBehaviorProfile || getDefaultBotBehaviorProfile()
+    );
 
+    let cancelled = false;
     decisionInFlightRef.current = true;
 
     const decideAndSend = async () => {
       try {
-        const decision = await decideWithPolicy(observation);
+        const decision = await decideWithPolicy(observation, {
+          stage,
+          behaviorProfile,
+        });
 
-        if (cancelled || !decision) {
+        if (cancelled) {
+          return;
+        }
+
+        /*
+         * No trader may mean the bot cannot afford another trader in a
+         * later turn. If it already owns one, continue to wholesale.
+         */
+        if (!decision && stage === BOT_STAGES.TRADER) {
+          decisionInFlightRef.current = false;
+
+          if ((player?.traders || []).length > 0) {
+            setBotStage(myUserId, BOT_STAGES.WHOLESALE);
+            clearActionGuard(myUserId);
+            navigateBotPage(navigate, `/wholesale/${myUserId}`, gameState, myUserId);
+          } else {
+            setBotStage(myUserId, BOT_STAGES.DONE);
+          }
+
+          return;
+        }
+
+        /*
+         * Wholesale policy returning null means the bot intentionally
+         * stops shopping because its reserve/legality strategy has no
+         * further acceptable purchase.
+         */
+        if (!decision && stage === BOT_STAGES.WHOLESALE) {
+          decisionInFlightRef.current = false;
+          setBotStage(myUserId, BOT_STAGES.DONE);
+
+          console.log('[BOT] wholesale complete:', {
+            behaviorProfile,
+            coinsLeft: observation.self?.coins,
+          });
+
+          return;
+        }
+
+        if (!decision) {
           decisionInFlightRef.current = false;
           return;
         }
@@ -96,13 +236,22 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
           return;
         }
 
-        /*
-         * Lock before send so an immediate re-render cannot duplicate the
-         * action. The lock is cleared only when HOST moves the turn away.
-         */
-        writeTurnLock(myUserId, true);
+        const decisionKey = buildDecisionKey(observation, stage, action);
+
+        if (readStorage(myUserId, 'last-decision') === decisionKey) {
+          decisionInFlightRef.current = false;
+          return;
+        }
+
+        writeStorage(myUserId, 'last-decision', decisionKey);
+
+        if (stage === BOT_STAGES.TRADER && action.payload?.traderId) {
+          writeStorage(myUserId, 'pending-trader', action.payload.traderId);
+        }
 
         console.log('[BOT] sending decision:', {
+          behaviorProfile,
+          stage,
           decision,
           action,
         });
@@ -111,9 +260,15 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
           type: 'gameAction',
           action,
         });
+
+        /*
+         * Wait for authoritative gameState before another decision.
+         * The effect will re-run when HOST broadcasts the changed state.
+         */
+        decisionInFlightRef.current = false;
       } catch (error) {
         decisionInFlightRef.current = false;
-        writeTurnLock(myUserId, false);
+        clearActionGuard(myUserId);
 
         console.error('[BOT] Failed to decide/send action:', error);
       }
@@ -124,7 +279,7 @@ const BotPlayerController = ({ gameState, myUserId, connection }) => {
     return () => {
       cancelled = true;
     };
-  }, [gameState, myUserId, connection]);
+  }, [gameState, myUserId, connection, location.pathname, navigate]);
 
   return null;
 };

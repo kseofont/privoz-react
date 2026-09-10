@@ -21,6 +21,9 @@ export function gameReducer(gameState, action) {
     case ACTION_TYPES.SELECT_TRADER:
       return reduceSelectTrader(gameState, action.payload);
 
+    case ACTION_TYPES.BUY_PRODUCT:
+      return reduceBuyProduct(gameState, action.payload);
+
     default:
       return gameState;
   }
@@ -138,5 +141,113 @@ function reduceSelectTrader(gameState, payload = {}) {
 
     players: updatedPlayers,
     traderList: updatedTraderList,
+  };
+}
+
+
+function reduceBuyProduct(gameState, payload = {}) {
+  const { playerId, productId } = payload;
+
+  if (!playerId || productId === null || productId === undefined || productId === '') {
+    return gameState;
+  }
+
+  /*
+   * Wholesale is still part of the prototype turn while gameState.phase
+   * commonly remains TRADER_SELECTION. Do not introduce a new phase rule
+   * here until the wider turn/phase flow is migrated.
+   */
+  if (gameState.currentTurnUserId !== playerId) {
+    return gameState;
+  }
+
+  if (!Array.isArray(gameState.players)) {
+    return gameState;
+  }
+
+  const playerIndex = gameState.players.findIndex(player => player.user_id === playerId);
+
+  if (playerIndex === -1) {
+    return gameState;
+  }
+
+  const productList = Array.isArray(gameState.products)
+    ? gameState.products
+    : Array.isArray(gameState.products?.products)
+      ? gameState.products.products
+      : [];
+
+  const productIndex = productList.findIndex(product => product.productId === productId);
+
+  if (productIndex === -1) {
+    return gameState;
+  }
+
+  const product = productList[productIndex];
+  const availableQuantity = Number(product.quantity_free_card || 0);
+  const price = Number(product.wholesalePrice || 0);
+
+  if (availableQuantity <= 0 || price < 0) {
+    return gameState;
+  }
+
+  const player = gameState.players[playerIndex];
+  const currentCoins = Number(player.coins || 0);
+
+  if (currentCoins < price) {
+    return gameState;
+  }
+
+  const updatedProduct = {
+    ...product,
+    quantity_free_card: Math.max(0, availableQuantity - 1),
+  };
+
+  const updatedProductList = [...productList];
+  updatedProductList[productIndex] = updatedProduct;
+
+  const playerProducts = Array.isArray(player.products) ? [...player.products] : [];
+  const existingPlayerProductIndex = playerProducts.findIndex(
+    playerProduct => playerProduct.productId === updatedProduct.productId
+  );
+
+  if (existingPlayerProductIndex !== -1) {
+    playerProducts[existingPlayerProductIndex] = {
+      ...playerProducts[existingPlayerProductIndex],
+      ...updatedProduct,
+      quantity_player_card:
+        Number(playerProducts[existingPlayerProductIndex].quantity_player_card || 1) + 1,
+    };
+  } else {
+    playerProducts.push({
+      ...updatedProduct,
+      quantity_player_card: 1,
+    });
+  }
+
+  const updatedPlayer = {
+    ...player,
+    products: playerProducts,
+    coins: Math.max(0, currentCoins - price),
+  };
+
+  const updatedPlayers = [...gameState.players];
+  updatedPlayers[playerIndex] = updatedPlayer;
+
+  let updatedProducts = gameState.products;
+
+  if (Array.isArray(gameState.products)) {
+    updatedProducts = updatedProductList;
+  } else if (gameState.products && Array.isArray(gameState.products.products)) {
+    updatedProducts = {
+      ...gameState.products,
+      products: updatedProductList,
+    };
+  }
+
+  return {
+    ...gameState,
+    players: updatedPlayers,
+    products: updatedProducts,
   };
 }

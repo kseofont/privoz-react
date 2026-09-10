@@ -17,9 +17,13 @@ export function handleHostGameAction({ connectionsRef, setGameState, onAcceptedA
     const incomingAction = data.action;
 
     /*
-     * For now SELECT_TRADER is the only network action.
+     * Keep the network surface explicit. Only actions already migrated
+     * to host-authoritative reducers are accepted here.
      */
-    if (incomingAction.type !== ACTION_TYPES.SELECT_TRADER) {
+    if (
+      incomingAction.type !== ACTION_TYPES.SELECT_TRADER &&
+      incomingAction.type !== ACTION_TYPES.BUY_PRODUCT
+    ) {
       return;
     }
 

@@ -30,8 +30,33 @@ function getLegalSelectTraderActions(observation) {
     }));
 }
 
-function buildCompactObservation(observation) {
-  return {
+function getLegalBuyProductActions(observation) {
+  if (!observation || observation.currentTurnUserId !== observation.self?.playerId) {
+    return [];
+  }
+
+  const coins = Number(observation.self?.coins || 0);
+
+  return (observation.visibleProducts || [])
+    .filter(product => {
+      const price = Number(product?.wholesalePrice || 0);
+
+      return (
+        product?.productId !== null &&
+        product?.productId !== undefined &&
+        Number(product?.quantityFree || 0) > 0 &&
+        price >= 0 &&
+        price <= coins
+      );
+    })
+    .map(product => ({
+      type: ACTION_TYPES.BUY_PRODUCT,
+      productId: product.productId,
+    }));
+}
+
+function buildCompactObservation(observation, actionType) {
+  const compact = {
     phase: observation.phase,
     round: observation.round,
     self: {
@@ -39,8 +64,54 @@ function buildCompactObservation(observation) {
       traderIds: observation.self.traderIds,
       tradersCount: observation.self.tradersCount,
     },
-    visibleTraders: observation.visibleTraders,
   };
+
+  if (actionType === ACTION_TYPES.SELECT_TRADER) {
+    return {
+      ...compact,
+      visibleTraders: observation.visibleTraders,
+    };
+  }
+
+  if (actionType === ACTION_TYPES.BUY_PRODUCT) {
+    return {
+      ...compact,
+      self: {
+        ...compact.self,
+        products: observation.self.products,
+      },
+      visibleProducts: observation.visibleProducts,
+    };
+  }
+
+  return compact;
+}
+
+function buildSelectTraderEventId({ beforeState, actorIndex, observation, action }) {
+  return [
+    'LE',
+    'TRADER',
+    sanitizeIdPart(beforeState.round || 0),
+    sanitizeIdPart(actorIndex),
+    sanitizeIdPart(observation.self.tradersCount),
+    sanitizeIdPart(action.payload?.traderId),
+  ].join('-');
+}
+
+function buildBuyProductEventId({ beforeState, actorIndex, observation, action }) {
+  const productId = action.payload?.productId;
+  const ownedQuantity =
+    observation.self?.products?.find(product => product.productId === productId)?.quantity || 0;
+
+  return [
+    'LE',
+    'BUY',
+    sanitizeIdPart(beforeState.round || 0),
+    sanitizeIdPart(actorIndex),
+    sanitizeIdPart(productId),
+    sanitizeIdPart(ownedQuantity),
+    sanitizeIdPart(observation.self.coins),
+  ].join('-');
 }
 
 /**
@@ -54,7 +125,7 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
     return null;
   }
 
-  if (action.type !== ACTION_TYPES.SELECT_TRADER) {
+  if (action.type !== ACTION_TYPES.SELECT_TRADER && action.type !== ACTION_TYPES.BUY_PRODUCT) {
     return null;
   }
 
@@ -71,24 +142,44 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
     return null;
   }
 
-  const traderId = action.payload?.traderId;
+  let eventId = null;
+  let legalActions = [];
+  let selectedAction = null;
 
-  if (!traderId) {
-    return null;
+  if (action.type === ACTION_TYPES.SELECT_TRADER) {
+    const traderId = action.payload?.traderId;
+
+    if (!traderId) {
+      return null;
+    }
+
+    eventId = buildSelectTraderEventId({ beforeState, actorIndex, observation, action });
+    legalActions = getLegalSelectTraderActions(observation);
+    selectedAction = {
+      type: ACTION_TYPES.SELECT_TRADER,
+      traderId,
+    };
   }
 
-  const eventId = [
-    'LE',
-    sanitizeIdPart(beforeState.round || 0),
-    sanitizeIdPart(actorIndex),
-    sanitizeIdPart(observation.self.tradersCount),
-    sanitizeIdPart(traderId),
-  ].join('-');
+  if (action.type === ACTION_TYPES.BUY_PRODUCT) {
+    const productId = action.payload?.productId;
+
+    if (productId === null || productId === undefined) {
+      return null;
+    }
+
+    eventId = buildBuyProductEventId({ beforeState, actorIndex, observation, action });
+    legalActions = getLegalBuyProductActions(observation);
+    selectedAction = {
+      type: ACTION_TYPES.BUY_PRODUCT,
+      productId,
+    };
+  }
 
   const players = Array.isArray(beforeState.players) ? beforeState.players : [];
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     gameId: beforeState.gameId,
     eventId,
     gameVersion: appVersion?.version || 'dev',
@@ -98,17 +189,15 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
     actorIndex,
     actorType: actor?.isBot === true ? 'bot' : 'human',
     policyVersion: actor?.isBot === true ? actor.botPolicyVersion || 'unknown' : null,
+    behaviorProfile: actor?.isBot === true ? actor.botBehaviorProfile || 'balanced' : null,
     playerCounts: {
       total: players.length,
       human: players.filter(player => player?.isBot !== true).length,
       bot: players.filter(player => player?.isBot === true).length,
     },
-    observation: buildCompactObservation(observation),
-    legalActions: getLegalSelectTraderActions(observation),
-    selectedAction: {
-      type: ACTION_TYPES.SELECT_TRADER,
-      traderId,
-    },
+    observation: buildCompactObservation(observation, action.type),
+    legalActions,
+    selectedAction,
     result: 'accepted',
   };
 }

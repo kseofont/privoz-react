@@ -1,4 +1,4 @@
-import { selectTraderAction } from '../../game/actions';
+import { buyProductAction, selectTraderAction } from '../../game/actions';
 import { BOT_DECISION_TYPES } from '../decisions/PolicyDecisionProvider';
 
 /**
@@ -21,6 +21,16 @@ export function botDecisionToAction(decision, playerId) {
       return selectTraderAction({
         playerId,
         traderId: decision.traderId,
+      });
+
+    case BOT_DECISION_TYPES.BUY_PRODUCT:
+      if (decision.productId === null || decision.productId === undefined) {
+        return null;
+      }
+
+      return buyProductAction({
+        playerId,
+        productId: decision.productId,
       });
 
     default:

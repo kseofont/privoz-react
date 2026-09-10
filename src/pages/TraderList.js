@@ -19,7 +19,6 @@ import { gameReducer } from '../game/reducer';
 
 import { recordAcceptedLearningDecision } from '../learning/recordAcceptedLearningDecision';
 
-
 const TraderList = () => {
   const { t, i18n } = useTranslation();
 
@@ -361,7 +360,7 @@ const TraderList = () => {
   return (
     <div className="container-fluid">
       <div className="row flex-column flex-sm-row">
-        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column  align-items-center text-center">
           {!isAuthorized && (
             <div className="alert alert-warning mb-3">
               Вы не подключены к игре. Ниже - список всех доступных продавцов, но их нельзя выбрать.

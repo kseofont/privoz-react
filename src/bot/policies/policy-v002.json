@@ -1,0 +1,47 @@
+{
+  "version": "policy-v002",
+  "selectTrader": {
+    "strategy": "first_legal"
+  },
+  "defaultBehaviorProfile": "balanced",
+  "buyProduct": {
+    "profiles": {
+      "balanced": {
+        "reserveCoins": 2,
+        "sectorMode": "mixed",
+        "legalityMode": "prefer_legal",
+        "priceMode": "value"
+      },
+      "all_in": {
+        "reserveCoins": 0,
+        "sectorMode": "mixed",
+        "legalityMode": "mixed",
+        "priceMode": "spend"
+      },
+      "saver": {
+        "reserveCoins": 5,
+        "sectorMode": "mixed",
+        "legalityMode": "legal_only",
+        "priceMode": "value"
+      },
+      "specialist": {
+        "reserveCoins": 2,
+        "sectorMode": "focus",
+        "legalityMode": "legal_only",
+        "priceMode": "cheap"
+      },
+      "diversifier": {
+        "reserveCoins": 2,
+        "sectorMode": "diversify",
+        "legalityMode": "prefer_legal",
+        "priceMode": "value"
+      },
+      "smuggler": {
+        "reserveCoins": 1,
+        "sectorMode": "mixed",
+        "legalityMode": "illegal_only",
+        "priceMode": "profit"
+      }
+    }
+  }
+}

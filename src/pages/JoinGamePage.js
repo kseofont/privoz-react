@@ -7,7 +7,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 import Menu from '../components/Menu';
-import { getActiveBotPolicyVersion } from '../bot/decisions/PolicyDecisionProvider';
+import {
+  getActiveBotPolicyVersion,
+  normalizeBotBehaviorProfile,
+} from '../bot/decisions/PolicyDecisionProvider';
 
 const JoinGamePage = () => {
   const [userName, setUserName] = useState('');
@@ -149,7 +152,7 @@ const JoinGamePage = () => {
    * Previously those two flows duplicated almost the same PeerJS code.
    */
   const connectToHost = useCallback(
-    ({ peerId, name, color, auto = false, isBot = false }) => {
+    ({ peerId, name, color, auto = false, isBot = false, botBehaviorProfile = null }) => {
       if (!peerId || !name || !color) {
         return;
       }
@@ -219,6 +222,7 @@ const JoinGamePage = () => {
             color,
             isBot,
             botPolicyVersion: isBot ? getActiveBotPolicyVersion() : null,
+            botBehaviorProfile: isBot ? normalizeBotBehaviorProfile(botBehaviorProfile) : null,
           });
         };
 
@@ -399,6 +403,8 @@ const JoinGamePage = () => {
 
     const isBotFromUrl = params.get('bot') === '1';
 
+    const botBehaviorProfileFromUrl = params.get('bot_profile');
+
     if (peerIdFromUrl) {
       setHostPeerId(peerIdFromUrl);
     }
@@ -420,6 +426,7 @@ const JoinGamePage = () => {
         color: colorFromUrl,
         auto: true,
         isBot: isBotFromUrl,
+        botBehaviorProfile: botBehaviorProfileFromUrl,
       });
     }
   }, [location.search, connectToHost]);
@@ -480,7 +487,7 @@ const JoinGamePage = () => {
   return (
     <div className="container-fluid">
       <div className="row flex-column flex-sm-row">
-        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column justify-content-center align-items-center text-center">
+        <div className="col-12 col-sm-9 order-2 order-sm-1 d-flex flex-column  align-items-center text-center">
           <h1>{t('join_title')}</h1>
 
           <div className="mb-3">
