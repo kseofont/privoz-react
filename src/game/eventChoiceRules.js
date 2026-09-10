@@ -1,9 +1,10 @@
 import { PHASES } from './phases';
+import { expandEventCardInstances, getEventCardInstanceKey } from './eventCardInstances';
 
 export const EVENT_KEEP_COST = 5;
 
 function getCardKey(card, index) {
-  return card?.id ?? String(index);
+  return getEventCardInstanceKey(card, index);
 }
 
 function sameSector(a, b) {
@@ -100,7 +101,7 @@ export function validateAndNormalizeEventChoice(gameState, payload = {}) {
     return { ok: false };
   }
 
-  const cards = Array.isArray(player.eventCards) ? player.eventCards : [];
+  const cards = expandEventCardInstances(player.eventCards);
   const rawPositiveChoices =
     payload.positiveChoices && typeof payload.positiveChoices === 'object'
       ? payload.positiveChoices
@@ -118,7 +119,7 @@ export function validateAndNormalizeEventChoice(gameState, payload = {}) {
     const key = getCardKey(card, index);
 
     if (card?.fortune === 'positive') {
-      const requestedChoice = rawPositiveChoices[key];
+      const requestedChoice = rawPositiveChoices[key] ?? rawPositiveChoices[card?.id];
       let choice = requestedChoice === 'keep' || requestedChoice === 'use' ? requestedChoice : null;
 
       if (!choice) {
@@ -136,7 +137,7 @@ export function validateAndNormalizeEventChoice(gameState, payload = {}) {
       }
 
       if (choice === 'use') {
-        const target = sanitizeTarget(gameState, playerId, card, rawEffectTargets[key]);
+        const target = sanitizeTarget(gameState, playerId, card, rawEffectTargets[key] || rawEffectTargets[card?.id]);
 
         if (Object.keys(target).length > 0) {
           effectTargets[key] = target;

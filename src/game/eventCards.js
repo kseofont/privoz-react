@@ -1,3 +1,4 @@
+import { createEventCardInstanceId, getNextEventCardInstanceSequence } from './eventCardInstances';
 export function chooseRandomEventCardId(gameState, randomFn = Math.random) {
   const eventCards = Array.isArray(gameState?.eventcards) ? gameState.eventcards : [];
   const weightedIds = [];
@@ -49,26 +50,17 @@ export function awardEventCardById(gameState, playerId, eventCardId) {
   updatedEventCards[eventCardIndex] = {
     ...eventCard,
     quantity_active: availableQuantity - 1,
-  };
-
-  const player = players[playerIndex];
+  };  const player = players[playerIndex];
   const playerEventCards = Array.isArray(player.eventCards) ? [...player.eventCards] : [];
-  const existingCardIndex = playerEventCards.findIndex(card => card.id === eventCard.id);
+  const eventCardInstanceSequence = getNextEventCardInstanceSequence(gameState);
 
-  if (existingCardIndex !== -1) {
-    playerEventCards[existingCardIndex] = {
-      ...playerEventCards[existingCardIndex],
-      quantity_active: Number(playerEventCards[existingCardIndex].quantity_active || 0) + 1,
-    };
-  } else {
-    playerEventCards.push({
-      ...eventCard,
-      position_in_game: `hand_${playerId}`,
-      quantity_active: 1,
-    });
-  }
-
-  const updatedPlayers = [...players];
+  playerEventCards.push({
+    ...eventCard,
+    instanceId: createEventCardInstanceId(eventCard.id, eventCardInstanceSequence),
+    position_in_game: `hand_${playerId}`,
+    quantity_active: 1,
+  });
+const updatedPlayers = [...players];
   updatedPlayers[playerIndex] = {
     ...player,
     eventCards: playerEventCards,
@@ -76,6 +68,7 @@ export function awardEventCardById(gameState, playerId, eventCardId) {
 
   return {
     ...gameState,
+    eventCardInstanceSequence,
     eventcards: updatedEventCards,
     players: updatedPlayers,
   };

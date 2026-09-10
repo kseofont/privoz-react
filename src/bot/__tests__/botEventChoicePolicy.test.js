@@ -493,7 +493,7 @@ test('event-choice learning sample is compact, strategic and identity-free', () 
     appVersion: { version: 'test', gitCommit: 'abc123' },
   });
 
-  expect(sample.schemaVersion).toBe(4);
+  expect(sample.schemaVersion).toBe(5);
   expect(sample.policyVersion).toBe('policy-v008');
   expect(sample.behaviorProfile).toBe('balanced');
   expect(sample.selectedAction).toEqual({
@@ -567,3 +567,36 @@ test('ACK_EVENT_RESULTS clears only the acting bot result log', () => {
   expect(nextState.eventResultLog['peer-bot']).toEqual([]);
   expect(nextState.eventResultLog['peer-human']).toEqual(['human result']);
 });
+
+test('policy-v008 treats duplicate Event Card copies as independent instances', async () => {
+  const state = makeState();
+  const porters = cloneEventCard('ev_card_prtrs');
+
+  state.players[1] = {
+    ...state.players[1],
+    eventCards: [
+      { ...porters, instanceId: 'ev_card_prtrs__101', quantity_active: 1 },
+      { ...porters, instanceId: 'ev_card_prtrs__102', quantity_active: 1 },
+    ],
+  };
+
+  const observation = buildPlayerObservation(state, 'peer-bot');
+  const decision = await decideWithPolicy(observation, {
+    stage: 'personal_events',
+    behaviorProfile: 'balanced',
+  });
+
+  expect(observation.self.eventCards.map(card => card.instanceId)).toEqual([
+    'ev_card_prtrs__101',
+    'ev_card_prtrs__102',
+  ]);
+  expect(decision.positiveChoices).toEqual({
+    ev_card_prtrs__101: 'use',
+    ev_card_prtrs__102: 'use',
+  });
+  expect(decision.effectTargets).toEqual({
+    ev_card_prtrs__101: { traderId: 't-bot' },
+    ev_card_prtrs__102: { traderId: 't-bot' },
+  });
+});
+

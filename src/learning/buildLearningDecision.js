@@ -2,6 +2,7 @@ import { ACTION_TYPES } from '../game/actions';
 import { buildPlayerObservation } from '../bot/observation/buildPlayerObservation';
 import { MAX_PLAYER_TRADERS, MAX_TRADER_GOODS, normalizeSectorKey } from '../game/placeTraderRules';
 import { EVENT_KEEP_COST, getValidEventTargets } from '../game/eventChoiceRules';
+import { expandEventCardInstances, getEventCardInstanceKey } from '../game/eventCardInstances';
 
 function sanitizeIdPart(value) {
   const normalized = value === null || value === undefined || value === '' ? 'unknown' : value;
@@ -114,17 +115,21 @@ function getLegalEventChoiceActions(beforeState, actorId, observation) {
     observation.self?.eventChoicePending !== true
   ) {
     return [];
-  }
-
-  const cards = (observation.self?.eventCards || []).map(card => {
-    const sourceCard = beforeState.players
-      ?.find(player => player.user_id === actorId)
-      ?.eventCards?.find(currentCard => currentCard.id === card.cardId);
+  }  const sourceCards = expandEventCardInstances(
+    beforeState.players?.find(player => player.user_id === actorId)?.eventCards
+  );
+  const cards = (observation.self?.eventCards || []).map((card, index) => {
+    const instanceId = card.instanceId || card.cardId || String(index);
+    const sourceCard =
+      sourceCards.find(
+        (currentCard, currentIndex) =>
+          getEventCardInstanceKey(currentCard, currentIndex) === instanceId
+      ) || sourceCards.find(currentCard => currentCard.id === card.cardId);
     const validTargets = getValidEventTargets(beforeState, actorId, sourceCard);
-
     return {
       cardId: card.cardId,
-      fortune: card.fortune,
+      instanceId,
+fortune: card.fortune,
       choices:
         card.fortune === 'positive'
           ? Number(observation.self?.coins || 0) >= EVENT_KEEP_COST
@@ -392,7 +397,7 @@ export function buildLearningDecision({ beforeState, afterState, action, actorId
   const players = Array.isArray(beforeState.players) ? beforeState.players : [];
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     gameId: beforeState.gameId,
     eventId,
     gameVersion: appVersion?.version || 'dev',
