@@ -999,7 +999,7 @@ Deletion should initially be an explicit/admin-controlled operation until the pr
 
 ## Current learning inventory/admin status
 
-The first read-only Learning Data Admin slice is implemented.
+The Learning Data Admin inventory and training-batch export slices are implemented.
 
 Backend page:
 
@@ -1007,19 +1007,41 @@ api/learning-admin.php
 
 It reuses the existing feedback-admin-config.php password hash, but uses a separate admin session. No second production secret is required.
 
-Current Learning Data Admin capabilities are intentionally read-only:
+Current Learning Data Admin capabilities:
 
 - total stored games;
-- unused / used / eligible-for-deletion counts;
+- unused / pending, used and eligible-for-deletion counts;
 - total learning-log storage size;
 - total / human / bot decision counts;
 - games with attached outcomes;
 - policy-version usage by games and decisions;
 - per-game player counts, decision counts, useCount and status;
 - raw per-game JSON inspection;
-- warning when malformed learning JSON files are found.
+- warning when malformed learning JSON files are found;
+- prepare a versioned training snapshot from configurable pending and replay counts;
+- download a TAR/TAR.GZ package containing manifest.json, games.jsonl and summary.json;
+- explicitly confirm a downloaded batch before useCount/status metadata is changed;
+- retain a small batch manifest after confirmation while deleting the temporary duplicate archive.
 
-The UI does NOT yet export batches, mark logs as used, modify useCount or delete files. Those operations remain separate follow-up slices so inventory can be verified first.
+State-changing admin actions use a CSRF token.
+
+Training batch preparation does NOT immediately mark source logs as used. The intended workflow is:
+
+prepare batch
+
+→ download package
+
+→ confirm used
+
+→ increment useCount / set firstTrainingBatch and lastTrainingBatch
+
+→ remove temporary archive
+
+→ retain source game logs and small batch manifest
+
+If a game receives additional accepted decisions after a training snapshot was prepared, confirmation still records that snapshot use, but the game remains unused / pending so the newly appended data can be exported again later. A previously used game that receives a new accepted decision is also automatically marked pending again without losing its existing useCount/history.
+
+Game-log deletion is still NOT implemented. Cleanup remains a separate follow-up slice.
 
 ## Admin / export workflow
 

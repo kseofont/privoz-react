@@ -140,6 +140,13 @@ try {
     $game['decisions'] = $decisions;
     $game['updatedAt'] = gmdate('c');
 
+    // If a previously trained game receives another accepted decision, the
+    // game contains new data that has not yet been included in a confirmed
+    // training batch. Keep useCount/history, but mark it pending again.
+    if ((int)($game['useCount'] ?? 0) > 0) {
+        $game['status'] = 'unused';
+    }
+
     $encoded = json_encode($game, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($encoded === false) {
         throw new RuntimeException('Could not encode learning log');
