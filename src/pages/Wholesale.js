@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Modal, Button } from 'react-bootstrap';
 
 import Product from '../components/Product';
@@ -21,6 +21,7 @@ const Wholesale = () => {
   const lang = i18n.language || 'en';
 
   const location = useLocation();
+  const navigate = useNavigate();
   const params = useParams();
 
   /*
@@ -49,6 +50,10 @@ const Wholesale = () => {
   const [showModal, setShowModal] = useState(false);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Client-only flag: navigate to the market only after the host broadcasts
+  // the authoritative state that contains the confirmed purchase.
+  const navigateAfterPurchaseRef = useRef(false);
 
   /*
    * Make sure the current user actually exists in gameState.
@@ -126,6 +131,20 @@ const Wholesale = () => {
 
       if (data.type === 'gameState' && data.gameState) {
         setGameState(data.gameState);
+
+        if (navigateAfterPurchaseRef.current) {
+          navigateAfterPurchaseRef.current = false;
+
+          window.gameState = data.gameState;
+          window.myUserId = myUserId;
+
+          navigate(`/game/${myUserId}`, {
+            state: {
+              gameState: data.gameState,
+              myUserId,
+            },
+          });
+        }
       }
     };
 
@@ -134,7 +153,7 @@ const Wholesale = () => {
     return () => {
       connection.off('data', onData);
     };
-  }, [connection]);
+  }, [connection, myUserId, navigate]);
 
   /*
    * Products fallback.
@@ -194,7 +213,7 @@ const Wholesale = () => {
    * CLIENT:
    * sends only an intent and waits for authoritative gameState.
    */
-  const handleConfirmProduct = () => {
+  const handleConfirmProduct = (goToMarket = false) => {
     if (!selectedProduct || !isAuthorized || !gameState || !myTurn) {
       return;
     }
@@ -224,6 +243,18 @@ const Wholesale = () => {
       setGameState(nextState);
       broadcastGameState(nextState);
 
+      if (goToMarket) {
+        window.gameState = nextState;
+        window.myUserId = myUserId;
+
+        navigate(`/game/${myUserId}`, {
+          state: {
+            gameState: nextState,
+            myUserId,
+          },
+        });
+      }
+
       return;
     }
 
@@ -233,6 +264,8 @@ const Wholesale = () => {
     }
 
     try {
+      navigateAfterPurchaseRef.current = goToMarket;
+
       connection.send({
         type: 'gameAction',
         action,
@@ -241,6 +274,7 @@ const Wholesale = () => {
       setShowModal(false);
       setSelectedProduct(null);
     } catch (error) {
+      navigateAfterPurchaseRef.current = false;
       console.error('[Wholesale] Failed to send BUY_PRODUCT:', error);
     }
   };
@@ -354,19 +388,29 @@ const Wholesale = () => {
                 )}
               </Modal.Body>
 
-              <Modal.Footer>
+              <Modal.Footer className="d-flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => setShowModal(false)}>
-                  Отмена
+                  {t('wholesaleCancel')}
                 </Button>
 
                 <Button
                   variant="primary"
-                  onClick={handleConfirmProduct}
+                  onClick={() => handleConfirmProduct(false)}
                   disabled={
                     !isAuthorized || !selectedProduct || !myTurn || !enoughCoinsForSelectedProduct
                   }
                 >
-                  Подтвердить выбор
+                  {t('wholesaleBuyAndContinue')}
+                </Button>
+
+                <Button
+                  variant="success"
+                  onClick={() => handleConfirmProduct(true)}
+                  disabled={
+                    !isAuthorized || !selectedProduct || !myTurn || !enoughCoinsForSelectedProduct
+                  }
+                >
+                  {t('wholesaleBuyAndGoToMarket')}
                 </Button>
               </Modal.Footer>
             </Modal>
